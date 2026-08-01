@@ -23,40 +23,62 @@ public class MainActivity extends FlutterActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        forceShowOnLockScreen();
+        // Không bật chế độ báo thức ngay khi Activity được tạo
         super.onCreate(savedInstanceState);
     }
 
     @Override
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
-        forceShowOnLockScreen();
+        // Không ép hiển thị trên màn hình khóa khi app hoạt động bình thường
     }
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
+
         new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL)
                 .setMethodCallHandler((call, result) -> {
                     switch (call.method) {
+
                         case "canUseFullScreenIntent":
                             result.success(canUseFullScreenIntent());
                             break;
+
                         case "openFullScreenIntentSettings":
                             openFullScreenIntentSettings();
                             result.success(null);
                             break;
+
                         case "isIgnoringBatteryOptimizations":
                             result.success(isIgnoringBatteryOptimizations());
                             break;
+
                         case "requestIgnoreBatteryOptimizations":
                             requestIgnoreBatteryOptimizations();
                             result.success(null);
                             break;
+
                         case "handleAlarmDismiss":
                             handleAlarmDismiss();
                             result.success(null);
                             break;
+
+                        case "allowScreenTimeout":
+                            allowScreenTimeout();
+                            result.success(null);
+                            break;
+
+                        case "enableAlarmMode":
+                            enableAlarmMode();
+                            result.success(null);
+                            break;
+
+                        case "disableAlarmMode":
+                            disableAlarmMode();
+                            result.success(null);
+                            break;
+
                         default:
                             result.notImplemented();
                     }
@@ -79,19 +101,20 @@ public class MainActivity extends FlutterActivity {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
             } catch (Exception e) {
-                // Fallback nếu máy không hỗ trợ mở thẳng popup
                 try {
                     Intent intent2 = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                     intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(intent2);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
     }
 
     private void handleAlarmDismiss() {
-        KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-        // Thu nhỏ app (đưa xuống nền) nếu hệ thống xác định người dùng đang ở màn hình khóa
+        KeyguardManager km =
+                (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+
         if (km != null && km.isKeyguardLocked()) {
             moveTaskToBack(true);
         }
@@ -102,7 +125,7 @@ public class MainActivity extends FlutterActivity {
             NotificationManager nm = getSystemService(NotificationManager.class);
             return nm != null && nm.canUseFullScreenIntent();
         }
-        return true; // Android < 14: mặc định được cấp
+        return true;
     }
 
     private void openFullScreenIntentSettings() {
@@ -114,21 +137,37 @@ public class MainActivity extends FlutterActivity {
         }
     }
 
-    // KHÔI PHỤC LẠI HÀM ÉP SÁNG MÀN HÌNH
-    @SuppressWarnings("deprecation")
-    private void forceShowOnLockScreen() {
-        // 1. Ép cờ cấp thấp cho WindowManager (Đặc trị các máy Xiaomi, Oppo, Vivo)
-        getWindow().addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
-                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
-                        WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
-        );
-
-        // 2. Kích hoạt API chuẩn của Android 8+
+    private void enableAlarmMode() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
         }
+
+        getWindow().addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                        | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                        | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                        | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
+        );
+    }
+
+    private void disableAlarmMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(false);
+            setTurnScreenOn(false);
+        }
+
+        getWindow().clearFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                        | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                        | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                        | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
+        );
+    }
+
+    private void allowScreenTimeout() {
+        // Chỉ bỏ KEEP_SCREEN_ON để màn hình có thể tự tắt
+        // nhưng vẫn giữ khả năng hiển thị trên màn hình khóa.
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 }

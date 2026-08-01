@@ -48,7 +48,6 @@ class ScheduleService {
 
       for (String channelId in oldChannels) {
         try {
-          // SỬA LỖI TẠI ĐÂY: Thêm named parameter "channelId:"
           await androidImpl?.deleteNotificationChannel(channelId: channelId);
           debugPrint("Đã xóa dọn dẹp channel cũ: $channelId");
         } catch (e) {
@@ -89,13 +88,11 @@ class ScheduleService {
     }
   }
 
-  /// SỬA LỖI BUG "BÁO THỨC MA": Tạo ID dạng số nguyên (int) CỐ ĐỊNH thay vì dùng .hashCode
   static int _generateUniqueId(String instanceId) {
     int hash = 5381;
     for (int i = 0; i < instanceId.length; i++) {
       hash = ((hash << 5) + hash) + instanceId.codeUnitAt(i);
     }
-    // Trả về số nguyên dương 32-bit (Do Local Notification chỉ nhận ID 32-bit)
     return hash.abs() & 0x7FFFFFFF;
   }
 
@@ -103,7 +100,7 @@ class ScheduleService {
   static Future<void> syncItemSchedule(String villageTag, String villageName, UpgradeItem item) async {
     final int id = _generateUniqueId(item.instanceId);
 
-    // Xóa tất cả các lịch hẹn cũ (của cả 2 chế độ) ứng với ID này trước cho sạch
+    // Xóa tất cả các lịch hẹn cũ
     await _cancelSystemNotification(id);
     await _cancelFullScreenAlarm(id);
 
@@ -140,12 +137,7 @@ class ScheduleService {
     cancelList(village.labItems);
   }
 
-  // ===========================================================================
-  // KHU VỰC THỰC THI OS
-  // ===========================================================================
-
   static Future<void> _scheduleSystemNotification(int id, DateTime time, String itemName, String tag, String villageName) async {
-    // TĂNG CHANNEL LÊN V11 VÀ ÉP KIỂU ALARM ĐỂ CHỐNG DELAY KHI ĐỌC FILE TỪ Ổ CỨNG
     const androidDetails = AndroidNotificationDetails(
       'coc_timer_channel_v11',
       'COC Timer Notifications',
@@ -154,10 +146,8 @@ class ScheduleService {
       priority: Priority.high,
       playSound: true,
       sound: RawResourceAndroidNotificationSound('ring1'),
-
-      // 2 DÒNG CỐT LÕI ĐỂ CHỐNG DELAY KHI DÙNG CHUÔNG CUSTOM:
-      audioAttributesUsage: AudioAttributesUsage.alarm, // Ép dùng luồng âm thanh Báo thức (ưu tiên cao nhất)
-      category: AndroidNotificationCategory.alarm,      // Khai báo với OS đây là báo thức, không phải thông báo rác
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      category: AndroidNotificationCategory.alarm,
     );
     const iosDetails = DarwinNotificationDetails(
       presentSound: true,
@@ -171,7 +161,6 @@ class ScheduleService {
       body: '$itemName tại $villageName ($tag) đã hoàn thành.',
       scheduledDate: tz.TZDateTime.from(time, tz.local),
       notificationDetails: details,
-      // GIỮ NGUYÊN ALARM CLOCK
       androidScheduleMode: AndroidScheduleMode.alarmClock,
     );
   }
@@ -212,6 +201,37 @@ class ScheduleService {
         await _fsiChannel.invokeMethod('handleAlarmDismiss');
       } catch (e) {
         debugPrint('Lỗi handleAlarmDismiss: $e');
+      }
+    }
+  }
+
+  /// MỚI THÊM: Xóa cờ ép sáng màn hình, cho phép điện thoại tự tắt màn hình theo cài đặt gốc
+  static Future<void> allowScreenTimeout() async {
+    if (Platform.isAndroid) {
+      try {
+        await _fsiChannel.invokeMethod('allowScreenTimeout');
+      } catch (e) {
+        debugPrint('Lỗi allowScreenTimeout: $e');
+      }
+    }
+  }
+
+  static Future<void> enableAlarmMode() async {
+    if (Platform.isAndroid) {
+      try {
+        await _fsiChannel.invokeMethod('enableAlarmMode');
+      } catch (e) {
+        debugPrint('Lỗi enableAlarmMode: $e');
+      }
+    }
+  }
+
+  static Future<void> disableAlarmMode() async {
+    if (Platform.isAndroid) {
+      try {
+        await _fsiChannel.invokeMethod('disableAlarmMode');
+      } catch (e) {
+        debugPrint('Lỗi disableAlarmMode: $e');
       }
     }
   }

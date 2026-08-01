@@ -12,6 +12,10 @@ import '../utils/village_parser.dart';
 import '../widgets/terminal_frame_painter.dart';
 import '../services/schedule_service.dart';
 
+// Thêm 2 dòng import này để gọi các Widget vừa bóc tách:
+import '../widgets/alarm_popup.dart';
+import '../widgets/village_card.dart';
+
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({super.key});
 
@@ -32,7 +36,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
   final Map<String, TextEditingController> _nameControllers = {};
 
   final Map<String, String> _savedAlarmStates = {};
-  final Set<int> _activePopups = {}; // THÊM BIẾN NÀY ĐỂ NHỚ CÁC POPUP ĐANG HIỆN
+  final Set<int> _activePopups = {};
 
   String _parseStatus = "> CHỜ DỮ LIỆU JSON";
 
@@ -43,6 +47,9 @@ class _TerminalScreenState extends State<TerminalScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Dọn dẹp cờ màn hình khóa mỗi khi người dùng tự mở app lên bình thường
+    ScheduleService.disableAlarmMode();
 
     ScheduleService.checkAndRequestPermissions();
 
@@ -144,13 +151,18 @@ class _TerminalScreenState extends State<TerminalScreen> {
         context: globalContext,
         barrierDismissible: false,
         builder: (dialogContext) {
-          // Gọi sang Widget riêng biệt để quản lý bộ đếm tự động tắt
-          return _AlarmPopup(settings: settings);
+          // Sử dụng AlarmPopup từ file riêng
+          return AlarmPopup(settings: settings);
         }
     ).then((_) {
       // Hàm then() sẽ chạy ngay khi bạn đóng Popup (bằng nút hoặc vuốt thông báo)
       // Giải phóng ID để lần sau báo thức này còn có thể hiện lại
       _activePopups.remove(settings.id);
+
+      // NẾU KHÔNG CÒN POPUP NÀO KHÁC TRÊN MÀN HÌNH, TẮT HOÀN TOÀN CHẾ ĐỘ BÁO THỨC
+      if (_activePopups.isEmpty) {
+        ScheduleService.disableAlarmMode();
+      }
     });
   }
 
@@ -203,7 +215,6 @@ class _TerminalScreenState extends State<TerminalScreen> {
                 debugPrint("Lỗi load tên làng: $e");
               }
             }
-            // Phục hồi trạng thái chuông
             for (var v in _villages.values) {
               _applySavedAlarmState(v, syncWithOS: false);
             }
@@ -212,8 +223,8 @@ class _TerminalScreenState extends State<TerminalScreen> {
       } catch (e) {
         debugPrint("Lỗi load: $e");
       }
-    } // Đóng if (savedData != null)
-  } // Đóng hàm _loadSavedData
+    }
+  }
 
   void _applySavedAlarmState(VillageData village, {bool syncWithOS = false}) {
     void apply(List<UpgradeItem> items) {
@@ -222,7 +233,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
         String? stateStr = _savedAlarmStates[uniqueKey];
         if (stateStr != null) {
           if (stateStr == "none") {
-            item.alarmType = AlarmType.none; // Đã bổ sung dòng lệnh bị thiếu
+            item.alarmType = AlarmType.none;
           } else if (stateStr == "system") {
             item.alarmType = AlarmType.system;
           } else if (stateStr == "fullscreen") {
@@ -286,7 +297,6 @@ class _TerminalScreenState extends State<TerminalScreen> {
         _parseStatus = "> [THÔNG BÁO] ${item.typeString.toUpperCase()} ${item.dataId}";
       }
 
-      // SỬA LỖI: Đồng bộ sử dụng instanceId thay vì cấu trúc cũ
       String uniqueKey = item.instanceId;
       _savedAlarmStates[uniqueKey] = item.alarmType.name;
       _saveAlarmStatesToPrefs();
@@ -358,7 +368,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
   void _pasteFromClipboard() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data != null && data.text != null) {
-      if (!mounted) return; // Thêm chốt an toàn
+      if (!mounted) return;
       setState(() {
         _jsonController.text = data.text!;
       });
@@ -374,12 +384,12 @@ class _TerminalScreenState extends State<TerminalScreen> {
           arguments: {'extra_pkgname': 'coctimer.nightowleyes.coctimer'},
         );
         await intent.launch();
-        if (!mounted) return; // Thêm chốt an toàn
+        if (!mounted) return;
         setState(() {
           _parseStatus = "> HÃY TÍCH XANH TẤT CẢ!";
         });
       } catch (e) {
-        if (!mounted) return; // Thêm chốt an toàn
+        if (!mounted) return;
         setState(() {
           _parseStatus = "> LỖI: CHỈ THIẾT BỊ XIAOMI/POCO";
         });
@@ -550,171 +560,20 @@ class _TerminalScreenState extends State<TerminalScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: _villages.values.map((village) {
-        final activeBuilders = village.activeBuilders;
-        final activePets = village.activePets;
-        final activeLab = village.activeLab;
-
-        int petCount = activePets.length;
-        int labCount = activeLab.length;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                      "MÃ LÀNG: ${village.tag}",
-                      style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 14, fontWeight: FontWeight.bold)
-                  ),
-                  InkWell(
-                    onTap: () => _deleteVillage(village.tag),
-                    child: const Text(
-                      "[ XÓA ]",
-                      style: TextStyle(
-                        color: Color(0xFF8B2B2B),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Text("TÊN LÀNG: ", style: TextStyle(color: Color(0xFF888888), fontSize: 12)),
-                  Expanded(
-                    child: TextField(
-                      controller: _getController(village.tag),
-                      style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold),
-                      decoration: const InputDecoration(
-                        hintText: "[ NHẬP TÊN LÀNG... ]",
-                        hintStyle: TextStyle(color: Color(0xFF444444)),
-                        isDense: true,
-                        contentPadding: EdgeInsets.symmetric(vertical: 4),
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (value) {
-                        _villageNames[village.tag] = value;
-                        _saveDataToPrefs();
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              _buildLogLine("> THỢ XÂY", "${activeBuilders.length}/${village.totalBuilders} ĐANG LÀM", onTap: () => _cycleAlarmForGroup(village.tag, "THỢ XÂY", activeBuilders)),
-              _buildDetailList(village.tag, activeBuilders),
-              const SizedBox(height: 8),
-
-              _buildLogLine("> LINH THÚ", "$petCount ĐANG NÂNG", onTap: () => _cycleAlarmForGroup(village.tag, "LINH THÚ", activePets)),
-              _buildDetailList(village.tag, activePets),
-              const SizedBox(height: 8),
-
-              _buildLogLine("> PHÒNG THÍ NGHIỆM", "$labCount ĐANG NÂNG", onTap: () => _cycleAlarmForGroup(village.tag, "PHÒNG THÍ NGHIỆM", activeLab)),
-              _buildDetailList(village.tag, activeLab),
-
-              const SizedBox(height: 16),
-              const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
-            ],
-          ),
+        // Thay thế toàn bộ đoạn code dài bằng cách gọi duy nhất 1 Widget VillageCard
+        return VillageCard(
+          village: village,
+          nameController: _getController(village.tag),
+          showRealEta: _showRealEta,
+          onDelete: () => _deleteVillage(village.tag),
+          onNameChanged: (value) {
+            _villageNames[village.tag] = value;
+            _saveDataToPrefs();
+          },
+          onCycleGroup: (groupName, items) => _cycleAlarmForGroup(village.tag, groupName, items),
+          onCycleItem: (item) => _cycleAlarmForItem(village.tag, item),
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildLogLine(String text, String status, {VoidCallback? onTap}) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Row(
-          children: [
-            Text(text, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
-            const Expanded(
-              child: Text(
-                " ......................................",
-                maxLines: 1,
-                overflow: TextOverflow.clip,
-                style: TextStyle(color: Color(0xFF444444), fontSize: 13),
-              ),
-            ),
-            Text(status, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailList(String villageTag, List<UpgradeItem> items) {
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 12.0, top: 4.0, bottom: 8.0),
-      child: Column(
-        children: items.map((item) {
-          final diff = item.realEta.difference(DateTime.now());
-          String timeStr = "0s";
-
-          if (!diff.isNegative) {
-            if (_showRealEta) {
-              timeStr = "${item.realEta.hour.toString().padLeft(2, '0')}:${item.realEta.minute.toString().padLeft(2, '0')}";
-              if (item.realEta.day != DateTime.now().day) {
-                timeStr = "${item.realEta.day}/${item.realEta.month} $timeStr";
-              }
-            } else {
-              if (diff.inDays > 0) {
-                timeStr = "${diff.inDays}d ${diff.inHours % 24}h";
-              } else if (diff.inHours > 0) {
-                timeStr = "${diff.inHours}h ${diff.inMinutes % 60}m";
-              } else if (diff.inMinutes > 0) {
-                timeStr = "${diff.inMinutes}m ${diff.inSeconds % 60}s";
-              } else {
-                timeStr = "${diff.inSeconds}s";
-              }
-            }
-          }
-
-          IconData iconData = Icons.notifications_off;
-          Color stateColor = const Color(0xFF444444); // TẮT: Màu Xám
-
-          if (item.alarmType == AlarmType.system) {
-            iconData = Icons.notifications;
-            stateColor = const Color(0xFF4CAF50); // THÔNG BÁO: Màu Xanh Lá
-          } else if (item.alarmType == AlarmType.fullscreen) {
-            iconData = Icons.alarm;
-            stateColor = const Color(0xFFB54545); // BÁO THỨC: Màu Đỏ
-          }
-
-          return InkWell(
-            onTap: () => _cycleAlarmForItem(villageTag, item),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3.0),
-              child: Row(
-                children: [
-                  Icon(iconData, size: 14, color: stateColor),
-                  const SizedBox(width: 6),
-                  Text("${item.typeString} ${item.dataId}", style: TextStyle(color: stateColor, fontSize: 12)),
-                  const Expanded(
-                    child: Text(
-                      " ......................................",
-                      maxLines: 1,
-                      overflow: TextOverflow.clip,
-                      style: TextStyle(color: Color(0xFF333333), fontSize: 12),
-                    ),
-                  ),
-                  // Đổi màu bộ đếm thời gian đồng bộ với stateColor
-                  Text(timeStr, style: TextStyle(color: stateColor, fontSize: 12)),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
     );
   }
 
@@ -790,100 +649,6 @@ class _TerminalScreenState extends State<TerminalScreen> {
         const SizedBox(height: 4),
         const Text("CÀI ĐẶT GAME > THÊM CÀI ĐẶT > XUẤT DỮ LIỆU LÀNG THEO ĐỊNH DẠNG JSON", textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF888888), fontSize: 11, letterSpacing: 1.0)),
       ],
-    );
-  }
-}
-
-// ==============================================================================
-// THÊM CLASS WIDGET MỚI DÀNH RIÊNG CHO POPUP BÁO THỨC ĐỂ XỬ LÝ LOGIC TỰ ĐỘNG TẮT
-// ==============================================================================
-class _AlarmPopup extends StatefulWidget {
-  final AlarmSettings settings;
-  const _AlarmPopup({required this.settings});
-
-  @override
-  State<_AlarmPopup> createState() => _AlarmPopupState();
-}
-
-class _AlarmPopupState extends State<_AlarmPopup> {
-  Timer? _checkTimer;
-  bool _isClosing = false; // CHỐT AN TOÀN TRÁNH DOUBLE POP
-
-  @override
-  void initState() {
-    super.initState();
-    // Vòng lặp 1 giây: Kiểm tra xem chuông có bị người dùng tắt ngầm từ thanh thông báo OS không
-    _checkTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      final activeAlarms = await Alarm.getAlarms();
-      final stillActive = activeAlarms.any((a) => a.id == widget.settings.id);
-
-      if (!stillActive && !_isClosing) {
-        _isClosing = true; // Đóng chốt an toàn
-        timer.cancel();    // Hủy vòng lặp ngay lập tức để không kích hoạt lần 2
-        if (mounted) {
-          Navigator.pop(context);
-          ScheduleService.handleAlarmDismiss();
-        }
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _checkTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0A0C0B),
-          border: Border.all(color: const Color(0xFFB54545), width: 2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.alarm_on, color: Color(0xFFB54545), size: 48),
-            const SizedBox(height: 16),
-            const Text(
-              "■ TÍN HIỆU HOÀN TẤT ■",
-              style: TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.settings.notificationSettings.body,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFFB54545)),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  foregroundColor: const Color(0xFFE0E0E0),
-                ),
-                onPressed: () {
-                  if (_isClosing) return; // Nếu vòng lặp Timer đã ra lệnh đóng, thì vô hiệu hóa nút bấm
-                  _isClosing = true;
-                  _checkTimer?.cancel(); // Dừng ngay vòng lặp kiểm tra
-
-                  Alarm.stop(widget.settings.id); // Dừng chuông
-                  Navigator.pop(context); // Đóng popup
-                  ScheduleService.handleAlarmDismiss(); // Thu nhỏ app nếu đang khóa màn hình
-                },
-                child: const Text("[ XÁC NHẬN & ĐÓNG CẢNH BÁO ]", style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
