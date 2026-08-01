@@ -13,7 +13,7 @@ class VillageParser {
     List<UpgradeItem> petItems = [];
     List<UpgradeItem> labItems = [];
 
-    // Tìm lều thợ xây chuẩn
+// Tìm lều thợ xây chuẩn
     int baseBuilders = 0;
     if (data.containsKey('buildings')) {
       for (var item in data['buildings']) {
@@ -24,7 +24,7 @@ class VillageParser {
     }
     if (baseBuilders == 0) baseBuilders = 5;
 
-    // Lấy thông số Helper
+// Lấy thông số Helper
     int builderHelperLevel = 0;
     int labHelperLevel = 0;
     int builderHelperCooldown = 0;
@@ -79,7 +79,8 @@ class VillageParser {
 
         if (helperRecurrent && remainingWork > 0 && currentHelperActiveRemaining <= 0 && currentHelperCooldown <= 0) {
           currentHelperActiveRemaining = 3600.0;
-          currentHelperCooldown = 86400.0;
+          // Cập nhật Cooldown chu kỳ thành 23 giờ (82,800 giây) thay vì 24 giờ (86,400 giây)
+          currentHelperCooldown = 82800.0;
         }
 
         if (currentBoostRemaining <= 0 && currentHelperActiveRemaining <= 0 && !helperRecurrent) {
@@ -100,15 +101,16 @@ class VillageParser {
               remainingWork -= waitWork;
               currentHelperCooldown = 0;
               currentHelperActiveRemaining = 3600.0;
-              currentHelperCooldown = 86400.0;
+              currentHelperCooldown = 82800.0; // Cập nhật thành 23 giờ
               continue;
             }
           }
 
-          double progressPerCycle = 86400.0 + (3600.0 * helperLevel);
+          // Khối lượng công việc giải quyết được trong 1 chu kỳ 23 giờ (82,800 giây)
+          double progressPerCycle = 82800.0 + (3600.0 * helperLevel);
           if (remainingWork > progressPerCycle) {
             int cycles = (remainingWork / progressPerCycle).floor();
-            timeElapsed += cycles * 86400.0;
+            timeElapsed += cycles * 82800.0; // Nhảy cóc thời gian bằng bội số của 23 giờ
             remainingWork -= cycles * progressPerCycle;
           }
         }
