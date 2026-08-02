@@ -5,6 +5,8 @@ import '../models/village_models.dart';
 class VillageDetailDialog extends StatefulWidget {
   final VillageData village;
   final String villageName;
+  final bool isBuilderBase; // NHẬN CỜ TRẠNG THÁI
+  final Color themeColor;   // MÀU SẮC DỰA THEO SERVER
   final bool showRealEta;
   final ValueChanged<String> onNameChanged;
   final void Function(String groupName, List<UpgradeItem> items) onCycleGroup;
@@ -14,6 +16,8 @@ class VillageDetailDialog extends StatefulWidget {
     super.key,
     required this.village,
     required this.villageName,
+    required this.isBuilderBase,
+    required this.themeColor,
     required this.showRealEta,
     required this.onNameChanged,
     required this.onCycleGroup,
@@ -32,7 +36,6 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.villageName);
-    // Tự động làm mới UI mỗi giây để đồng hồ đếm ngược chạy mượt mà
     _refreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
     });
@@ -47,18 +50,19 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final activeBuilders = widget.village.activeBuilders;
-    final activePets = widget.village.activePets;
-    final activeLab = widget.village.activeLab;
+    // TÍNH TOÁN DATA TÙY SERVER
+    final activeB = widget.isBuilderBase ? widget.village.activeBuilders2 : widget.village.activeBuilders;
+    final totalB = widget.isBuilderBase ? widget.village.totalBuilders2 : widget.village.totalBuilders;
+    final activeL = widget.isBuilderBase ? widget.village.activeLab2 : widget.village.activeLab;
+    final activeP = widget.isBuilderBase ? <UpgradeItem>[] : widget.village.activePets;
 
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(16),
-      // Bọc bằng Material thay vì Container để InkWell có thể hiển thị hiệu ứng
       child: Material(
         color: const Color(0xFF0A0C0B),
-        shape: const RoundedRectangleBorder(
-          side: BorderSide(color: Color(0xFF444444), width: 2),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: widget.themeColor, width: 2), // ĐỔI MÀU THEO SERVER
         ),
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -67,13 +71,12 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ĐÃ SỬA LỖI CÚ PHÁP TẠI ĐÂY (Thiếu thuộc tính children)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       "■ CHI TIẾT: ${widget.village.tag}",
-                      style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                      style: TextStyle(color: widget.themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
                     ),
                     InkWell(
                       onTap: () => Navigator.pop(context),
@@ -104,16 +107,18 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                _buildLogLine("> THỢ XÂY", "${activeBuilders.length}/${widget.village.totalBuilders} ĐANG LÀM", onTap: () => widget.onCycleGroup("THỢ XÂY", activeBuilders)),
-                _buildDetailList(activeBuilders),
+                _buildLogLine(widget.isBuilderBase ? "> THỢ XÂY ĐÊM" : "> THỢ XÂY", "${activeB.length}/$totalB ĐANG LÀM", onTap: () => widget.onCycleGroup(widget.isBuilderBase ? "THỢ XÂY ĐÊM" : "THỢ XÂY", activeB)),
+                _buildDetailList(activeB),
                 const SizedBox(height: 12),
 
-                _buildLogLine("> LINH THÚ", "${activePets.length} ĐANG NÂNG", onTap: () => widget.onCycleGroup("LINH THÚ", activePets)),
-                _buildDetailList(activePets),
-                const SizedBox(height: 12),
+                if (!widget.isBuilderBase) ...[
+                  _buildLogLine("> LINH THÚ", "${activeP.length} ĐANG NÂNG", onTap: () => widget.onCycleGroup("LINH THÚ", activeP)),
+                  _buildDetailList(activeP),
+                  const SizedBox(height: 12),
+                ],
 
-                _buildLogLine("> PHÒNG THÍ NGHIỆM", "${activeLab.length} ĐANG NÂNG", onTap: () => widget.onCycleGroup("PHÒNG THÍ NGHIỆM", activeLab)),
-                _buildDetailList(activeLab),
+                _buildLogLine(widget.isBuilderBase ? "> THÍ NGHIỆM ĐÊM" : "> PHÒNG THÍ NGHIỆM", "${activeL.length} ĐANG NÂNG", onTap: () => widget.onCycleGroup(widget.isBuilderBase ? "THÍ NGHIỆM ĐÊM" : "PHÒNG THÍ NGHIỆM", activeL)),
+                _buildDetailList(activeL),
               ],
             ),
           ),
@@ -125,9 +130,8 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
   Widget _buildLogLine(String text, String status, {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
-      // Hiệu ứng bấm màu xanh lá mờ chuẩn Terminal
-      splashColor: const Color(0x334CAF50),
-      highlightColor: const Color(0x114CAF50),
+      splashColor: widget.themeColor.withValues(alpha: 0.3),
+      highlightColor: widget.themeColor.withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0),
         child: Row(
@@ -185,17 +189,16 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
             stateColor = const Color(0xFF4CAF50);
           } else if (item.alarmType == AlarmType.fullscreen) {
             iconData = Icons.alarm;
-            stateColor = const Color(0xFFB54545);
+            stateColor = widget.themeColor; // Đổi màu báo thức Fullscreen theo Theme
           }
 
           return InkWell(
             onTap: () {
               widget.onCycleItem(item);
-              setState(() {}); // Buộc popup cập nhật màu sắc ngay lập tức
+              setState(() {});
             },
-            // Hiệu ứng bấm màu xanh lá mờ
-            splashColor: const Color(0x334CAF50),
-            highlightColor: const Color(0x114CAF50),
+            splashColor: widget.themeColor.withValues(alpha: 0.3),
+            highlightColor: widget.themeColor.withValues(alpha: 0.1),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Row(

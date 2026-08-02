@@ -40,7 +40,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   String _parseStatus = "> CHỜ DỮ LIỆU JSON";
 
-  bool _showRealEta = true; // Mặc định là true
+  bool _showRealEta = true;
+  bool _isBuilderBase = false; // MỚI: Biến lưu trữ trạng thái Server hiện tại
+
+  // MỚI: Lấy màu chủ đạo dựa theo Server
+  Color get _themeColor => _isBuilderBase ? const Color(0xFFf8a4bd) : const Color(0xFFB54545);
+  Color get _bgTagColor => _isBuilderBase ? const Color(0x22f8a4bd) : const Color(0x228B2B2B);
 
   StreamSubscription? _alarmSubscription;
 
@@ -127,18 +132,26 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         checkAlarm(village.buildersItems);
         checkAlarm(village.petItems);
         checkAlarm(village.labItems);
+        checkAlarm(village.builders2Items); // MỚI: Quét báo thức Làng đêm
+        checkAlarm(village.lab2Items);      // MỚI: Quét báo thức Làng đêm
 
         int beforeBuilders = village.buildersItems.length;
         int beforePets = village.petItems.length;
         int beforeLab = village.labItems.length;
+        int beforeBuilders2 = village.builders2Items.length; // MỚI
+        int beforeLab2 = village.lab2Items.length;           // MỚI
 
         village.buildersItems.removeWhere((item) => item.realEta.difference(now).isNegative);
         village.petItems.removeWhere((item) => item.realEta.difference(now).isNegative);
         village.labItems.removeWhere((item) => item.realEta.difference(now).isNegative);
+        village.builders2Items.removeWhere((item) => item.realEta.difference(now).isNegative); // MỚI
+        village.lab2Items.removeWhere((item) => item.realEta.difference(now).isNegative);      // MỚI
 
         if (beforeBuilders != village.buildersItems.length ||
             beforePets != village.petItems.length ||
-            beforeLab != village.labItems.length) {
+            beforeLab != village.labItems.length ||
+            beforeBuilders2 != village.builders2Items.length || // MỚI
+            beforeLab2 != village.lab2Items.length) {           // MỚI
           needsUpdate = true;
         }
       }
@@ -265,6 +278,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     apply(village.buildersItems);
     apply(village.petItems);
     apply(village.labItems);
+    apply(village.builders2Items); // MỚI: Phục hồi báo thức Làng Đêm
+    apply(village.lab2Items);      // MỚI: Phục hồi báo thức Làng Đêm
   }
 
   Future<void> _saveAlarmStatesToPrefs() async {
@@ -578,7 +593,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   Widget _buildHeader() {
-    // THÊM 2 DÒNG NÀY: Tự động tính toán múi giờ hiện tại của thiết bị (VD: +7, +9, -4)
     final offset = DateTime.now().timeZoneOffset;
     final offsetString = "UTC${offset.isNegative ? '-' : '+'}${offset.inHours.abs()}";
 
@@ -626,21 +640,36 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   Widget _buildSecurityTag() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      decoration: const BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Color(0xFF8B2B2B), width: 1),
-          bottom: BorderSide(color: Color(0xFF8B2B2B), width: 1),
+    return Column(
+      children: [
+        const Text("[ BẤM ĐỂ CHUYỂN ĐỔI SERVER ]", style: TextStyle(color: Color(0xFF666666), fontSize: 10, letterSpacing: 1.0)),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: () {
+            setState(() {
+              _isBuilderBase = !_isBuilderBase;
+            });
+          },
+          splashColor: _themeColor.withValues(alpha: 0.3),
+          highlightColor: _themeColor.withValues(alpha: 0.1),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: _themeColor, width: 1),
+                bottom: BorderSide(color: _themeColor, width: 1),
+              ),
+              color: _bgTagColor,
+            ),
+            child: Center(
+              child: Text(
+                _isBuilderBase ? "■  L À N G   T H Ợ   X Â Y  ■" : "■  L À N G   C H Í N H  ■",
+                style: TextStyle(color: _themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+              ),
+            ),
+          ),
         ),
-        color: Color(0x228B2B2B),
-      ),
-      child: const Center(
-        child: Text(
-          "■  L À N G   C H Í N H  ■",
-          style: TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
-        ),
-      ),
+      ],
     );
   }
 
@@ -683,6 +712,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         return VillageCard(
           village: village,
           villageName: _villageNames[village.tag] ?? "",
+          isBuilderBase: _isBuilderBase, // TRUYỀN DỮ LIỆU ĐỂ RENDER
+          themeColor: _themeColor,       // TRUYỀN MÀU SẮC ĐỂ RENDER
           onDelete: () => _confirmDeleteVillage(village.tag),
           onTap: () {
             showDialog(
@@ -690,6 +721,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
               builder: (ctx) => VillageDetailDialog(
                 village: village,
                 villageName: _villageNames[village.tag] ?? "",
+                isBuilderBase: _isBuilderBase, // TRUYỀN DỮ LIỆU ĐỂ RENDER
+                themeColor: _themeColor,       // TRUYỀN MÀU SẮC ĐỂ RENDER
                 showRealEta: _showRealEta,
                 onNameChanged: (newName) {
                   _villageNames[village.tag] = newName;

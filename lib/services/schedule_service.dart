@@ -135,6 +135,8 @@ class ScheduleService {
     cancelList(village.buildersItems);
     cancelList(village.petItems);
     cancelList(village.labItems);
+    cancelList(village.builders2Items); // MỚI
+    cancelList(village.lab2Items);      // MỚI
   }
 
   static Future<void> _scheduleSystemNotification(int id, DateTime time, String itemName, String tag, String villageName) async {

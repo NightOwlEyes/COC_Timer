@@ -4,6 +4,8 @@ import '../models/village_models.dart';
 class VillageCard extends StatelessWidget {
   final VillageData village;
   final String villageName;
+  final bool isBuilderBase; // NHẬN CỜ TRẠNG THÁI SERVER
+  final Color themeColor;   // MÀU SẮC DỰA THEO SERVER
   final VoidCallback onDelete;
   final VoidCallback onTap;
 
@@ -11,25 +13,29 @@ class VillageCard extends StatelessWidget {
     super.key,
     required this.village,
     required this.villageName,
+    required this.isBuilderBase,
+    required this.themeColor,
     required this.onDelete,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    int activeBuilders = village.activeBuilders.length;
-    int activeLab = village.activeLab.length;
-    int activePets = village.activePets.length;
+    // TÍNH TOÁN DATA TÙY SERVER
+    int bCount = isBuilderBase ? village.activeBuilders2.length : village.activeBuilders.length;
+    int bTotal = isBuilderBase ? village.totalBuilders2 : village.totalBuilders;
+    int lCount = isBuilderBase ? village.activeLab2.length : village.activeLab.length;
+    int pCount = isBuilderBase ? 0 : village.activePets.length;
 
-    int maxLab = activeLab > 1 ? activeLab : 1;
-    int maxPets = activePets > 1 ? activePets : 1;
+    int maxL = lCount > 1 ? lCount : 1;
+    int maxP = pCount > 1 ? pCount : 1;
 
     String displayName = villageName.trim().isEmpty ? "<CHƯA ĐẶT TÊN>" : villageName;
 
     return InkWell(
       onTap: onTap,
-      splashColor: const Color(0x224CAF50),
-      highlightColor: const Color(0x114CAF50),
+      splashColor: themeColor.withValues(alpha: 0.2),
+      highlightColor: themeColor.withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.only(top: 16.0),
         child: Column(
@@ -52,9 +58,9 @@ class VillageCard extends StatelessWidget {
                 ),
                 InkWell(
                   onTap: onDelete,
-                  child: const Text(
+                  child: Text(
                       "[ XÓA ]",
-                      style: TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
+                      style: TextStyle(color: themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
                   ),
                 ),
               ],
@@ -75,12 +81,18 @@ class VillageCard extends StatelessWidget {
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildStatColumn("THỢ XÂY", "$activeBuilders/${village.totalBuilders}", activeBuilders > 0),
+              children: isBuilderBase
+                  ? [
+                _buildStatColumn("MASTER BUILDER", "$bCount/$bTotal", bCount > 0, themeColor),
                 _buildVerticalDivider(),
-                _buildStatColumn("THÍ NGHIỆM", "$activeLab/$maxLab", activeLab > 0),
+                _buildStatColumn("STAR LABORATORY", "$lCount/$maxL", lCount > 0, themeColor),
+              ]
+                  : [
+                _buildStatColumn("THỢ XÂY", "$bCount/$bTotal", bCount > 0, themeColor),
                 _buildVerticalDivider(),
-                _buildStatColumn("LINH THÚ", "$activePets/$maxPets", activePets > 0),
+                _buildStatColumn("THÍ NGHIỆM", "$lCount/$maxL", lCount > 0, themeColor),
+                _buildVerticalDivider(),
+                _buildStatColumn("LINH THÚ", "$pCount/$maxP", pCount > 0, themeColor),
               ],
             ),
 
@@ -95,12 +107,12 @@ class VillageCard extends StatelessWidget {
   Widget _buildVerticalDivider() {
     return Container(
       width: 1,
-      height: 46, // Đủ cao để bao quanh cả chữ Header và Giá trị
+      height: 46,
       color: const Color(0xFF333333),
     );
   }
 
-  Widget _buildStatColumn(String title, String value, bool isActive) {
+  Widget _buildStatColumn(String title, String value, bool isActive, Color activeColor) {
     return Expanded(
       child: Column(
         children: [
@@ -117,7 +129,7 @@ class VillageCard extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: isActive ? const Color(0xFF4CAF50) : const Color(0xFF444444), // Xanh lá nổi bật hoặc Xám chìm
+              color: isActive ? activeColor : const Color(0xFF444444),
               fontSize: 15,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.5,
