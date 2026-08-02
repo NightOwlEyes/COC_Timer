@@ -23,62 +23,52 @@ public class MainActivity extends FlutterActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // Không bật chế độ báo thức ngay khi Activity được tạo
+        // Đã dọn dẹp sạch cờ khởi động
         super.onCreate(savedInstanceState);
     }
 
     @Override
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
-        // Không ép hiển thị trên màn hình khóa khi app hoạt động bình thường
+        // Đã dọn dẹp sạch cờ khởi động
     }
 
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
-
         new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL)
                 .setMethodCallHandler((call, result) -> {
                     switch (call.method) {
-
                         case "canUseFullScreenIntent":
                             result.success(canUseFullScreenIntent());
                             break;
-
                         case "openFullScreenIntentSettings":
                             openFullScreenIntentSettings();
                             result.success(null);
                             break;
-
                         case "isIgnoringBatteryOptimizations":
                             result.success(isIgnoringBatteryOptimizations());
                             break;
-
                         case "requestIgnoreBatteryOptimizations":
                             requestIgnoreBatteryOptimizations();
                             result.success(null);
                             break;
-
                         case "handleAlarmDismiss":
                             handleAlarmDismiss();
                             result.success(null);
                             break;
-
-                        case "allowScreenTimeout":
-                            allowScreenTimeout();
-                            result.success(null);
-                            break;
-
                         case "enableAlarmMode":
                             enableAlarmMode();
                             result.success(null);
                             break;
-
                         case "disableAlarmMode":
                             disableAlarmMode();
                             result.success(null);
                             break;
-
+                        case "allowScreenTimeout":
+                            allowScreenTimeout();
+                            result.success(null);
+                            break;
                         default:
                             result.notImplemented();
                     }
@@ -105,16 +95,13 @@ public class MainActivity extends FlutterActivity {
                     Intent intent2 = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                     intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(intent2);
-                } catch (Exception ignored) {
-                }
+                } catch (Exception ignored) {}
             }
         }
     }
 
     private void handleAlarmDismiss() {
-        KeyguardManager km =
-                (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-
+        KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
         if (km != null && km.isKeyguardLocked()) {
             moveTaskToBack(true);
         }
@@ -142,12 +129,11 @@ public class MainActivity extends FlutterActivity {
             setShowWhenLocked(true);
             setTurnScreenOn(true);
         }
-
         getWindow().addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                        | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-                        | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                        | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                        WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
         );
     }
 
@@ -156,18 +142,15 @@ public class MainActivity extends FlutterActivity {
             setShowWhenLocked(false);
             setTurnScreenOn(false);
         }
-
         getWindow().clearFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                        | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-                        | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                        | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                        WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
         );
     }
 
     private void allowScreenTimeout() {
-        // Chỉ bỏ KEEP_SCREEN_ON để màn hình có thể tự tắt
-        // nhưng vẫn giữ khả năng hiển thị trên màn hình khóa.
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 }

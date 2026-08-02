@@ -1,0 +1,223 @@
+import 'package:flutter/material.dart';
+import 'dart:async';
+import '../models/village_models.dart';
+
+class VillageDetailDialog extends StatefulWidget {
+  final VillageData village;
+  final String villageName;
+  final bool showRealEta;
+  final ValueChanged<String> onNameChanged;
+  final void Function(String groupName, List<UpgradeItem> items) onCycleGroup;
+  final void Function(UpgradeItem item) onCycleItem;
+
+  const VillageDetailDialog({
+    super.key,
+    required this.village,
+    required this.villageName,
+    required this.showRealEta,
+    required this.onNameChanged,
+    required this.onCycleGroup,
+    required this.onCycleItem,
+  });
+
+  @override
+  State<VillageDetailDialog> createState() => _VillageDetailDialogState();
+}
+
+class _VillageDetailDialogState extends State<VillageDetailDialog> {
+  late TextEditingController _nameController;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.villageName);
+    // Tự động làm mới UI mỗi giây để đồng hồ đếm ngược chạy mượt mà
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeBuilders = widget.village.activeBuilders;
+    final activePets = widget.village.activePets;
+    final activeLab = widget.village.activeLab;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(16),
+      // Bọc bằng Material thay vì Container để InkWell có thể hiển thị hiệu ứng
+      child: Material(
+        color: const Color(0xFF0A0C0B),
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: Color(0xFF444444), width: 2),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ĐÃ SỬA LỖI CÚ PHÁP TẠI ĐÂY (Thiếu thuộc tính children)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "■ CHI TIẾT: ${widget.village.tag}",
+                      style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: const Text("[ ĐÓNG ]", style: TextStyle(color: Color(0xFF888888), fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    const Text("TÊN LÀNG: ", style: TextStyle(color: Color(0xFF888888), fontSize: 12)),
+                    Expanded(
+                      child: TextField(
+                        controller: _nameController,
+                        style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold),
+                        decoration: const InputDecoration(
+                          hintText: "[ NHẬP TÊN LÀNG... ]",
+                          hintStyle: TextStyle(color: Color(0xFF444444)),
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 4),
+                          border: InputBorder.none,
+                        ),
+                        onChanged: widget.onNameChanged,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                _buildLogLine("> THỢ XÂY", "${activeBuilders.length}/${widget.village.totalBuilders} ĐANG LÀM", onTap: () => widget.onCycleGroup("THỢ XÂY", activeBuilders)),
+                _buildDetailList(activeBuilders),
+                const SizedBox(height: 12),
+
+                _buildLogLine("> LINH THÚ", "${activePets.length} ĐANG NÂNG", onTap: () => widget.onCycleGroup("LINH THÚ", activePets)),
+                _buildDetailList(activePets),
+                const SizedBox(height: 12),
+
+                _buildLogLine("> PHÒNG THÍ NGHIỆM", "${activeLab.length} ĐANG NÂNG", onTap: () => widget.onCycleGroup("PHÒNG THÍ NGHIỆM", activeLab)),
+                _buildDetailList(activeLab),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogLine(String text, String status, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      // Hiệu ứng bấm màu xanh lá mờ chuẩn Terminal
+      splashColor: const Color(0x334CAF50),
+      highlightColor: const Color(0x114CAF50),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Row(
+          children: [
+            Text(text, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold)),
+            const Expanded(
+              child: Text(
+                " ......................................",
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                style: TextStyle(color: Color(0xFF444444), fontSize: 13),
+              ),
+            ),
+            Text(status, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailList(List<UpgradeItem> items) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 12.0, top: 4.0, bottom: 8.0),
+      child: Column(
+        children: items.map((item) {
+          final diff = item.realEta.difference(DateTime.now());
+          String timeStr = "0s";
+
+          if (!diff.isNegative) {
+            if (widget.showRealEta) {
+              timeStr = "${item.realEta.hour.toString().padLeft(2, '0')}:${item.realEta.minute.toString().padLeft(2, '0')}";
+              if (item.realEta.day != DateTime.now().day) {
+                timeStr = "${item.realEta.day}/${item.realEta.month} $timeStr";
+              }
+            } else {
+              if (diff.inDays > 0) {
+                timeStr = "${diff.inDays}d ${diff.inHours % 24}h";
+              } else if (diff.inHours > 0) {
+                timeStr = "${diff.inHours}h ${diff.inMinutes % 60}m";
+              } else if (diff.inMinutes > 0) {
+                timeStr = "${diff.inMinutes}m ${diff.inSeconds % 60}s";
+              } else {
+                timeStr = "${diff.inSeconds}s";
+              }
+            }
+          }
+
+          IconData iconData = Icons.notifications_off;
+          Color stateColor = const Color(0xFF444444);
+
+          if (item.alarmType == AlarmType.system) {
+            iconData = Icons.notifications;
+            stateColor = const Color(0xFF4CAF50);
+          } else if (item.alarmType == AlarmType.fullscreen) {
+            iconData = Icons.alarm;
+            stateColor = const Color(0xFFB54545);
+          }
+
+          return InkWell(
+            onTap: () {
+              widget.onCycleItem(item);
+              setState(() {}); // Buộc popup cập nhật màu sắc ngay lập tức
+            },
+            // Hiệu ứng bấm màu xanh lá mờ
+            splashColor: const Color(0x334CAF50),
+            highlightColor: const Color(0x114CAF50),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                children: [
+                  Icon(iconData, size: 14, color: stateColor),
+                  const SizedBox(width: 6),
+                  Text("${item.typeString} ${item.dataId}", style: TextStyle(color: stateColor, fontSize: 12)),
+                  const Expanded(
+                    child: Text(
+                      " ......................................",
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: TextStyle(color: Color(0xFF333333), fontSize: 12),
+                    ),
+                  ),
+                  Text(timeStr, style: TextStyle(color: stateColor, fontSize: 12)),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}

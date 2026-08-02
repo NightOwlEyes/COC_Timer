@@ -18,6 +18,11 @@ class _AlarmPopupState extends State<AlarmPopup> {
   @override
   void initState() {
     super.initState();
+
+    // TÔI ĐÃ XÓA ĐOẠN CODE "Future.delayed(4 giây)" Ở ĐÂY.
+    // Giờ đây khi báo thức kêu, màn hình sẽ LUÔN SÁNG và KHÔNG BAO GIỜ TẮT
+    // cho đến khi bạn tự tay bấm nút "Xác nhận & Đóng".
+
     // Vòng lặp 1 giây: Kiểm tra xem chuông có bị người dùng tắt ngầm từ thanh thông báo OS không
     _checkTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       final activeAlarms = await Alarm.getAlarms();

@@ -37,8 +37,8 @@
   <img src="Screenshot/icon.png" alt="COC Timer Icon" width="120"/>
 </p>
 <p align="center">
-  <img src="Screenshot/1.png" width="250"/>
-  <img src="Screenshot/2.png" width="250"/>
+  <img src="Screenshot/4.png" width="250"/>
+  <img src="Screenshot/5.png" width="250"/>
   <img src="Screenshot/3.jpg" width="250"/>
 </p>
 
