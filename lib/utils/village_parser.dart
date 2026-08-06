@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../models/village_models.dart';
+import 'app_strings.dart';
 
 class VillageParser {
   static VillageData parse(String jsonString) {
@@ -12,8 +13,8 @@ class VillageParser {
     List<UpgradeItem> buildersItems = [];
     List<UpgradeItem> petItems = [];
     List<UpgradeItem> labItems = [];
-    List<UpgradeItem> builders2Items = []; // Danh sách Làng đêm
-    List<UpgradeItem> lab2Items = [];      // Danh sách Lính đêm
+    List<UpgradeItem> builders2Items = [];
+    List<UpgradeItem> lab2Items = [];
 
     int baseBuilders = 0;
     if (data.containsKey('buildings')) {
@@ -25,11 +26,10 @@ class VillageParser {
     }
     if (baseBuilders == 0) baseBuilders = 5;
 
-    // THUẬT TOÁN NHẬN DIỆN THỢ XÂY ĐÊM
-    int baseBuilders2 = 1; // Luôn có Thợ Xây Bậc Thầy
+    int baseBuilders2 = 1;
     if (data.containsKey('buildings2')) {
       for (var item in data['buildings2']) {
-        if (item['data'] == 1000078 || item['data'] == 1000047) { // Quét tìm O.T.T.O và B.O.T.O
+        if (item['data'] == 1000078 || item['data'] == 1000047) {
           baseBuilders2 += (item['cnt'] as int? ?? 1);
         }
       }
@@ -76,6 +76,8 @@ class VillageParser {
         if (currentBoostRemaining > 0 && currentBoostRemaining < nextEvent) nextEvent = currentBoostRemaining;
         if (currentConsumableRemaining > 0 && currentConsumableRemaining < nextEvent) nextEvent = currentConsumableRemaining;
         if (currentHelperActiveRemaining > 0 && currentHelperActiveRemaining < nextEvent) nextEvent = currentHelperActiveRemaining;
+
+        // Chặn nextEvent lại đúng thời điểm Trợ lý hết Cooldown để thức dậy
         if (helperRecurrent && currentHelperActiveRemaining <= 0 && currentHelperCooldown > 0 && currentHelperCooldown < nextEvent) {
           nextEvent = currentHelperCooldown;
         }
@@ -93,44 +95,38 @@ class VillageParser {
         if (currentHelperActiveRemaining < 0.001) currentHelperActiveRemaining = 0;
         if (currentHelperCooldown < 0.001) currentHelperCooldown = 0;
 
+        // VÁ LỖI LOGIC: Khi cả Active và Cooldown đều <= 0, đánh thức trợ lý!
         if (helperRecurrent && remainingWork > 0 && currentHelperActiveRemaining <= 0 && currentHelperCooldown <= 0) {
-          if (currentHelperCooldown > 0) {
-            double waitWork = currentHelperCooldown * 1;
-            if (remainingWork <= waitWork) {
-              timeElapsed += remainingWork;
-              remainingWork = 0;
-              break;
-            } else {
-              timeElapsed += currentHelperCooldown;
-              remainingWork -= waitWork;
-              currentHelperCooldown = 0;
-              currentHelperActiveRemaining = 3600.0;
-              currentHelperCooldown = 82800.0;
-              continue;
-            }
-          }
 
-          double progressPerCycle = 82800.0 + (3600.0 * helperLevel);
+          // Trợ lý chính thức tỉnh giấc! Reset lại bộ đếm cho ca làm việc mới
+          currentHelperActiveRemaining = 3600.0;
+          currentHelperCooldown = 82800.0;
+
+          // Tính toán công việc giải quyết được trong 1 chu kỳ 24h (86400 giây thực tế)
+          // Tốc độ gốc giải quyết được 86400 giây việc, Trợ lý làm thêm được 3600 * helperLevel
+          double progressPerCycle = 86400.0 + (3600.0 * helperLevel);
+
+          // Nếu lượng việc còn lại lớn hơn cả 1 chu kỳ 24h, Skip (Fast-forward) để chống treo App
           if (remainingWork > progressPerCycle) {
             int cycles = (remainingWork / progressPerCycle).floor();
-            timeElapsed += cycles * 82800.0;
-            remainingWork -= cycles * progressPerCycle;
+            timeElapsed += cycles * 86400.0; // Thời gian thực trôi qua
+            remainingWork -= cycles * progressPerCycle; // Khối lượng công việc giảm đi
           }
         }
       }
       return DateTime.fromMillisecondsSinceEpoch(timestamp * 1000).add(Duration(seconds: timeElapsed.round()));
     }
 
-    void parseCategory(String key, List<UpgradeItem> targetList, int boostDuration, int boostSpeedAdd, int consumableDuration, int consumableSpeedAdd, int globalHelperLevel, int globalHelperCooldown, String typeName) {
+    void parseCategory(String key, List<UpgradeItem> targetList, int boostDuration, int boostSpeedAdd, int consumableDuration, int consumableSpeedAdd, int globalHelperLevel, int globalHelperCooldown) {
       if (data.containsKey(key)) {
         int index = 0;
         for (var item in data[key]) {
-          // 1. Quét đối tượng gốc (Công trình bình thường)
           int timer = item['timer'] ?? 0;
           if (timer > 0) {
             targetList.add(UpgradeItem(
               instanceId: "${tag}_${key}_${item['data']}_${index++}",
-              dataId: item['data'] ?? 0, level: item['lvl'] ?? 0, originalTimer: timer, typeString: typeName,
+              dataId: item['data'] ?? 0, level: item['lvl'] ?? 0, originalTimer: timer,
+              typeString: AppStrings.gameData.getName(item['data'] ?? 0),
               realEta: calculateAdvancedEta(
                 timer: timer,
                 boostDuration: boostDuration, boostSpeedAdd: boostSpeedAdd,
@@ -142,7 +138,6 @@ class VillageParser {
             ));
           }
 
-          // 2. TÍNH NĂNG MỚI: Đào sâu vào các nhánh con (VD: Phòng thủ tự chế)
           if (item.containsKey('types')) {
             for (var typeObj in item['types']) {
               if (typeObj.containsKey('modules')) {
@@ -150,17 +145,15 @@ class VillageParser {
                   int modTimer = modObj['timer'] ?? 0;
                   if (modTimer > 0) {
                     targetList.add(UpgradeItem(
-                      // Tạo ID độc nhất có cả ID mẹ và ID module
                       instanceId: "${tag}_${key}_${item['data']}_${modObj['data']}_${index++}",
                       dataId: modObj['data'] ?? 0,
                       level: modObj['lvl'] ?? 0,
                       originalTimer: modTimer,
-                      typeString: "Module",
+                      typeString: AppStrings.gameData.getName(modObj['data'] ?? 0),
                       realEta: calculateAdvancedEta(
                         timer: modTimer,
                         boostDuration: boostDuration, boostSpeedAdd: boostSpeedAdd,
                         consumableDuration: consumableDuration, consumableSpeedAdd: consumableSpeedAdd,
-                        // Thừa kế helper từ công trình mẹ nếu module không có
                         helperTimer: modObj['helper_timer'] ?? item['helper_timer'] ?? 0,
                         helperLevel: globalHelperLevel,
                         helperCooldown: globalHelperCooldown,
@@ -177,24 +170,21 @@ class VillageParser {
       }
     }
 
-    // LÀNG CHÍNH
-    parseCategory('buildings', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown, "Công trình");
-    parseCategory('traps', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown, "Bẫy");
-    parseCategory('guardians', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown, "Hộ vệ");
-    parseCategory('heroes', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown, "Tướng");
-    parseCategory('pets', petItems, boosts.petBoost, 23, boosts.labConsumable, 3, 0, 0, "Linh thú");
-    parseCategory('spells', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown, "Thần chú");
-    parseCategory('units', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown, "Lính");
-    parseCategory('siege_machines', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown, "Công thành");
+    parseCategory('buildings', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown);
+    parseCategory('traps', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown);
+    parseCategory('guardians', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown);
+    parseCategory('heroes', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown);
+    parseCategory('pets', petItems, boosts.petBoost, 23, boosts.labConsumable, 3, 0, 0);
+    parseCategory('spells', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown);
+    parseCategory('units', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown);
+    parseCategory('siege_machines', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown);
 
-    // LÀNG ĐÊM (Áp dụng Tháp Đồng Hồ x10 = +9, Không áp dụng Snacks/Helper)
-    parseCategory('buildings2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0, "Công trình đêm");
-    parseCategory('traps2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0, "Bẫy đêm");
-    parseCategory('heroes2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0, "Tướng đêm");
-    parseCategory('units2', lab2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0, "Lính đêm");
+    parseCategory('buildings2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0);
+    parseCategory('traps2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0);
+    parseCategory('heroes2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0);
+    parseCategory('units2', lab2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0);
 
     int finalTotalBuilders = buildersItems.length > baseBuilders ? buildersItems.length : baseBuilders;
-    // Tự động nội suy thợ xây đêm nếu đang nâng cấp lố số lượng dò được
     int finalTotalBuilders2 = builders2Items.length > baseBuilders2 ? builders2Items.length : baseBuilders2;
 
     return VillageData(

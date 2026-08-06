@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'screens/terminal_screen.dart';
 import 'services/schedule_service.dart';
+import '../utils/app_strings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // NẠP NGÔN NGỮ ĐÃ LƯU TỪ BỘ NHỚ
+  await AppStrings.initLanguage();
 
   // CHUYỂN RUNAPP LÊN TRƯỚC: Giao diện sẽ bung ra ngay lập tức
   // Xóa bỏ hoàn toàn hiện tượng kẹt ở Logo Splash Screen
@@ -13,7 +17,7 @@ void main() async {
   try {
     await ScheduleService.init();
   } catch (e) {
-    debugPrint("Lỗi khởi tạo hệ thống ngầm: $e");
+    debugPrint(AppStrings.format(AppStrings.mainApp.debugInitBackgroundSystemError, {'e': e.toString()}));
   }
 }
 

@@ -1,46 +1,58 @@
 <p align="center">
+  <a href="README.md">English</a> | <a href="README-vi.md">Tiếng Việt</a>
+</p>
+
+<p align="center">
+  <img src="Screenshot/icon.png" alt="COC Timer Icon" width="120"/>
+</p>
+
+<p align="center">
   <img src="Screenshot/logo.png" alt="COC Timer Logo" width="300"/>
 </p>
 
 # COC Timer
 
-Ứng dụng theo dõi thời gian nâng cấp công trình, thần chú, lính, linh thú... trong Clash of Clans, kèm hệ thống nhắc nhở/báo thức khi hoàn thành.
+An app for tracking upgrade timers for buildings, spells, troops, pets, and more in Clash of Clans, with a built-in reminder/alarm system for when they finish.
 
-## Tính năng
+## Features
 
-Ứng dụng hỗ trợ **3 chế độ nhắc nhở** cho từng hạng mục:
+The app supports **3 reminder modes** for each item:
 
-| Chế độ | Mô tả |
+| Mode | Description |
 |---|---|
-| 🔕 Không thông báo | Không nhắc gì khi hoàn thành |
-| 🔔 Nhắc nhở bằng thông báo | Gửi thông báo hệ thống thông thường khi hoàn thành |
-| ⏰ Báo thức | Phát chuông và hiện popup toàn màn hình như báo thức thật, kể cả khi máy đang khóa |
+| 🔕 No notification | No reminder when the upgrade finishes |
+| 🔔 Notification reminder | Sends a regular system notification when finished |
+| ⏰ Alarm | Rings and shows a full-screen popup like a real alarm, even when the device is locked |
 
-## Cách sử dụng
+## How to use
 
-1. Vào **Cài đặt game** > **Thêm cài đặt** > **Xuất dữ liệu làng theo định dạng JSON**
-2. Mở app COC Timer
-3. Cuộn xuống, bấm nút **Dán** để nhập dữ liệu JSON vừa xuất
-4. Nhấn vào **tên từng công trình** để chuyển đổi qua lại giữa 3 chế độ nhắc nhở
-5. Nhấn vào **tên tiêu đề nhóm** (VD: Thợ xây, Linh thú, Phòng thí nghiệm) để chuyển đổi chế độ **hàng loạt** cho cả nhóm
+1. In the game, go to **Settings** > **More Settings** > **Export village data as JSON**
+2. Open the COC Timer app
+3. Scroll down and tap **Paste** to import the JSON data you just exported
+4. Tap the **name of any item** to cycle through the 3 reminder modes
+5. Tap the **group title** (e.g. Builders, Pets, Laboratory) to change the mode for the **whole group** at once
 
-### Thời gian thực
+### Real time
 
-Ứng dụng có công tắc bật/tắt hiển thị thời gian:
-- **Tắt**: hiển thị dạng đếm ngược (VD: `2h 15m`)
-- **Bật**: hiển thị thời gian hoàn thành thực tế (VD: `14:30`)
+The app has a toggle for how time is displayed:
+- **Off**: shows a countdown (e.g. `2h 15m`)
+- **On**: shows the actual completion time (e.g. `14:30`)
 
+## Choosing an installation build (ABI)
 
-## Ảnh chụp màn hình
+| ABI | For devices |
+|------|-------------------|
+| **arm64-v8a** | [⭐Recommended] 64-bit Android devices with ARM CPUs (most phones and tablets from around 2018 onward). |
+| **armeabi-v7a** | 32-bit Android devices with ARM CPUs (older Android phones, roughly before 2017–2018). |
+| **x86_64** | 64-bit Android devices with Intel/AMD x86 CPUs, mainly used by Android emulators, or a small number of older Intel-based tablets/phones. |
+
+## Screenshots
 
 <p align="center">
-  <img src="Screenshot/icon.png" alt="COC Timer Icon" width="120"/>
-</p>
-<p align="center">
-  <img src="Screenshot/4.png" width="250"/>
-  <img src="Screenshot/5.png" width="250"/>
-  <img src="Screenshot/6.png" width="250"/>
-  <img src="Screenshot/3.jpg" width="250"/>
+  <img src="Screenshot/1en.png" width="250"/>
+  <img src="Screenshot/2en.png" width="250"/>
+  <img src="Screenshot/3en.png" width="250"/>
+  <img src="Screenshot/3en.png" width="250"/>
 </p>
 
 ---

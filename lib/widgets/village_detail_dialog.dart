@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/village_models.dart';
+import '../utils/app_strings.dart';
 
 class VillageDetailDialog extends StatefulWidget {
   final VillageData village;
@@ -75,12 +76,12 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "■ CHI TIẾT: ${widget.village.tag}",
+                      "${AppStrings.dialog.titlePrefix}${widget.village.tag}",
                       style: TextStyle(color: widget.themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
                     ),
                     InkWell(
                       onTap: () => Navigator.pop(context),
-                      child: const Text("[ ĐÓNG ]", style: TextStyle(color: Color(0xFF888888), fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: Text(AppStrings.dialog.btnClose, style: const TextStyle(color: Color(0xFF888888), fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -88,16 +89,16 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
 
                 Row(
                   children: [
-                    const Text("TÊN LÀNG: ", style: TextStyle(color: Color(0xFF888888), fontSize: 12)),
+                    Text(AppStrings.dialog.labelVillageName, style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
                     Expanded(
                       child: TextField(
                         controller: _nameController,
                         style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold),
-                        decoration: const InputDecoration(
-                          hintText: "[ NHẬP TÊN LÀNG... ]",
-                          hintStyle: TextStyle(color: Color(0xFF444444)),
+                        decoration: InputDecoration(
+                          hintText: AppStrings.dialog.hintEnterVillageName,
+                          hintStyle: const TextStyle(color: Color(0xFF444444)),
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 4),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
                           border: InputBorder.none,
                         ),
                         onChanged: widget.onNameChanged,
@@ -107,17 +108,25 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                _buildLogLine(widget.isBuilderBase ? "> THỢ XÂY ĐÊM" : "> THỢ XÂY", "${activeB.length}/$totalB ĐANG LÀM", onTap: () => widget.onCycleGroup(widget.isBuilderBase ? "THỢ XÂY ĐÊM" : "THỢ XÂY", activeB)),
+                _buildLogLine(
+                    widget.isBuilderBase ? AppStrings.dialog.groupBuilderNight : AppStrings.dialog.groupBuilder,
+                    "${activeB.length}/$totalB ${AppStrings.dialog.statusWorkingSuffix}",
+                    onTap: () => widget.onCycleGroup(widget.isBuilderBase ? "THỢ XÂY ĐÊM" : "THỢ XÂY", activeB)
+                ),
                 _buildDetailList(activeB),
                 const SizedBox(height: 12),
 
                 if (!widget.isBuilderBase) ...[
-                  _buildLogLine("> LINH THÚ", "${activeP.length} ĐANG NÂNG", onTap: () => widget.onCycleGroup("LINH THÚ", activeP)),
+                  _buildLogLine(AppStrings.dialog.groupPet, "${activeP.length} ${AppStrings.dialog.statusUpgradingSuffix}", onTap: () => widget.onCycleGroup("LINH THÚ", activeP)),
                   _buildDetailList(activeP),
                   const SizedBox(height: 12),
                 ],
 
-                _buildLogLine(widget.isBuilderBase ? "> THÍ NGHIỆM ĐÊM" : "> PHÒNG THÍ NGHIỆM", "${activeL.length} ĐANG NÂNG", onTap: () => widget.onCycleGroup(widget.isBuilderBase ? "THÍ NGHIỆM ĐÊM" : "PHÒNG THÍ NGHIỆM", activeL)),
+                _buildLogLine(
+                    widget.isBuilderBase ? AppStrings.dialog.groupLabNight : AppStrings.dialog.groupLabMain,
+                    "${activeL.length} ${AppStrings.dialog.statusUpgradingSuffix}",
+                    onTap: () => widget.onCycleGroup(widget.isBuilderBase ? "THÍ NGHIỆM ĐÊM" : "PHÒNG THÍ NGHIỆM", activeL)
+                ),
                 _buildDetailList(activeL),
               ],
             ),
@@ -137,12 +146,12 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
         child: Row(
           children: [
             Text(text, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold)),
-            const Expanded(
+            Expanded(
               child: Text(
-                " ......................................",
+                AppStrings.dialog.separatorDots,
                 maxLines: 1,
                 overflow: TextOverflow.clip,
-                style: TextStyle(color: Color(0xFF444444), fontSize: 13),
+                style: const TextStyle(color: Color(0xFF444444), fontSize: 13),
               ),
             ),
             Text(status, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
@@ -189,7 +198,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
             stateColor = const Color(0xFF4CAF50);
           } else if (item.alarmType == AlarmType.fullscreen) {
             iconData = Icons.alarm;
-            stateColor = widget.themeColor; // Đổi màu báo thức Fullscreen theo Theme
+            stateColor = widget.themeColor;
           }
 
           return InkWell(
@@ -205,13 +214,14 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                 children: [
                   Icon(iconData, size: 14, color: stateColor),
                   const SizedBox(width: 6),
-                  Text("${item.typeString} ${item.dataId}", style: TextStyle(color: stateColor, fontSize: 12)),
-                  const Expanded(
+                  // THAY ĐỔI: Dùng hàm getName() để tự động dịch dựa theo ngôn ngữ đang chọn
+                  Text("${AppStrings.gameData.getName(item.dataId)} (Lv.${item.level})", style: TextStyle(color: stateColor, fontSize: 12)),
+                  Expanded(
                     child: Text(
-                      " ......................................",
+                      AppStrings.dialog.separatorDots,
                       maxLines: 1,
                       overflow: TextOverflow.clip,
-                      style: TextStyle(color: Color(0xFF333333), fontSize: 12),
+                      style: const TextStyle(color: Color(0xFF333333), fontSize: 12),
                     ),
                   ),
                   Text(timeStr, style: TextStyle(color: stateColor, fontSize: 12)),

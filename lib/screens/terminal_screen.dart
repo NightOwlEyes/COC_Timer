@@ -9,12 +9,13 @@ import 'dart:io';
 
 import '../models/village_models.dart';
 import '../utils/village_parser.dart';
+import '../utils/app_strings.dart';
 import '../widgets/terminal_frame_painter.dart';
 import '../services/schedule_service.dart';
 
 import '../widgets/alarm_popup.dart';
 import '../widgets/village_card.dart';
-import '../widgets/village_detail_dialog.dart'; // Import File Dialog mới
+import '../widgets/village_detail_dialog.dart';
 
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({super.key});
@@ -23,7 +24,6 @@ class TerminalScreen extends StatefulWidget {
   State<TerminalScreen> createState() => _TerminalScreenState();
 }
 
-// BƯỚC 1: Thêm "with WidgetsBindingObserver" vào class State
 class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObserver {
   final TextEditingController _jsonController = TextEditingController();
   final ValueNotifier<bool> _showCursor = ValueNotifier(true);
@@ -38,12 +38,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   final Map<String, String> _savedAlarmStates = {};
   final Set<int> _activePopups = {};
 
-  String _parseStatus = "> CHỜ DỮ LIỆU JSON";
+  String _parseStatus = AppStrings.terminal.statusWaitingJson;
 
   bool _showRealEta = true;
-  bool _isBuilderBase = false; // MỚI: Biến lưu trữ trạng thái Server hiện tại
+  bool _isBuilderBase = false;
+  bool _xiaomiAcknowledged = false;
 
-  // MỚI: Lấy màu chủ đạo dựa theo Server
   Color get _themeColor => _isBuilderBase ? const Color(0xFFf8a4bd) : const Color(0xFFB54545);
   Color get _bgTagColor => _isBuilderBase ? const Color(0x22f8a4bd) : const Color(0x228B2B2B);
 
@@ -52,30 +52,21 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addObserver(this);
 
-    // LOGIC MỚI: Chỉ tắt quyền đè màn hình khóa nếu mở app bình thường (không có chuông)
     if (_activePopups.isEmpty) {
       ScheduleService.disableAlarmMode();
     }
-
     ScheduleService.checkAndRequestPermissions();
-
-    // KHÔI PHỤC LẠI HÀM NÀY: Để app tải lại dữ liệu làng đã lưu (Sửa lỗi cảnh báo vàng)
     _loadSavedData();
 
     _cursorTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
-      if (mounted) {
-        _showCursor.value = !_showCursor.value;
-      }
+      if (mounted) _showCursor.value = !_showCursor.value;
     });
     _startClockTimer();
 
-    // SỬA LỖI ALARM SET TẠI ĐÂY: Vòng lặp tách từng báo thức ra khỏi AlarmSet
     _alarmSubscription = Alarm.ringing.listen((alarmSet) {
       ScheduleService.enableAlarmMode();
-
       if (mounted) {
         for (final alarmSettings in alarmSet.alarms) {
           _showFullscreenPopup(alarmSettings);
@@ -86,28 +77,27 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // Hủy đăng ký
+    WidgetsBinding.instance.removeObserver(this);
     _alarmSubscription?.cancel();
-        _cursorTimer?.cancel();
-        _clockTimer?.cancel();
-        _jsonController.dispose();
-        _showCursor.dispose();
-        super.dispose();
-      }
+    _cursorTimer?.cancel();
+    _clockTimer?.cancel();
+    _jsonController.dispose();
+    _showCursor.dispose();
+    super.dispose();
+  }
 
-      // BƯỚC 3: THÊM HÀM NÀY - Kiểm tra liên tục mỗi khi App được bật lên hoặc mở lại từ nền
-      @override
-      void didChangeAppLifecycleState(AppLifecycleState state) {
-        if (state == AppLifecycleState.resumed) {
-          if (_activePopups.isEmpty) {
-            ScheduleService.disableAlarmMode(); // Ép hệ điều hành xóa cờ ngay lập tức
-          } else {
-            ScheduleService.enableAlarmMode();
-          }
-        }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (_activePopups.isEmpty) {
+        ScheduleService.disableAlarmMode();
+      } else {
+        ScheduleService.enableAlarmMode();
       }
+    }
+  }
 
-      void _startClockTimer() {
+  void _startClockTimer() {
     _clockTimer?.cancel();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
@@ -132,26 +122,26 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         checkAlarm(village.buildersItems);
         checkAlarm(village.petItems);
         checkAlarm(village.labItems);
-        checkAlarm(village.builders2Items); // MỚI: Quét báo thức Làng đêm
-        checkAlarm(village.lab2Items);      // MỚI: Quét báo thức Làng đêm
+        checkAlarm(village.builders2Items);
+        checkAlarm(village.lab2Items);
 
         int beforeBuilders = village.buildersItems.length;
         int beforePets = village.petItems.length;
         int beforeLab = village.labItems.length;
-        int beforeBuilders2 = village.builders2Items.length; // MỚI
-        int beforeLab2 = village.lab2Items.length;           // MỚI
+        int beforeBuilders2 = village.builders2Items.length;
+        int beforeLab2 = village.lab2Items.length;
 
         village.buildersItems.removeWhere((item) => item.realEta.difference(now).isNegative);
         village.petItems.removeWhere((item) => item.realEta.difference(now).isNegative);
         village.labItems.removeWhere((item) => item.realEta.difference(now).isNegative);
-        village.builders2Items.removeWhere((item) => item.realEta.difference(now).isNegative); // MỚI
-        village.lab2Items.removeWhere((item) => item.realEta.difference(now).isNegative);      // MỚI
+        village.builders2Items.removeWhere((item) => item.realEta.difference(now).isNegative);
+        village.lab2Items.removeWhere((item) => item.realEta.difference(now).isNegative);
 
         if (beforeBuilders != village.buildersItems.length ||
             beforePets != village.petItems.length ||
             beforeLab != village.labItems.length ||
-            beforeBuilders2 != village.builders2Items.length || // MỚI
-            beforeLab2 != village.lab2Items.length) {           // MỚI
+            beforeBuilders2 != village.builders2Items.length ||
+            beforeLab2 != village.lab2Items.length) {
           needsUpdate = true;
         }
       }
@@ -168,22 +158,16 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     if (_activePopups.contains(settings.id)) return;
     _activePopups.add(settings.id);
 
-    // BẬT CỜ: Ép hiển thị đè lên màn hình khóa vì đang có báo thức
     ScheduleService.enableAlarmMode();
-
     final globalContext = ScheduleService.navigatorKey.currentContext;
     if (globalContext == null) return;
 
     showDialog(
         context: globalContext,
         barrierDismissible: false,
-        builder: (dialogContext) {
-          return AlarmPopup(settings: settings);
-        }
+        builder: (dialogContext) => AlarmPopup(settings: settings)
     ).then((_) {
       _activePopups.remove(settings.id);
-
-      // TẮT CỜ: Trả lại trạng thái màn hình khóa bình thường khi đã tắt hết báo thức
       if (_activePopups.isEmpty) {
         ScheduleService.disableAlarmMode();
       }
@@ -196,10 +180,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     final savedNames = prefs.getString('saved_village_names');
     final savedAlarmJson = prefs.getString('saved_alarm_states');
     final savedShowEta = prefs.getBool('show_real_eta');
+    _xiaomiAcknowledged = prefs.getBool('xiaomi_acknowledged') ?? false;
 
-    if (savedShowEta != null) {
-      _showRealEta = savedShowEta;
-    }
+    if (savedShowEta != null) _showRealEta = savedShowEta;
 
     if (savedAlarmJson != null) {
       try {
@@ -208,7 +191,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           _savedAlarmStates[key] = value.toString();
         });
       } catch (e) {
-        debugPrint("Lỗi load trạng thái báo thức: $e");
+        debugPrint(AppStrings.format(AppStrings.terminal.debugLoadAlarmStateError, {'e': e.toString()}));
       }
     }
 
@@ -224,7 +207,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
             loadedVillages[key] = parsed;
             loadedRaws[key] = value.toString();
           } catch (e) {
-            debugPrint("Lỗi parse $key: $e");
+            debugPrint(AppStrings.format(AppStrings.terminal.debugParseVillageError, {'key': key, 'e': e.toString()}));
           }
         });
 
@@ -232,7 +215,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           setState(() {
             _villages = loadedVillages;
             _savedRawJsons = loadedRaws;
-            if (_villages.isNotEmpty) _parseStatus = "> ĐÃ TẢI DỮ LIỆU LƯU TRỮ";
+            if (_villages.isNotEmpty) _parseStatus = AppStrings.terminal.statusLoadedSavedData;
 
             if (savedNames != null) {
               try {
@@ -241,7 +224,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                   _villageNames[key] = value.toString();
                 });
               } catch (e) {
-                debugPrint("Lỗi load tên làng: $e");
+                debugPrint(AppStrings.format(AppStrings.terminal.debugLoadNameError, {'e': e.toString()}));
               }
             }
             for (var v in _villages.values) {
@@ -250,7 +233,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           });
         }
       } catch (e) {
-        debugPrint("Lỗi load: $e");
+        debugPrint(AppStrings.format(AppStrings.terminal.debugLoadGeneralError, {'e': e.toString()}));
       }
     }
   }
@@ -261,16 +244,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         String uniqueKey = item.instanceId;
         String? stateStr = _savedAlarmStates[uniqueKey];
         if (stateStr != null) {
-          if (stateStr == "none") {
-            item.alarmType = AlarmType.none;
-          } else if (stateStr == "system") {
-            item.alarmType = AlarmType.system;
-          } else if (stateStr == "fullscreen") {
-            item.alarmType = AlarmType.fullscreen;
-          }
+          if (stateStr == "none") item.alarmType = AlarmType.none;
+          else if (stateStr == "system") item.alarmType = AlarmType.system;
+          else if (stateStr == "fullscreen") item.alarmType = AlarmType.fullscreen;
         }
         if (syncWithOS) {
-          String vName = _villageNames[village.tag] ?? "Chưa đặt tên";
+          String vName = _villageNames[village.tag] ?? AppStrings.terminal.defaultVillageNameUnset;
           ScheduleService.syncItemSchedule(village.tag, vName, item);
         }
       }
@@ -278,8 +257,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     apply(village.buildersItems);
     apply(village.petItems);
     apply(village.labItems);
-    apply(village.builders2Items); // MỚI: Phục hồi báo thức Làng Đêm
-    apply(village.lab2Items);      // MỚI: Phục hồi báo thức Làng Đêm
+    apply(village.builders2Items);
+    apply(village.lab2Items);
   }
 
   Future<void> _saveAlarmStatesToPrefs() async {
@@ -305,9 +284,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("XÁC NHẬN XÓA", style: TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(AppStrings.terminal.deleteDialogTitle, style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              Text("Bạn có chắc chắn muốn xóa dữ liệu JSON và báo thức của làng $tag không?\n(Tên làng vẫn sẽ được ghi nhớ)",
+              Text(AppStrings.format(AppStrings.terminal.deleteDialogMessage, {'tag': tag}),
                   textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
               const SizedBox(height: 24),
               Row(
@@ -316,7 +295,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF444444)), shape: const RoundedRectangleBorder()),
                       onPressed: () => Navigator.pop(ctx),
-                      child: const Text("HỦY", style: TextStyle(color: Color(0xFF888888))),
+                      child: Text(AppStrings.terminal.btnCancel, style: const TextStyle(color: Color(0xFF888888))),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -327,7 +306,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                         Navigator.pop(ctx);
                         _deleteVillage(tag);
                       },
-                      child: const Text("XÓA NGAY", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: Text(AppStrings.terminal.btnDeleteNow, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],
@@ -349,10 +328,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     setState(() {
       _villages.remove(tag);
       _savedRawJsons.remove(tag);
-      // ĐÃ XÓA DÒNG LỆNH _villageNames.remove(tag); Ở ĐÂY ĐỂ APP KHÔNG QUÊN TÊN LÀNG NỮA
       _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
-
-      _parseStatus = _villages.isEmpty ? "> CHỜ DỮ LIỆU JSON" : "> ĐÃ XÓA LÀNG: $tag";
+      _parseStatus = _villages.isEmpty ? AppStrings.terminal.statusWaitingJson : AppStrings.format(AppStrings.terminal.statusVillageDeleted, {'tag': tag});
     });
     _saveDataToPrefs();
     _saveAlarmStatesToPrefs();
@@ -360,15 +337,16 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   void _cycleAlarmForItem(String villageTag, UpgradeItem item) {
     setState(() {
+      String itemName = AppStrings.gameData.getName(item.dataId);
       if (item.alarmType == AlarmType.system) {
         item.alarmType = AlarmType.fullscreen;
-        _parseStatus = "> [BÁO THỨC] ${item.typeString.toUpperCase()} ${item.dataId}";
+        _parseStatus = AppStrings.format(AppStrings.terminal.statusAlarmSetFullscreen, {'typeString': itemName.toUpperCase(), 'dataId': ""});
       } else if (item.alarmType == AlarmType.fullscreen) {
         item.alarmType = AlarmType.none;
-        _parseStatus = "> [ĐÃ TẮT] ${item.typeString.toUpperCase()} ${item.dataId}";
+        _parseStatus = AppStrings.format(AppStrings.terminal.statusAlarmOff, {'typeString': itemName.toUpperCase(), 'dataId': ""});
       } else {
         item.alarmType = AlarmType.system;
-        _parseStatus = "> [THÔNG BÁO] ${item.typeString.toUpperCase()} ${item.dataId}";
+        _parseStatus = AppStrings.format(AppStrings.terminal.statusNotificationSetSystem, {'typeString': itemName.toUpperCase(), 'dataId': ""});
       }
 
       String uniqueKey = item.instanceId;
@@ -376,7 +354,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       _saveAlarmStatesToPrefs();
     });
 
-    String vName = _villageNames[villageTag] ?? "Chưa đặt tên";
+    String vName = _villageNames[villageTag] ?? AppStrings.terminal.defaultVillageNameUnset;
     ScheduleService.syncItemSchedule(villageTag, vName, item);
   }
 
@@ -387,24 +365,21 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       bool hasFullscreen = items.any((i) => i.alarmType == AlarmType.fullscreen);
 
       AlarmType targetType = AlarmType.system;
-      if (hasSystem) {
-        targetType = AlarmType.fullscreen;
-      } else if (hasFullscreen) {
-        targetType = AlarmType.none;
-      }
+      if (hasSystem) targetType = AlarmType.fullscreen;
+      else if (hasFullscreen) targetType = AlarmType.none;
 
       for (var item in items) {
         item.alarmType = targetType;
         String uniqueKey = item.instanceId;
         _savedAlarmStates[uniqueKey] = targetType.name;
 
-        String vName = _villageNames[villageTag] ?? "Chưa đặt tên";
+        String vName = _villageNames[villageTag] ?? AppStrings.terminal.defaultVillageNameUnset;
         ScheduleService.syncItemSchedule(villageTag, vName, item);
       }
 
       _parseStatus = targetType == AlarmType.none
-          ? "> ĐÃ TẮT TOÀN BỘ NHÓM: $groupName"
-          : "> ĐÃ ĐỔI NHÓM $groupName SANG CHẾ ĐỘ ${targetType.name.toUpperCase()}";
+          ? AppStrings.format(AppStrings.terminal.statusGroupAllOff, {'groupName': groupName})
+          : AppStrings.format(AppStrings.terminal.statusGroupModeChanged, {'groupName': groupName, 'alarmType': targetType.name.toUpperCase()});
 
       _saveAlarmStatesToPrefs();
     });
@@ -423,7 +398,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         if (newName != null && newName.trim().isNotEmpty) {
           _villageNames[parsed.tag] = newName.trim();
         } else {
-          _villageNames[parsed.tag] = "NightOwlEyes";
+          _villageNames[parsed.tag] = AppStrings.terminal.defaultVillageNameFallback;
         }
       }
 
@@ -437,13 +412,13 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       setState(() {
         _villages[parsed.tag] = parsed;
         _savedRawJsons[parsed.tag] = inputData;
-        _parseStatus = "> ĐÃ CẬP NHẬT: ${_villageNames[parsed.tag]} (${parsed.tag})";
+        _parseStatus = AppStrings.format(AppStrings.terminal.statusUpdated, {'villageName': _villageNames[parsed.tag]!, 'tag': parsed.tag});
         _jsonController.clear();
       });
       _saveDataToPrefs();
     } catch (e) {
       setState(() {
-        _parseStatus = "> LỖI! HÃY KIỂM TRA LẠI JSON";
+        _parseStatus = AppStrings.terminal.statusErrorInvalidJson;
       });
     }
   }
@@ -461,19 +436,19 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("PHÁT HIỆN LÀNG MỚI", style: TextStyle(color: Color(0xFF4CAF50), fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(AppStrings.terminal.newVillageDialogTitle, style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text("Mã: $tag", style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
+              Text(AppStrings.format(AppStrings.terminal.newVillageDialogTagLabel, {'tag': tag}), style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
               const SizedBox(height: 16),
               TextField(
                 controller: tempController,
-                autofocus: true,
+                autofocus: false,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
-                decoration: const InputDecoration(
-                  hintText: "Nhập tên làng (VD: Acc Chính)...",
-                  hintStyle: TextStyle(color: Color(0xFF444444)),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF444444))),
-                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF4CAF50))),
+                decoration: InputDecoration(
+                  hintText: AppStrings.terminal.newVillageNameHint,
+                  hintStyle: const TextStyle(color: Color(0xFF444444)),
+                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF444444))),
+                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF4CAF50))),
                 ),
               ),
               const SizedBox(height: 24),
@@ -482,7 +457,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50), shape: const RoundedRectangleBorder()),
                   onPressed: () => Navigator.pop(ctx, tempController.text),
-                  child: const Text("LƯU TÊN & THÊM LÀNG", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  child: Text(AppStrings.terminal.btnSaveAndAddVillage, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ),
               )
             ],
@@ -504,6 +479,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   void _openXiaomiSettings() async {
+    setState(() {
+      _xiaomiAcknowledged = true;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('xiaomi_acknowledged', true);
+
     if (Platform.isAndroid) {
       try {
         final intent = const AndroidIntent(
@@ -513,12 +494,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         await intent.launch();
         if (!mounted) return;
         setState(() {
-          _parseStatus = "> HÃY TÍCH XANH TẤT CẢ!";
+          _parseStatus = AppStrings.terminal.statusXiaomiPromptSuccess;
         });
       } catch (e) {
         if (!mounted) return;
         setState(() {
-          _parseStatus = "> LỖI: CHỈ THIẾT BỊ XIAOMI/POCO";
+          _parseStatus = AppStrings.terminal.statusXiaomiPromptError;
         });
       }
     }
@@ -603,18 +584,19 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("COC.TIMER", style: TextStyle(color: Color(0xFF666666), fontSize: 12, fontWeight: FontWeight.bold)),
+            Text(AppStrings.terminal.headerSmallTitle, style: const TextStyle(color: Color(0xFF666666), fontSize: 12, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             InkWell(
               onTap: () {
+                FocusManager.instance.primaryFocus?.unfocus();
                 setState(() => _showRealEta = !_showRealEta);
                 _saveDataToPrefs();
               },
               child: Row(
                 children: [
-                  const Text("THỜI GIAN THỰC ", style: TextStyle(color: Color(0xFF888888), fontSize: 11)),
+                  Text("${AppStrings.terminal.labelRealTime}: ", style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
                   Text(
-                    _showRealEta ? "[ BẬT ]" : "[ TẮT ]",
+                    _showRealEta ? AppStrings.terminal.toggleOn : AppStrings.terminal.toggleOff,
                     style: TextStyle(
                         color: _showRealEta ? const Color(0xFF4CAF50) : const Color(0xFF8B2B2B),
                         fontSize: 11,
@@ -623,15 +605,33 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                   )
                 ],
               ),
-            )
+            ),
+            const SizedBox(height: 4),
+            // CỤM NÚT NGÔN NGỮ THÔ VÀ TỐI GIẢN
+            InkWell(
+              onTap: () async {
+                FocusManager.instance.primaryFocus?.unfocus();
+                String newLang = AppStrings.languageCode == 'vi' ? 'en' : 'vi';
+                await AppStrings.changeLanguage(newLang);
+                setState(() {});
+              },
+              child: Row(
+                children: [
+                  Text(AppStrings.languageCode == 'vi' ? "NGÔN NGỮ: " : "LANGUAGE: ", style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
+                  Text(
+                    AppStrings.languageCode == 'vi' ? "[ VN ]" : "[ EN ]",
+                    style: const TextStyle(color: Color(0xFF888888), fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Text("SERVER: LOCAL", style: TextStyle(color: Color(0xFF666666), fontSize: 12)),
+            Text(AppStrings.terminal.labelServer, style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
             const SizedBox(height: 4),
-            // SỬA DÒNG NÀY: Dùng biến offsetString vừa tạo thay vì gõ chết "UTC+7"
             Text("$offsetString $_currentTime", style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
           ],
         ),
@@ -642,10 +642,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   Widget _buildSecurityTag() {
     return Column(
       children: [
-        const Text("[ BẤM ĐỂ CHUYỂN ĐỔI SERVER ]", style: TextStyle(color: Color(0xFF666666), fontSize: 10, letterSpacing: 1.0)),
+        Text(AppStrings.terminal.labelTapToSwitchServer, style: const TextStyle(color: Color(0xFF666666), fontSize: 10, letterSpacing: 1.0)),
         const SizedBox(height: 4),
         InkWell(
           onTap: () {
+            FocusManager.instance.primaryFocus?.unfocus();
             setState(() {
               _isBuilderBase = !_isBuilderBase;
             });
@@ -663,7 +664,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
             ),
             child: Center(
               child: Text(
-                _isBuilderBase ? "■  L À N G   T H Ợ   X Â Y  ■" : "■  L À N G   C H Í N H  ■",
+                _isBuilderBase ? AppStrings.terminal.tabBuilderBase : AppStrings.terminal.tabMainVillage,
                 style: TextStyle(color: _themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
               ),
             ),
@@ -678,14 +679,14 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       children: [
         Image.asset('assets/LogoMain.png', height: 80),
         const SizedBox(height: 16),
-        const Text(
-          "C O C   T I M E R",
-          style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 4.0),
+        Text(
+          AppStrings.terminal.logoTitle,
+          style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 4.0),
         ),
         const SizedBox(height: 12),
-        const Text(
-          "ĐẾM NGƯỢC THỜI GIAN NÂNG",
-          style: TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.5),
+        Text(
+          AppStrings.terminal.logoSubtitle,
+          style: const TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.5),
         ),
         const SizedBox(height: 20),
         Row(
@@ -712,17 +713,18 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         return VillageCard(
           village: village,
           villageName: _villageNames[village.tag] ?? "",
-          isBuilderBase: _isBuilderBase, // TRUYỀN DỮ LIỆU ĐỂ RENDER
-          themeColor: _themeColor,       // TRUYỀN MÀU SẮC ĐỂ RENDER
+          isBuilderBase: _isBuilderBase,
+          themeColor: _themeColor,
           onDelete: () => _confirmDeleteVillage(village.tag),
           onTap: () {
+            FocusManager.instance.primaryFocus?.unfocus();
             showDialog(
               context: context,
               builder: (ctx) => VillageDetailDialog(
                 village: village,
                 villageName: _villageNames[village.tag] ?? "",
-                isBuilderBase: _isBuilderBase, // TRUYỀN DỮ LIỆU ĐỂ RENDER
-                themeColor: _themeColor,       // TRUYỀN MÀU SẮC ĐỂ RENDER
+                isBuilderBase: _isBuilderBase,
+                themeColor: _themeColor,
                 showRealEta: _showRealEta,
                 onNameChanged: (newName) {
                   _villageNames[village.tag] = newName;
@@ -743,21 +745,22 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("V I L L A G E   D A T A", style: TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0)),
+        Text(AppStrings.terminal.inputSectionLabel, style: const TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0)),
         const SizedBox(height: 8),
         Stack(
           children: [
             TextField(
               controller: _jsonController,
+              autofocus: false,
               maxLines: 4,
               style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 14),
-              decoration: const InputDecoration(
-                hintText: "DÁN JSON VÀO ĐÂY...",
-                hintStyle: TextStyle(color: Color(0xFF444444)),
+              decoration: InputDecoration(
+                hintText: AppStrings.terminal.inputHint,
+                hintStyle: const TextStyle(color: Color(0xFF444444)),
                 filled: true,
-                fillColor: Color(0xFF141615),
-                border: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: Color(0xFF666666), width: 1)),
+                fillColor: const Color(0xFF141615),
+                border: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
+                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: Color(0xFF666666), width: 1)),
               ),
             ),
             Positioned(
@@ -768,7 +771,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   color: const Color(0xFF333333),
-                  child: const Text("DÁN", style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Text(AppStrings.terminal.btnPaste, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
               ),
             )
@@ -786,9 +789,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 18),
           alignment: Alignment.center,
-          child: const Text(
-            "X Á C   N H Ậ N   ►",
-            style: TextStyle(color: Color(0xFF111111), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+          child: Text(
+            AppStrings.terminal.btnSubmit,
+            style: const TextStyle(color: Color(0xFF111111), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
           ),
         ),
       ),
@@ -798,17 +801,41 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   Widget _buildFooter() {
     return Column(
       children: [
-        InkWell(
-          onTap: _openXiaomiSettings,
-          child: const Text(
-              "[ CẤP QUYỀN TRÊN XIAOMI/POCO ]",
-              style: TextStyle(color: Color(0xFFB54545), fontSize: 12, fontWeight: FontWeight.bold)
+        if (!_xiaomiAcknowledged && Platform.isAndroid)
+          InkWell(
+            onTap: _openXiaomiSettings,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0x33B54545),
+                border: Border.all(color: const Color(0xFFB54545), width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545), size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    AppStrings.terminal.btnXiaomiPermission,
+                    style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          InkWell(
+            onTap: _openXiaomiSettings,
+            child: Text(
+                AppStrings.terminal.btnXiaomiPermission,
+                style: const TextStyle(color: Color(0xFF666666), fontSize: 11, fontWeight: FontWeight.bold)
+            ),
           ),
-        ),
+
         const SizedBox(height: 16),
-        const Text("CHƯA BIẾT CÁCH XUẤT DỮ LIỆU LÀNG?", style: TextStyle(color: Color(0xFF666666), fontSize: 11, letterSpacing: 1.0)),
+        Text(AppStrings.terminal.footerHowtoTitle, style: const TextStyle(color: Color(0xFF666666), fontSize: 11, letterSpacing: 1.0)),
         const SizedBox(height: 4),
-        const Text("CÀI ĐẶT GAME > THÊM CÀI ĐẶT > XUẤT DỮ LIỆU LÀNG THEO ĐỊNH DẠNG JSON", textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF888888), fontSize: 11, letterSpacing: 1.0)),
+        Text(AppStrings.terminal.footerHowtoDesc, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF888888), fontSize: 11, letterSpacing: 1.0)),
       ],
     );
   }

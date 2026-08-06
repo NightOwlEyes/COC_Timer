@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/village_models.dart';
+import '../utils/app_strings.dart';
 
 class VillageCard extends StatelessWidget {
   final VillageData village;
@@ -30,7 +31,7 @@ class VillageCard extends StatelessWidget {
     int maxL = lCount > 1 ? lCount : 1;
     int maxP = pCount > 1 ? pCount : 1;
 
-    String displayName = villageName.trim().isEmpty ? "<CHƯA ĐẶT TÊN>" : villageName;
+    String displayName = villageName.trim().isEmpty ? AppStrings.card.unnamedVillage : villageName;
 
     return InkWell(
       onTap: onTap,
@@ -50,7 +51,7 @@ class VillageCard extends StatelessWidget {
                     text: TextSpan(
                       style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
                       children: [
-                        const TextSpan(text: "Tên làng: ", style: TextStyle(color: Color(0xFF888888))),
+                        TextSpan(text: AppStrings.card.labelVillageNamePrefix, style: const TextStyle(color: Color(0xFF888888))),
                         TextSpan(text: displayName, style: const TextStyle(color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold)),
                       ],
                     ),
@@ -59,7 +60,7 @@ class VillageCard extends StatelessWidget {
                 InkWell(
                   onTap: onDelete,
                   child: Text(
-                      "[ XÓA ]",
+                      AppStrings.card.btnDelete,
                       style: TextStyle(color: themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
                   ),
                 ),
@@ -71,7 +72,7 @@ class VillageCard extends StatelessWidget {
               text: TextSpan(
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
                 children: [
-                  const TextSpan(text: "Mã làng: ", style: TextStyle(color: Color(0xFF555555))),
+                  TextSpan(text: AppStrings.card.labelTagPrefix, style: const TextStyle(color: Color(0xFF555555))),
                   TextSpan(text: village.tag, style: const TextStyle(color: Color(0xFF666666))),
                 ],
               ),
@@ -83,16 +84,16 @@ class VillageCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: isBuilderBase
                   ? [
-                _buildStatColumn("MASTER BUILDER", "$bCount/$bTotal", bCount > 0, themeColor),
+                _buildStatColumn(AppStrings.card.statMasterBuilder, "$bCount/$bTotal", bCount > 0, themeColor),
                 _buildVerticalDivider(),
-                _buildStatColumn("STAR LABORATORY", "$lCount/$maxL", lCount > 0, themeColor),
+                _buildStatColumn(AppStrings.card.statStarLaboratory, "$lCount/$maxL", lCount > 0, themeColor),
               ]
                   : [
-                _buildStatColumn("THỢ XÂY", "$bCount/$bTotal", bCount > 0, themeColor),
+                _buildStatColumn(AppStrings.card.statBuilder, "$bCount/$bTotal", bCount > 0, themeColor),
                 _buildVerticalDivider(),
-                _buildStatColumn("THÍ NGHIỆM", "$lCount/$maxL", lCount > 0, themeColor),
+                _buildStatColumn(AppStrings.card.statLab, "$lCount/$maxL", lCount > 0, themeColor),
                 _buildVerticalDivider(),
-                _buildStatColumn("LINH THÚ", "$pCount/$maxP", pCount > 0, themeColor),
+                _buildStatColumn(AppStrings.card.statPet, "$pCount/$maxP", pCount > 0, themeColor),
               ],
             ),
 

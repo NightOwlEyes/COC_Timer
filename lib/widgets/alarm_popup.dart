@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:alarm/alarm.dart';
 import '../services/schedule_service.dart';
+import '../utils/app_strings.dart';
 
 class AlarmPopup extends StatefulWidget {
   final AlarmSettings settings;
@@ -60,9 +61,9 @@ class _AlarmPopupState extends State<AlarmPopup> {
           children: [
             const Icon(Icons.alarm_on, color: Color(0xFFB54545), size: 48),
             const SizedBox(height: 16),
-            const Text(
-              "■ TÍN HIỆU HOÀN TẤT ■",
-              style: TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+            Text(
+              AppStrings.alarm.title,
+              style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
             ),
             const SizedBox(height: 16),
             Text(
@@ -89,7 +90,7 @@ class _AlarmPopupState extends State<AlarmPopup> {
                   Navigator.pop(context); // Đóng popup
                   ScheduleService.handleAlarmDismiss(); // Thu nhỏ app nếu đang khóa màn hình
                 },
-                child: const Text("[ XÁC NHẬN & ĐÓNG CẢNH BÁO ]", style: TextStyle(fontWeight: FontWeight.bold)),
+                child: Text(AppStrings.alarm.btnConfirmAndClose, style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
             ),
           ],

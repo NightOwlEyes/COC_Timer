@@ -5,28 +5,25 @@ import 'package:alarm/alarm.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import '../models/village_models.dart';
 
-/// File này đóng vai trò là Cầu nối (Wrapper) giữa App của bạn và Hệ điều hành.
+import '../models/village_models.dart';
+import '../utils/app_strings.dart';
+
 class ScheduleService {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
   static final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
-
   static const MethodChannel _fsiChannel = MethodChannel('coctimer/fsi_permission');
 
-  /// Khởi tạo các package (Được gọi một lần duy nhất ở main.dart)
   static Future<void> init() async {
-    // Khởi tạo Alarm cho báo thức toàn màn hình
     await Alarm.init();
 
-    // Khởi tạo Timezone
     tz.initializeTimeZones();
     final tzInfo = await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
 
-    // BẬT LẠI ICON TỐI GIẢN TỪ THƯ MỤC DRAWABLE
+    // Đổi icon mặc định khởi tạo thành ic_notification
     const AndroidInitializationSettings androidInit = AndroidInitializationSettings('ic_notification');
     const DarwinInitializationSettings iosInit = DarwinInitializationSettings();
     const InitializationSettings initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
@@ -36,54 +33,78 @@ class ScheduleService {
     if (Platform.isAndroid) {
       final androidImpl = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
-      // Danh sách các Channel ID cũ đã từng sử dụng và cần loại bỏ
+      // ÉP TẠO CHANNEL NGAY TỪ LÚC MỞ APP
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'coc_timer_system_final',
+        'Thông Báo Hệ Thống',
+        description: 'Thông báo cơ bản khi hoàn thành nâng cấp',
+        importance: Importance.max,
+        playSound: true,
+      );
+      await androidImpl?.createNotificationChannel(channel);
+
       final oldChannels = [
-        'coc_timer_channel_v5',
-        'coc_timer_channel_v6',
-        'coc_timer_channel_v7',
-        'coc_timer_channel_v8',
-        'coc_timer_channel_v9',
-        'coc_timer_channel_v10'
+        'coc_timer_channel_v5', 'coc_timer_channel_v6', 'coc_timer_channel_v7',
+        'coc_timer_channel_v8', 'coc_timer_channel_v9', 'coc_timer_channel_v10',
+        'coc_timer_channel_v11', 'coc_timer_channel_v15', 'coc_timer_channel_v16',
+        'coc_timer_channel_v20', 'coc_timer_channel_v21', 'coc_timer_system'
       ];
 
       for (String channelId in oldChannels) {
         try {
           await androidImpl?.deleteNotificationChannel(channelId: channelId);
-          debugPrint("Đã xóa dọn dẹp channel cũ: $channelId");
+          debugPrint (AppStrings.format(AppStrings.schedule.debugOldChannelDeleted, {'channelId': channelId}));
         } catch (e) {
-          debugPrint("Không thể xóa channel $channelId: $e");
+          debugPrint(AppStrings.format(AppStrings.schedule.debugOldChannelDeleteFailed, {'channelId': channelId, 'e': e.toString()}));
         }
       }
     }
   }
 
-  /// Hàm xin quyền thông báo và báo thức (Dành cho Android 13+)
   static Future<void> checkAndRequestPermissions() async {
     if (Platform.isAndroid) {
       final androidImpl = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-      await androidImpl?.requestNotificationsPermission();
+
+      bool hasPermission = await androidImpl?.areNotificationsEnabled() ?? false;
+
+      if (!hasPermission) {
+        final bool? granted = await androidImpl?.requestNotificationsPermission();
+        hasPermission = granted ?? false;
+      }
+
       await androidImpl?.requestExactAlarmsPermission();
 
-      // Kiểm tra & xin quyền Full Screen Intent (bắt buộc từ Android 14+)
+      // "Tà đạo": ÉP BẮN THÔNG BÁO MỒI NẾU ĐÃ CÓ QUYỀN VÀ CHƯA TỪNG BẮN
+      if (hasPermission) {
+        final prefs = await SharedPreferences.getInstance();
+        final bool hasWelcomed = prefs.getBool('has_sent_welcome') ?? false;
+
+        if (!hasWelcomed) {
+          Future.delayed(const Duration(seconds: 2), () async {
+            await _fireWelcomeNotification();
+            await prefs.setBool('has_sent_welcome', true);
+          });
+        }
+      }
+
       try {
         final bool canUseFsi = await _fsiChannel.invokeMethod('canUseFullScreenIntent');
         if (canUseFsi != true) {
-          debugPrint("Chưa có quyền Full Screen Intent, mở màn hình cài đặt...");
+          debugPrint(AppStrings.schedule.debugFsiPermissionMissing);
           await _fsiChannel.invokeMethod('openFullScreenIntentSettings');
         }
       } on PlatformException catch (e) {
-        debugPrint('Lỗi kiểm tra FSI permission: $e');
+        debugPrint(AppStrings.format(AppStrings.schedule.debugFsiPermissionCheckError, {'e': e.toString()}));
       }
 
-      // THÊM MỚI: Yêu cầu cấp quyền bỏ qua tối ưu hóa Pin (Chống Delay)
       try {
         final bool isIgnoring = await _fsiChannel.invokeMethod('isIgnoringBatteryOptimizations');
         if (isIgnoring != true) {
-          debugPrint("Đang bị tối ưu hóa pin, yêu cầu cấp quyền Bỏ qua...");
+          debugPrint(AppStrings.schedule.debugBatteryOptimizationActive);
           await _fsiChannel.invokeMethod('requestIgnoreBatteryOptimizations');
         }
       } on PlatformException catch (e) {
-        debugPrint('Lỗi kiểm tra Battery permission: $e');
+        debugPrint(AppStrings.format(AppStrings.schedule.debugBatteryPermissionCheckError, {'e': e.toString()}));
       }
     }
   }
@@ -96,34 +117,29 @@ class ScheduleService {
     return hash.abs() & 0x7FFFFFFF;
   }
 
-  /// Cập nhật (hoặc xóa) lịch hẹn cho MỘT công trình cụ thể
   static Future<void> syncItemSchedule(String villageTag, String villageName, UpgradeItem item) async {
     final int id = _generateUniqueId(item.instanceId);
 
-    // Xóa tất cả các lịch hẹn cũ
     await _cancelSystemNotification(id);
     await _cancelFullScreenAlarm(id);
 
-    // Bỏ qua nếu thời gian đã ở trong quá khứ
     if (item.realEta.isBefore(DateTime.now())) return;
 
-    // Lên lịch mới tùy theo chế độ
     switch (item.alarmType) {
       case AlarmType.none:
-        debugPrint("Đã tắt báo thức cho ID: $id (Chuỗi gốc: ${item.instanceId})");
+        debugPrint(AppStrings.format(AppStrings.schedule.debugAlarmDisabledLog, {'id': id.toString(), 'instanceId': item.instanceId}));
         break;
       case AlarmType.system:
-        await _scheduleSystemNotification(id, item.realEta, "${item.typeString} ${item.dataId}", villageTag, villageName);
-        debugPrint("Hẹn THÔNG BÁO HỆ THỐNG cho ID: $id vào lúc ${item.realEta}");
+        await _scheduleSystemNotification(id, item.realEta, "${item.typeString} (Lv.${item.level})", villageTag, villageName);
+        debugPrint(AppStrings.format(AppStrings.schedule.debugSystemNotificationScheduledLog, {'id': id.toString(), 'realEta': item.realEta.toString()}));
         break;
       case AlarmType.fullscreen:
-        await _scheduleFullScreenAlarm(id, item.realEta, "${item.typeString} ${item.dataId}", villageTag, villageName);
-        debugPrint("Hẹn BÁO THỨC TOÀN MÀN HÌNH cho ID: $id vào lúc ${item.realEta}");
+        await _scheduleFullScreenAlarm(id, item.realEta, "${item.typeString} (Lv.${item.level})", villageTag, villageName);
+        debugPrint(AppStrings.format(AppStrings.schedule.debugFullscreenAlarmScheduledLog, {'id': id.toString(), 'realEta': item.realEta.toString()}));
         break;
     }
   }
 
-  /// HỦY TOÀN BỘ lịch hẹn của một Làng (Khi người dùng bấm xóa làng)
   static Future<void> cancelAllForVillage(VillageData village) async {
     void cancelList(List<UpgradeItem> items) {
       for (var item in items) {
@@ -135,32 +151,63 @@ class ScheduleService {
     cancelList(village.buildersItems);
     cancelList(village.petItems);
     cancelList(village.labItems);
-    cancelList(village.builders2Items); // MỚI
-    cancelList(village.lab2Items);      // MỚI
+    cancelList(village.builders2Items);
+    cancelList(village.lab2Items);
   }
 
-  static Future<void> _scheduleSystemNotification(int id, DateTime time, String itemName, String tag, String villageName) async {
-    const androidDetails = AndroidNotificationDetails(
-      'coc_timer_channel_v11',
-      'COC Timer Notifications',
-      channelDescription: 'Thông báo khi nâng cấp hoàn thành',
+  static Future<void> _fireWelcomeNotification() async {
+    final androidDetails = AndroidNotificationDetails(
+      'coc_timer_system_final',
+      'Thông Báo Hệ Thống',
+      channelDescription: 'Thông báo cơ bản khi hoàn thành nâng cấp',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound('ring1'),
-      audioAttributesUsage: AudioAttributesUsage.alarm,
-      category: AndroidNotificationCategory.alarm,
+      sound: const RawResourceAndroidNotificationSound('ring1'),
+      audioAttributesUsage: AudioAttributesUsage.notification,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      icon: 'ic_notification', // ĐỔI SANG ICON TÙY CHỈNH
+    );
+    const iosDetails = DarwinNotificationDetails(presentSound: true, sound: 'ring1.mp3');
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    await _notificationsPlugin.show(
+      id: 8888,
+      title: AppStrings.schedule.welcomeNotificationTitle,
+      body: AppStrings.schedule.welcomeNotificationBody,
+      notificationDetails: details,
+    );
+  }
+
+  static Future<void> _scheduleSystemNotification(int id, DateTime time, String itemName, String tag, String villageName) async {
+    final androidDetails = AndroidNotificationDetails(
+      'coc_timer_system_final',
+      'Thông Báo Hệ Thống',
+      channelDescription: 'Thông báo cơ bản khi hoàn thành nâng cấp',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      sound: const RawResourceAndroidNotificationSound('ring1'),
+      audioAttributesUsage: AudioAttributesUsage.notification,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      icon: 'ic_notification', // ĐỔI SANG ICON TÙY CHỈNH
     );
     const iosDetails = DarwinNotificationDetails(
       presentSound: true,
       sound: 'ring1.mp3',
     );
-    const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     await _notificationsPlugin.zonedSchedule(
       id: id,
-      title: '■ TÍN HIỆU HOÀN TẤT ■',
-      body: '$itemName tại $villageName ($tag) đã hoàn thành.',
+      title: AppStrings.schedule.notificationTitle,
+      body: AppStrings.format(AppStrings.schedule.notificationBody, {
+        'itemName': itemName,
+        'villageName': villageName,
+        'tag': tag,
+      }),
       scheduledDate: tz.TZDateTime.from(time, tz.local),
       notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.alarmClock,
@@ -183,10 +230,14 @@ class ScheduleService {
         volume: null,
       ),
       notificationSettings: NotificationSettings(
-        title: '■ TÍN HIỆU HOÀN TẤT ■',
-        body: 'Hạng mục: $itemName\nLàng: $villageName\n(Mã: $tag)',
-        stopButton: 'ĐÓNG CẢNH BÁO',
-        icon: 'ic_notification',
+        title: AppStrings.schedule.alarmNotificationTitle,
+        body: AppStrings.format(AppStrings.schedule.alarmNotificationBody, {
+          'itemName': itemName,
+          'villageName': villageName,
+          'tag': tag,
+        }),
+        stopButton: AppStrings.schedule.alarmStopButton,
+        icon: 'ic_notification', // DÙNG ICON TÙY CHỈNH
       ),
     );
     await Alarm.set(alarmSettings: alarmSettings);
@@ -196,24 +247,22 @@ class ScheduleService {
     await Alarm.stop(id);
   }
 
-  /// Xử lý UX: Đưa app xuống nền nếu người dùng tắt báo thức lúc đang ở màn hình khóa
   static Future<void> handleAlarmDismiss() async {
     if (Platform.isAndroid) {
       try {
         await _fsiChannel.invokeMethod('handleAlarmDismiss');
       } catch (e) {
-        debugPrint('Lỗi handleAlarmDismiss: $e');
+        debugPrint(AppStrings.format(AppStrings.schedule.debugAlarmDismissError, {'e': e.toString()}));
       }
     }
   }
 
-  /// MỚI THÊM: Xóa cờ ép sáng màn hình, cho phép điện thoại tự tắt màn hình theo cài đặt gốc
   static Future<void> allowScreenTimeout() async {
     if (Platform.isAndroid) {
       try {
         await _fsiChannel.invokeMethod('allowScreenTimeout');
       } catch (e) {
-        debugPrint('Lỗi allowScreenTimeout: $e');
+        debugPrint(AppStrings.format(AppStrings.schedule.debugScreenTimeoutError, {'e': e.toString()}));
       }
     }
   }
@@ -223,7 +272,7 @@ class ScheduleService {
       try {
         await _fsiChannel.invokeMethod('enableAlarmMode');
       } catch (e) {
-        debugPrint('Lỗi enableAlarmMode: $e');
+        debugPrint(AppStrings.format(AppStrings.schedule.debugEnableAlarmModeError, {'e': e.toString()}));
       }
     }
   }
@@ -233,7 +282,7 @@ class ScheduleService {
       try {
         await _fsiChannel.invokeMethod('disableAlarmMode');
       } catch (e) {
-        debugPrint('Lỗi disableAlarmMode: $e');
+        debugPrint(AppStrings.format(AppStrings.schedule.debugDisableAlarmModeError, {'e': e.toString()}));
       }
     }
   }
