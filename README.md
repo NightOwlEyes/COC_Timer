@@ -52,7 +52,7 @@ The app has a toggle for how time is displayed:
   <img src="Screenshot/1en.png" width="250"/>
   <img src="Screenshot/2en.png" width="250"/>
   <img src="Screenshot/3en.png" width="250"/>
-  <img src="Screenshot/3en.png" width="250"/>
+  <img src="Screenshot/4en.png" width="250"/>
 </p>
 
 ---
