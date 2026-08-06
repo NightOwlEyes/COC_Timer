@@ -36,7 +36,7 @@ The app supports **3 reminder modes** for each item:
 4. Tap the **name of any item** to cycle through the 3 reminder modes
 5. Tap the **group title** (e.g. Builders, Pets, Laboratory) to change the mode for the **whole group** at once
 
-### Real time
+### Date of completion
 
 The app has a toggle for how time is displayed:
 - **Off**: shows a countdown (e.g. `2h 15m`)
@@ -49,8 +49,6 @@ The app has a toggle for how time is displayed:
 <p align="center">
   <img src="Screenshot/1en.png" width="250"/>
   <img src="Screenshot/2en.png" width="250"/>
-  <img src="Screenshot/3en.png" width="250"/>
-  <img src="Screenshot/4en.png" width="250"/>
 </p>
 
 ---
