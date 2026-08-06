@@ -10,7 +10,7 @@
 
 | ABI | Phù hợp với | Tải xuống |
 |------|-------------|-----------|
-| **arm64-v8a** | Đề xuất (phù hợp với hầu hết thiết bị Android từ khoảng 2018 đến nay). | [![Download](https://img.shields.io/badge/Download-APK-34A853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/NightOwlEyes/COC_Timer/releases/download/v1.0.0-beta.5/app-arm64-v8a-release.apk) |
+| **arm64-v8a** | ⭐ Đề xuất (phù hợp với hầu hết thiết bị Android từ khoảng 2018 đến nay). | [![Download](https://img.shields.io/badge/Download-APK-34A853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/NightOwlEyes/COC_Timer/releases/download/v1.0.0-beta.5/app-arm64-v8a-release.apk) |
 | **armeabi-v7a** | Thiết bị Android 32-bit dùng CPU ARM (khoảng trước 2017–2018). | [![Download](https://img.shields.io/badge/Download-APK-4285F4?style=for-the-badge&logo=android&logoColor=white)](https://github.com/NightOwlEyes/COC_Timer/releases/download/v1.0.0-beta.5/app-armeabi-v7a-release.apk) |
 | **x86_64** | Thiết bị, giả lập Android 64-bit dùng CPU Intel/AMD x86 | [![Download](https://img.shields.io/badge/Download-APK-FBBC05?style=for-the-badge&logo=android&logoColor=black)](https://github.com/NightOwlEyes/COC_Timer/releases/download/v1.0.0-beta.5/app-x86_64-release.apk) |
 
@@ -49,8 +49,6 @@
 <p align="center">
   <img src="Screenshot/1.png" width="250"/>
   <img src="Screenshot/2.png" width="250"/>
-  <img src="Screenshot/3.png" width="250"/>
-  <img src="Screenshot/4.png" width="250"/>
 </p>
 
 ---
