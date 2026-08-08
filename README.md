@@ -6,7 +6,7 @@
   <img src="Screenshot/logo.png" alt="COC Timer Logo" width="300"/>
 </p>
 
-## 📥 Tải xuống
+## 📥 Download
 
 | ABI | Compatible with | Download |
 |------|-------------|-----------|
