@@ -8,7 +8,7 @@
 
 ## 📥 Tải xuống
 
-| ABI | Phù hợp với | Tải xuống |
+| ABI | Compatible with | Download |
 |------|-------------|-----------|
 | **arm64-v8a** | ⭐ Recommended (compatible with most Android devices from around 2018 to present) | [![Download](https://img.shields.io/badge/Download-APK-34A853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/NightOwlEyes/COC_Timer/releases/download/v1.0.0-beta.5/app-arm64-v8a-release.apk) |
 | **armeabi-v7a** | 32-bit Android devices using ARM CPUs (approximately before 2017–2018) | [![Download](https://img.shields.io/badge/Download-APK-4285F4?style=for-the-badge&logo=android&logoColor=white)](https://github.com/NightOwlEyes/COC_Timer/releases/download/v1.0.0-beta.5/app-armeabi-v7a-release.apk) |
