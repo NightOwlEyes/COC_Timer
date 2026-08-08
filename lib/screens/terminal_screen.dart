@@ -244,9 +244,13 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         String uniqueKey = item.instanceId;
         String? stateStr = _savedAlarmStates[uniqueKey];
         if (stateStr != null) {
-          if (stateStr == "none") item.alarmType = AlarmType.none;
-          else if (stateStr == "system") item.alarmType = AlarmType.system;
-          else if (stateStr == "fullscreen") item.alarmType = AlarmType.fullscreen;
+          if (stateStr == "none") {
+            item.alarmType = AlarmType.none;
+          } else if (stateStr == "system") {
+            item.alarmType = AlarmType.system;
+          } else if (stateStr == "fullscreen") {
+            item.alarmType = AlarmType.fullscreen;
+          }
         }
         if (syncWithOS) {
           String vName = _villageNames[village.tag] ?? AppStrings.terminal.defaultVillageNameUnset;
@@ -365,8 +369,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       bool hasFullscreen = items.any((i) => i.alarmType == AlarmType.fullscreen);
 
       AlarmType targetType = AlarmType.system;
-      if (hasSystem) targetType = AlarmType.fullscreen;
-      else if (hasFullscreen) targetType = AlarmType.none;
+      if (hasSystem) {
+        targetType = AlarmType.fullscreen;
+      } else if (hasFullscreen) {
+        targetType = AlarmType.none;
+      }
 
       for (var item in items) {
         item.alarmType = targetType;
@@ -613,6 +620,14 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 FocusManager.instance.primaryFocus?.unfocus();
                 String newLang = AppStrings.languageCode == 'vi' ? 'en' : 'vi';
                 await AppStrings.changeLanguage(newLang);
+
+                // --- THÊM ĐOẠN NÀY ---
+                // Đồng bộ lại toàn bộ báo thức ngầm theo ngôn ngữ mới
+                for (var v in _villages.values) {
+                  _applySavedAlarmState(v, syncWithOS: true);
+                }
+                // ---------------------
+
                 setState(() {});
               },
               child: Row(
