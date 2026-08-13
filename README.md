@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="Screenshot/logo.png" alt="COC Timer Logo" width="300"/>
+  <img src="Screenshot/banner_en.png" alt="COC Timer Banner" width="300"/>
 </p>
 
 ## 📥 Download
