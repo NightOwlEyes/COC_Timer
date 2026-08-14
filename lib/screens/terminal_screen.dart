@@ -57,7 +57,14 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     if (_activePopups.isEmpty) {
       ScheduleService.disableAlarmMode();
     }
-    ScheduleService.checkAndRequestPermissions();
+
+    // FIX 1: Chốt an toàn cho lần mở app đầu tiên (đợi xin quyền xong thì giải phóng màn hình)
+    ScheduleService.checkAndRequestPermissions().then((_) {
+      if (mounted && _activePopups.isEmpty) {
+        ScheduleService.disableAlarmMode();
+      }
+    });
+
     _loadSavedData();
 
     _cursorTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
@@ -238,7 +245,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     }
   }
 
-  void _applySavedAlarmState(VillageData village, {bool syncWithOS = false}) {
+  Future<void> _applySavedAlarmState(VillageData village, {bool syncWithOS = false}) async {
+    List<Future> futures = [];
     void apply(List<UpgradeItem> items) {
       for (var item in items) {
         String uniqueKey = item.instanceId;
@@ -254,7 +262,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         }
         if (syncWithOS) {
           String vName = _villageNames[village.tag] ?? AppStrings.terminal.defaultVillageNameUnset;
-          ScheduleService.syncItemSchedule(village.tag, vName, item);
+          futures.add(ScheduleService.syncItemSchedule(village.tag, vName, item));
         }
       }
     }
@@ -263,6 +271,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     apply(village.labItems);
     apply(village.builders2Items);
     apply(village.lab2Items);
+
+    // Bắt buộc chờ (await) cho đến khi toàn bộ báo thức được cài đặt xong
+    if (syncWithOS) {
+      await Future.wait(futures);
+    }
   }
 
   Future<void> _saveAlarmStatesToPrefs() async {
@@ -359,7 +372,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
 
     String vName = _villageNames[villageTag] ?? AppStrings.terminal.defaultVillageNameUnset;
-    ScheduleService.syncItemSchedule(villageTag, vName, item);
+    ScheduleService.syncItemSchedule(villageTag, vName, item).then((_) {
+      if (mounted && _activePopups.isEmpty) {
+        ScheduleService.disableAlarmMode();
+      }
+    });
   }
 
   void _cycleAlarmForGroup(String villageTag, String groupName, List<UpgradeItem> items) {
@@ -381,7 +398,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         _savedAlarmStates[uniqueKey] = targetType.name;
 
         String vName = _villageNames[villageTag] ?? AppStrings.terminal.defaultVillageNameUnset;
-        ScheduleService.syncItemSchedule(villageTag, vName, item);
+        ScheduleService.syncItemSchedule(villageTag, vName, item).then((_) {
+          if (mounted && _activePopups.isEmpty) {
+            ScheduleService.disableAlarmMode();
+          }
+        });
       }
 
       _parseStatus = targetType == AlarmType.none
@@ -414,15 +435,24 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         _savedAlarmStates.removeWhere((key, value) => key.startsWith("${parsed.tag}_"));
       }
 
-      _applySavedAlarmState(parsed, syncWithOS: true);
+      await _applySavedAlarmState(parsed, syncWithOS: true);
 
-      setState(() {
-        _villages[parsed.tag] = parsed;
-        _savedRawJsons[parsed.tag] = inputData;
-        _parseStatus = AppStrings.format(AppStrings.terminal.statusUpdated, {'villageName': _villageNames[parsed.tag]!, 'tag': parsed.tag});
-        _jsonController.clear();
-      });
+      if (mounted) {
+        setState(() {
+          _villages[parsed.tag] = parsed;
+          _savedRawJsons[parsed.tag] = inputData;
+          _parseStatus = AppStrings.format(AppStrings.terminal.statusUpdated, {'villageName': _villageNames[parsed.tag]!, 'tag': parsed.tag});
+          _jsonController.clear();
+        });
+      }
       _saveDataToPrefs();
+
+      // FIX 2: Chờ thêm 500ms để Native Android dội cờ WakeLock lên, sau đó ta mới dập cờ
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted && _activePopups.isEmpty) {
+        ScheduleService.disableAlarmMode();
+      }
+
     } catch (e) {
       setState(() {
         _parseStatus = AppStrings.terminal.statusErrorInvalidJson;
@@ -624,7 +654,13 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 // --- THÊM ĐOẠN NÀY ---
                 // Đồng bộ lại toàn bộ báo thức ngầm theo ngôn ngữ mới
                 for (var v in _villages.values) {
-                  _applySavedAlarmState(v, syncWithOS: true);
+                  await _applySavedAlarmState(v, syncWithOS: true);
+                }
+
+                // Đợi thư viện báo thức set xong toàn bộ dưới Native rồi mới dập cờ
+                await Future.delayed(const Duration(milliseconds: 500));
+                if (mounted && _activePopups.isEmpty) {
+                  ScheduleService.disableAlarmMode();
                 }
                 // ---------------------
 

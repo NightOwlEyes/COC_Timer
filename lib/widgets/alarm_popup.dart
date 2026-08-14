@@ -32,6 +32,11 @@ class _AlarmPopupState extends State<AlarmPopup> {
       if (!stillActive && !_isClosing) {
         _isClosing = true; // Đóng chốt an toàn
         timer.cancel();    // Hủy vòng lặp ngay lập tức để không kích hoạt lần 2
+
+        // FIX: Gọi Alarm.stop để dọn dẹp triệt để trạng thái "đang kêu" trên Native và Flutter.
+        // Tránh lỗi popup nhá lên khi thao tác khác (do stream ringing bị kích hoạt lại).
+        Alarm.stop(widget.settings.id);
+
         if (mounted) {
           Navigator.pop(context);
           ScheduleService.handleAlarmDismiss();
