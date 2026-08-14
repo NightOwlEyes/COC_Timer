@@ -14,6 +14,7 @@
 | **armeabi-v7a** | Thiết bị Android 32-bit dùng CPU ARM (khoảng trước 2017–2018). | [![Download](https://img.shields.io/badge/Download-APK-4285F4?style=for-the-badge&logo=android&logoColor=white)](https://github.com/NightOwlEyes/COC_Timer/releases/download/Releases/app-armeabi-v7a-release.apk) |
 | **x86_64** | Thiết bị, giả lập Android 64-bit dùng CPU Intel/AMD x86 | [![Download](https://img.shields.io/badge/Download-APK-FBBC05?style=for-the-badge&logo=android&logoColor=black)](https://github.com/NightOwlEyes/COC_Timer/releases/download/Releases/app-x86_64-release.apk) |
 
+
 # COC Timer
 
 Ứng dụng theo dõi thời gian nâng cấp công trình, thần chú, lính, linh thú... trong Clash of Clans, kèm hệ thống nhắc nhở/báo thức khi hoàn thành.
@@ -43,6 +44,9 @@
 - **Bật**: hiển thị thời gian hoàn thành thực tế (VD: `14:30`)
 
 ## Ảnh chụp màn hình
+<p align="center">
+  <img src="Screenshot/icon.png" alt="COC Timer Icon" width="120"/>
+</p>
 <p align="center">
   <img src="Screenshot/1.png" width="250"/>
 </p>
