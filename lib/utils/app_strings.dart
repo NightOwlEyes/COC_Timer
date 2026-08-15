@@ -1,11 +1,28 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:ui' as ui;
 
 class AppStrings {
   static String languageCode = 'vi';
 
   static Future<void> initLanguage() async {
     final prefs = await SharedPreferences.getInstance();
-    languageCode = prefs.getString('app_language') ?? 'vi';
+
+    // KIỂM TRA XEM ĐÃ CÓ NGÔN NGỮ NÀO ĐƯỢC LƯU TRONG BỘ NHỚ CHƯA
+    if (prefs.containsKey('app_language')) {
+      languageCode = prefs.getString('app_language')!;
+    } else {
+      // NẾU CHƯA CÓ (ỨNG DỤNG MỚI CÀI ĐẶT): ĐỌC NGÔN NGỮ TỪ HỆ THỐNG
+      final String systemLangCode = ui.PlatformDispatcher.instance.locale.languageCode;
+
+      if (systemLangCode == 'vi') {
+        languageCode = 'vi';
+      } else {
+        languageCode = 'en'; // Mọi ngôn ngữ khác (Mỹ, Nhật, Pháp...) đều quy về Tiếng Anh
+      }
+
+      // Lưu lại luôn vào bộ nhớ để các lần mở app sau khởi động nhanh hơn
+      await prefs.setString('app_language', languageCode);
+    }
   }
 
   static Future<void> changeLanguage(String code) async {
@@ -31,6 +48,9 @@ class AppStrings {
   static MainStrings get mainApp => languageCode == 'vi' ? const MainStringsVi() : const MainStringsEn();
   static VillageDetailDialogStrings get dialog => languageCode == 'vi' ? const VillageDetailDialogStringsVi() : const VillageDetailDialogStringsEn();
   static GameData get gameData => languageCode == 'vi' ? const GameDataVi() : const GameDataEn();
+
+  // THÊM DÒNG NÀY
+  static SettingsStrings get settings => languageCode == 'vi' ? const SettingsStringsVi() : const SettingsStringsEn();
 }
 
 // ==========================================
@@ -52,6 +72,7 @@ abstract class TerminalScreenStrings {
   String get inputHint;
   String get btnPaste;
   String get btnSubmit;
+  String get btnSettings;
   String get btnXiaomiPermission;
   String get footerHowtoTitle;
   String get footerHowtoDesc;
@@ -152,6 +173,25 @@ abstract class GameData {
   String getName(int id);
 }
 
+// THÊM INTERFACE CHO CÀI ĐẶT
+abstract class SettingsStrings {
+  const SettingsStrings();
+  String get settingsTitle;
+  String get settingsGroupTitlePrefix;
+  String get settingsGroupTitleSuffix;
+  String get settingsTo;
+  String get settingsAnd;
+  String get settingsBtnAdd;
+  String get settingsGlobalDesc;
+  String get settingsActionNone;
+  String get settingsActionSystem;
+  String get settingsActionFullscreen;
+  String get labelPickStart;
+  String get labelPickEnd;
+  String get errorOverlap;
+  String get btnDeleteRule;
+}
+
 // ==========================================
 // BỘ TỪ ĐIỂN TIẾNG VIỆT
 // ==========================================
@@ -171,7 +211,8 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get inputHint => "DÁN JSON VÀO ĐÂY...";
   @override String get btnPaste => "DÁN";
   @override String get btnSubmit => "X Á C   N H Ậ N   ►";
-  @override String get btnXiaomiPermission => "[ CẤP QUYỀN TRÊN XIAOMI/POCO ]";
+  @override String get btnSettings => "[ CÀI ĐẶT ]";
+  @override String get btnXiaomiPermission => "CẤP QUYỀN TRÊN XIAOMI/POCO";
   @override String get footerHowtoTitle => "CHƯA BIẾT CÁCH XUẤT DỮ LIỆU LÀNG?";
   @override String get footerHowtoDesc => "CÀI ĐẶT GAME > THÊM CÀI ĐẶT > XUẤT DỮ LIỆU LÀNG THEO ĐỊNH DẠNG JSON";
   @override String get statusWaitingJson => "> CHỜ DỮ LIỆU JSON";
@@ -461,6 +502,24 @@ class GameDataVi extends GameData {
   String getName(int id) => names[id] ?? "t.me/nightowleyes ($id)";
 }
 
+class SettingsStringsVi extends SettingsStrings {
+  const SettingsStringsVi();
+  @override String get settingsTitle => "■ BỘ ĐIỀU KHIỂN THỜI GIAN";
+  @override String get settingsGroupTitlePrefix => "TỰ CHUYỂN THÀNH ";
+  @override String get settingsGroupTitleSuffix => " VÀO LÚC";
+  @override String get settingsTo => "đến";
+  @override String get settingsAnd => "và";
+  @override String get settingsBtnAdd => "[ THÊM ]";
+  @override String get settingsGlobalDesc => "> NGOÀI CÁC KHUNG GIỜ TRÊN, APP SẼ: ";
+  @override String get settingsActionNone => "IM LẶNG";
+  @override String get settingsActionSystem => "THÔNG BÁO";
+  @override String get settingsActionFullscreen => "BÁO THỨC";
+  @override String get labelPickStart => "Giờ Bắt Đầu";
+  @override String get labelPickEnd => "Giờ Kết Thúc";
+  @override String get errorOverlap => "LỖI: Khung giờ này bị trùng lặp với một quy tắc đã có!";
+  @override String get btnDeleteRule => "[ XOÁ ]";
+}
+
 // ==========================================
 // BỘ TỪ ĐIỂN TIẾNG ANH
 // ==========================================
@@ -480,7 +539,8 @@ class TerminalScreenStringsEn extends TerminalScreenStrings {
   @override String get inputHint => "PASTE JSON HERE...";
   @override String get btnPaste => "PASTE";
   @override String get btnSubmit => "C O N F I R M   ►";
-  @override String get btnXiaomiPermission => "[ GRANT PERMISSION ON XIAOMI/POCO ]";
+  @override String get btnSettings => "[ SETTINGS ]";
+  @override String get btnXiaomiPermission => "GRANT PERMISSION ON XIAOMI/POCO";
   @override String get footerHowtoTitle => "DON'T KNOW HOW TO EXPORT VILLAGE DATA YET?";
   @override String get footerHowtoDesc => "GAME SETTINGS > MORE SETTINGS > EXPORT VILLAGE DATA IN JSON FORMAT";
   @override String get statusWaitingJson => "> WAITING FOR JSON DATA";
@@ -768,4 +828,22 @@ class GameDataEn extends GameData {
 
   @override
   String getName(int id) => names[id] ?? "t.me/nightowleyes ($id)";
+}
+
+class SettingsStringsEn extends SettingsStrings {
+  const SettingsStringsEn();
+  @override String get settingsTitle => "■ TIME CONTROLLER";
+  @override String get settingsGroupTitlePrefix => "AUTO SWITCH TO ";
+  @override String get settingsGroupTitleSuffix => " AT";
+  @override String get settingsTo => "to";
+  @override String get settingsAnd => "and";
+  @override String get settingsBtnAdd => "[ ADD ]";
+  @override String get settingsGlobalDesc => "> OUTSIDE THESE HOURS, APP WILL: ";
+  @override String get settingsActionNone => "SILENT";
+  @override String get settingsActionSystem => "NOTIFY";
+  @override String get settingsActionFullscreen => "ALARM";
+  @override String get labelPickStart => "Start Time";
+  @override String get labelPickEnd => "End Time";
+  @override String get errorOverlap => "ERROR: This time range overlaps with an existing rule!";
+  @override String get btnDeleteRule => "[ DEL ]";
 }

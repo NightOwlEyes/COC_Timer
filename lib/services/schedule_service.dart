@@ -34,12 +34,14 @@ class ScheduleService {
       final androidImpl = _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
       // ÉP TẠO CHANNEL NGAY TỪ LÚC MỞ APP
+      // FIX: THÊM THUỘC TÍNH SOUND VÀ ĐỔI TÊN CHANNEL ID ĐỂ ANDROID TẠO KÊNH MỚI
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'coc_timer_system_final',
+        'coc_timer_system_final_v2', // Đổi ID để ép Android nhận nhạc chuông mới
         'Thông Báo Hệ Thống',
         description: 'Thông báo cơ bản khi hoàn thành nâng cấp',
         importance: Importance.max,
         playSound: true,
+        sound: RawResourceAndroidNotificationSound('ring1'), // BẮT BUỘC PHẢI CÓ Ở ĐÂY
       );
       await androidImpl?.createNotificationChannel(channel);
 
@@ -47,7 +49,8 @@ class ScheduleService {
         'coc_timer_channel_v5', 'coc_timer_channel_v6', 'coc_timer_channel_v7',
         'coc_timer_channel_v8', 'coc_timer_channel_v9', 'coc_timer_channel_v10',
         'coc_timer_channel_v11', 'coc_timer_channel_v15', 'coc_timer_channel_v16',
-        'coc_timer_channel_v20', 'coc_timer_channel_v21', 'coc_timer_system'
+        'coc_timer_channel_v20', 'coc_timer_channel_v21', 'coc_timer_system',
+        'coc_timer_system_final' // ĐƯA CHANNEL LỖI VÀO DANH SÁCH DỌN DẸP
       ];
 
       for (String channelId in oldChannels) {
@@ -157,7 +160,7 @@ class ScheduleService {
 
   static Future<void> _fireWelcomeNotification() async {
     final androidDetails = AndroidNotificationDetails(
-      'coc_timer_system_final',
+      'coc_timer_system_final_v2', // CẬP NHẬT ID MỚI
       'Thông Báo Hệ Thống',
       channelDescription: 'Thông báo cơ bản khi hoàn thành nâng cấp',
       importance: Importance.max,
@@ -182,7 +185,7 @@ class ScheduleService {
 
   static Future<void> _scheduleSystemNotification(int id, DateTime time, String itemName, String tag, String villageName) async {
     final androidDetails = AndroidNotificationDetails(
-      'coc_timer_system_final',
+      'coc_timer_system_final_v2',
       'Thông Báo Hệ Thống',
       channelDescription: 'Thông báo cơ bản khi hoàn thành nâng cấp',
       importance: Importance.max,

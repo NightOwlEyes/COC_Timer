@@ -10,12 +10,14 @@ import 'dart:io';
 import '../models/village_models.dart';
 import '../utils/village_parser.dart';
 import '../utils/app_strings.dart';
+import '../utils/rule_manager.dart';
 import '../widgets/terminal_frame_painter.dart';
 import '../services/schedule_service.dart';
 
 import '../widgets/alarm_popup.dart';
 import '../widgets/village_card.dart';
 import '../widgets/village_detail_dialog.dart';
+import '../widgets/settings_dialog.dart';
 
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({super.key});
@@ -54,15 +56,28 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    // Nạp quy tắc tự động khi mở app
+    RuleManager.init();
+
     if (_activePopups.isEmpty) {
       ScheduleService.disableAlarmMode();
     }
 
-    // FIX 1: Chốt an toàn cho lần mở app đầu tiên (đợi xin quyền xong thì giải phóng màn hình)
+    // FIX 1: Chốt an toàn cho lần mở app đầu tiên
     ScheduleService.checkAndRequestPermissions().then((_) {
       if (mounted && _activePopups.isEmpty) {
         ScheduleService.disableAlarmMode();
       }
+    });
+
+    // CHỐT BẢO VỆ ĐA TẦNG: Đợi Flutter vẽ xong, sau đó trễ thêm 1.5s
+    // để đảm bảo Activity của Native Android đã sẵn sàng nhận lệnh Window.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted && _activePopups.isEmpty) {
+          ScheduleService.disableAlarmMode();
+        }
+      });
     });
 
     _loadSavedData();
@@ -72,12 +87,21 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
     _startClockTimer();
 
-    _alarmSubscription = Alarm.ringing.listen((alarmSet) {
-      ScheduleService.enableAlarmMode();
-      if (mounted) {
-        for (final alarmSettings in alarmSet.alarms) {
-          _showFullscreenPopup(alarmSettings);
+    // FIX LỖI CRASH APP LÚC ĐẾM NGƯỢC XONG GÂY MẤT DỮ LIỆU
+    _alarmSubscription = Alarm.ringing.listen((dynamic event) {
+      try {
+        ScheduleService.enableAlarmMode();
+        if (mounted) {
+          if (event is AlarmSettings) {
+            _showFullscreenPopup(event);
+          } else {
+            for (final alarmSettings in event.alarms) {
+              _showFullscreenPopup(alarmSettings);
+            }
+          }
         }
+      } catch (e) {
+        debugPrint(AppStrings.format(AppStrings.terminal.debugLoadGeneralError, {'e': "Alarm Stream: $e"}));
       }
     });
   }
@@ -108,56 +132,61 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     _clockTimer?.cancel();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-      final now = DateTime.now();
-      bool needsUpdate = false;
 
-      for (var villageTag in _villages.keys.toList()) {
-        final village = _villages[villageTag]!;
+      try {
+        final now = DateTime.now();
+        bool needsUpdate = false;
 
-        void checkAlarm(List<UpgradeItem> items) {
-          for (var item in items) {
-            final diff = item.realEta.difference(now).inSeconds;
-            if (diff == 0 || diff == -1) {
-              needsUpdate = true;
-              if (item.alarmType != AlarmType.none && !item.isNotified) {
-                item.isNotified = true;
+        for (var villageTag in _villages.keys.toList()) {
+          final village = _villages[villageTag]!;
+
+          void checkAlarm(List<UpgradeItem> items) {
+            for (var item in items) {
+              final diff = item.realEta.difference(now).inSeconds;
+              if (diff == 0 || diff == -1) {
+                needsUpdate = true;
+                if (item.alarmType != AlarmType.none && !item.isNotified) {
+                  item.isNotified = true;
+                }
               }
             }
           }
+
+          checkAlarm(village.buildersItems);
+          checkAlarm(village.petItems);
+          checkAlarm(village.labItems);
+          checkAlarm(village.builders2Items);
+          checkAlarm(village.lab2Items);
+
+          int beforeBuilders = village.buildersItems.length;
+          int beforePets = village.petItems.length;
+          int beforeLab = village.labItems.length;
+          int beforeBuilders2 = village.builders2Items.length;
+          int beforeLab2 = village.lab2Items.length;
+
+          village.buildersItems.removeWhere((item) => item.realEta.difference(now).isNegative);
+          village.petItems.removeWhere((item) => item.realEta.difference(now).isNegative);
+          village.labItems.removeWhere((item) => item.realEta.difference(now).isNegative);
+          village.builders2Items.removeWhere((item) => item.realEta.difference(now).isNegative);
+          village.lab2Items.removeWhere((item) => item.realEta.difference(now).isNegative);
+
+          if (beforeBuilders != village.buildersItems.length ||
+              beforePets != village.petItems.length ||
+              beforeLab != village.labItems.length ||
+              beforeBuilders2 != village.builders2Items.length ||
+              beforeLab2 != village.lab2Items.length) {
+            needsUpdate = true;
+          }
         }
 
-        checkAlarm(village.buildersItems);
-        checkAlarm(village.petItems);
-        checkAlarm(village.labItems);
-        checkAlarm(village.builders2Items);
-        checkAlarm(village.lab2Items);
+        setState(() {
+          _currentTime = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+        });
 
-        int beforeBuilders = village.buildersItems.length;
-        int beforePets = village.petItems.length;
-        int beforeLab = village.labItems.length;
-        int beforeBuilders2 = village.builders2Items.length;
-        int beforeLab2 = village.lab2Items.length;
-
-        village.buildersItems.removeWhere((item) => item.realEta.difference(now).isNegative);
-        village.petItems.removeWhere((item) => item.realEta.difference(now).isNegative);
-        village.labItems.removeWhere((item) => item.realEta.difference(now).isNegative);
-        village.builders2Items.removeWhere((item) => item.realEta.difference(now).isNegative);
-        village.lab2Items.removeWhere((item) => item.realEta.difference(now).isNegative);
-
-        if (beforeBuilders != village.buildersItems.length ||
-            beforePets != village.petItems.length ||
-            beforeLab != village.labItems.length ||
-            beforeBuilders2 != village.builders2Items.length ||
-            beforeLab2 != village.lab2Items.length) {
-          needsUpdate = true;
-        }
+        if (needsUpdate) _saveDataToPrefs();
+      } catch (e) {
+        debugPrint("Lỗi đếm ngược thời gian: $e");
       }
-
-      setState(() {
-        _currentTime = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
-      });
-
-      if (needsUpdate) _saveDataToPrefs();
     });
   }
 
@@ -235,7 +264,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
               }
             }
             for (var v in _villages.values) {
-              _applySavedAlarmState(v, syncWithOS: false);
+              // Tải dữ liệu lúc khởi động thì KHÔNG chạy quy tắc ghi đè (giữ nguyên cấu hình cũ)
+              _applySavedAlarmState(v, syncWithOS: false, forceApplyRules: false);
             }
           });
         }
@@ -245,21 +275,34 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     }
   }
 
-  Future<void> _applySavedAlarmState(VillageData village, {bool syncWithOS = false}) async {
+  Future<void> _applySavedAlarmState(VillageData village, {bool syncWithOS = false, bool forceApplyRules = false}) async {
     List<Future> futures = [];
     void apply(List<UpgradeItem> items) {
       for (var item in items) {
         String uniqueKey = item.instanceId;
-        String? stateStr = _savedAlarmStates[uniqueKey];
-        if (stateStr != null) {
-          if (stateStr == "none") {
-            item.alarmType = AlarmType.none;
-          } else if (stateStr == "system") {
-            item.alarmType = AlarmType.system;
-          } else if (stateStr == "fullscreen") {
-            item.alarmType = AlarmType.fullscreen;
+
+        // HƯỚNG B: Nếu là dán JSON mới, Ép chạy Bộ quy tắc (Quét ETA và ghi đè)
+        if (forceApplyRules) {
+          item.alarmType = RuleManager.evaluateEta(item.realEta);
+          _savedAlarmStates[uniqueKey] = item.alarmType.name;
+        } else {
+          // Nếu khởi động lại app thông thường, ưu tiên đọc cấu hình cũ do người dùng tự lưu
+          String? stateStr = _savedAlarmStates[uniqueKey];
+          if (stateStr != null) {
+            if (stateStr == "none") {
+              item.alarmType = AlarmType.none;
+            } else if (stateStr == "system") {
+              item.alarmType = AlarmType.system;
+            } else if (stateStr == "fullscreen") {
+              item.alarmType = AlarmType.fullscreen;
+            }
+          } else {
+            // Mạng lưới an toàn: Có dữ liệu rác không có stateStr -> Cũng ép chạy quy tắc
+            item.alarmType = RuleManager.evaluateEta(item.realEta);
+            _savedAlarmStates[uniqueKey] = item.alarmType.name;
           }
         }
+
         if (syncWithOS) {
           String vName = _villageNames[village.tag] ?? AppStrings.terminal.defaultVillageNameUnset;
           futures.add(ScheduleService.syncItemSchedule(village.tag, vName, item));
@@ -272,7 +315,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     apply(village.builders2Items);
     apply(village.lab2Items);
 
-    // Bắt buộc chờ (await) cho đến khi toàn bộ báo thức được cài đặt xong
     if (syncWithOS) {
       await Future.wait(futures);
     }
@@ -435,7 +477,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         _savedAlarmStates.removeWhere((key, value) => key.startsWith("${parsed.tag}_"));
       }
 
-      await _applySavedAlarmState(parsed, syncWithOS: true);
+      // ÉP CHẠY BỘ QUY TẮC CÀN QUÉT VÌ ĐÂY LÀ DÁN JSON
+      await _applySavedAlarmState(parsed, syncWithOS: true, forceApplyRules: true);
 
       if (mounted) {
         setState(() {
@@ -447,7 +490,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       }
       _saveDataToPrefs();
 
-      // FIX 2: Chờ thêm 500ms để Native Android dội cờ WakeLock lên, sau đó ta mới dập cờ
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted && _activePopups.isEmpty) {
         ScheduleService.disableAlarmMode();
@@ -648,21 +690,17 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
             InkWell(
               onTap: () async {
                 FocusManager.instance.primaryFocus?.unfocus();
-                String newLang = AppStrings.languageCode == 'vi' ? 'en' : 'vi';
+                String newLang = AppStrings.languageCode == 'en' ? 'vi' : 'en';
                 await AppStrings.changeLanguage(newLang);
 
-                // --- THÊM ĐOẠN NÀY ---
-                // Đồng bộ lại toàn bộ báo thức ngầm theo ngôn ngữ mới
                 for (var v in _villages.values) {
                   await _applySavedAlarmState(v, syncWithOS: true);
                 }
 
-                // Đợi thư viện báo thức set xong toàn bộ dưới Native rồi mới dập cờ
                 await Future.delayed(const Duration(milliseconds: 500));
                 if (mounted && _activePopups.isEmpty) {
                   ScheduleService.disableAlarmMode();
                 }
-                // ---------------------
 
                 setState(() {});
               },
@@ -670,7 +708,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 children: [
                   Text(AppStrings.languageCode == 'vi' ? "NGÔN NGỮ: " : "LANGUAGE: ", style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
                   Text(
-                    AppStrings.languageCode == 'vi' ? "[ VN ]" : "[ EN ]",
+                    AppStrings.languageCode == 'en' ? "[ EN ]" : "[ VI ]",
                     style: const TextStyle(color: Color(0xFF888888), fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ],
@@ -683,7 +721,43 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           children: [
             Text(AppStrings.terminal.labelServer, style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
             const SizedBox(height: 4),
-            Text("$offsetString $_currentTime", style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text("$offsetString $_currentTime", style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
+            ),
+            const SizedBox(height: 8), // KHOẢNG CÁCH
+
+            // NÚT CÀI ĐẶT QUY TẮC
+            InkWell(
+              onTap: () {
+                FocusManager.instance.primaryFocus?.unfocus();
+                showDialog(
+                  context: context,
+                  builder: (ctx) => SettingsDialog(themeColor: _themeColor),
+                ).then((_) async {
+                  // Ép chạy lại toàn bộ quy tắc ngay lập tức trên các làng đang có
+                  if (_villages.isNotEmpty) {
+                    for (var v in _villages.values) {
+                      await _applySavedAlarmState(v, syncWithOS: true, forceApplyRules: true);
+                    }
+                    await _saveAlarmStatesToPrefs(); // Lưu cấu hình mới
+
+                    // Chốt an toàn cho Wakelock
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    if (mounted && _activePopups.isEmpty) {
+                      ScheduleService.disableAlarmMode();
+                    }
+
+                    if (mounted) setState(() {}); // Làm mới giao diện
+                  }
+                });
+              },
+              child: Text(
+                AppStrings.terminal.btnSettings,
+                style: const TextStyle(color: Color(0xFF888888), fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
       ],
