@@ -14,7 +14,7 @@ class SettingsDialog extends StatefulWidget {
 
 class _SettingsDialogState extends State<SettingsDialog> {
   // THÊM: Biến lưu trữ các dòng Rule đang bị lỗi
-  Set<TimeRule> _errorRules = {};
+  final Set<TimeRule> _errorRules = {};
 
   // THÊM: Hiệu ứng nháy đỏ 2 nhịp (Blink) chuẩn phong cách Terminal
   void _triggerErrorFlash(List<TimeRule> conflicts) {
@@ -34,16 +34,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
           setState(() => _errorRules.removeAll(conflicts));
         });
       });
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    RuleManager.init().then((_) {
-      if (mounted) {
-        setState(() {});
-      }
     });
   }
 
@@ -130,7 +120,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
     int pickedMins = picked.hour * 60 + picked.minute;
     int newStart = isStart ? pickedMins : rule.startMins;
-    int newEnd = isStart ? rule.startMins : pickedMins;
+    int newEnd = isStart ? rule.endMins : pickedMins; // SỬA LỖI: Đổi rule.startMins thành rule.endMins
 
     // THÊM: Tự động chuyển 00:00 - 00:00 thành trọn 24 tiếng (00:00 - 23:59)
     if (newStart == 0 && newEnd == 0) {
