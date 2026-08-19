@@ -29,10 +29,13 @@
 | 🔔 Nhắc nhở bằng thông báo | Gửi thông báo khi hoàn thành |
 | ⏰ Báo thức | Phát chuông báo khi hoàn thành |
 
+Ứng dụng cũng có mục **Cài đặt** để tự động chuyển chuyển đổi 3 chế độ tuỳ vào thời gian trong ngày.
+*Ví dụ bạn có thể đặt tự động chuyển thành thông báo từ 22 giờ đến 6 giờ sáng để bạn không cần phải đặt thủ công mỗi khi nhập json*
+
 ## Cách sử dụng
 
 1. Vào **Cài đặt game** > **Thêm cài đặt** > **Xuất dữ liệu làng theo định dạng JSON**
-2. Mở app COC Timer
+2. Mở app COC Timer và cấp quyền đầy đủ
 3. Cuộn xuống, bấm nút **Dán** để nhập dữ liệu JSON vừa xuất
 4. Nhấn vào **tên từng công trình** để chuyển đổi qua lại giữa 3 chế độ nhắc nhở
 5. Nhấn vào **tên tiêu đề nhóm** (VD: Thợ xây, Linh thú, Phòng thí nghiệm) để chuyển đổi chế độ **hàng loạt** cho cả nhóm
@@ -53,7 +56,9 @@
 <p align="center">
   <img src="Screenshot/2.png" width="250"/>
 </p>
-
+<p align="center">
+  <img src="Screenshot/3.png" width="250"/>
+</p>
 ---
 
 ## Getting Started

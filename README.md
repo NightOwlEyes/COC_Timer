@@ -28,6 +28,9 @@ The app supports **3 reminder modes** for each item:
 | 🔔 Notification reminder | Send a notification when completed |
 | ⏰ Alarm | Sound an alarm when finished |
 
+The app also includes a **Settings** section to automatically switch between three modes based on the time of day.
+*For example, you can configure it to automatically switch to notification mode between 10:00 PM and 6:00 AM, eliminating the need to make manual adjustments every time you input JSON.*
+
 ## How to use
 
 1. In the game, go to **Settings** > **More Settings** > **Export village data as JSON**
@@ -48,7 +51,12 @@ The app has a toggle for how time is displayed:
 </p>
 <p align="center">
   <img src="Screenshot/1en.png" width="250"/>
+</p>
+<p align="center">
   <img src="Screenshot/2en.png" width="250"/>
+</p>
+<p align="center">
+  <img src="Screenshot/3en.png" width="250"/>
 </p>
 
 ---
