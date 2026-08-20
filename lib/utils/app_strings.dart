@@ -307,6 +307,24 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
   @override String get separatorDots => " ......................................";
 }
 
+class SettingsStringsVi extends SettingsStrings {
+  const SettingsStringsVi();
+  @override String get settingsTitle => "■ BỘ ĐIỀU KHIỂN THỜI GIAN";
+  @override String get settingsGroupTitlePrefix => "TỰ CHUYỂN THÀNH ";
+  @override String get settingsGroupTitleSuffix => " VÀO LÚC";
+  @override String get settingsTo => "đến";
+  @override String get settingsAnd => "và";
+  @override String get settingsBtnAdd => "[ THÊM ]";
+  @override String get settingsGlobalDesc => "> NGOÀI CÁC KHUNG GIỜ TRÊN, APP SẼ: ";
+  @override String get settingsActionNone => "IM LẶNG";
+  @override String get settingsActionSystem => "THÔNG BÁO";
+  @override String get settingsActionFullscreen => "BÁO THỨC";
+  @override String get labelPickStart => "Giờ Bắt Đầu";
+  @override String get labelPickEnd => "Giờ Kết Thúc";
+  @override String get errorOverlap => "LỖI: Khung giờ này bị trùng lặp với một quy tắc đã có!";
+  @override String get btnDeleteRule => "[ XOÁ ]";
+}
+
 class GameDataVi extends GameData {
   const GameDataVi();
 
@@ -408,6 +426,7 @@ class GameDataVi extends GameData {
     102000037: "Tháp săn tướng - DPS",
     102000038: "Tháp săn tướng - PSL",
     1000019: "Tháp hồ quang điện ẩn",
+    1000043: "Tháp hồ quang điện ẩn",
     4000070: "Trư bay lượn",
     4000011: "Trư kỵ sĩ",
     103000011: "Cây nến rực lửa",
@@ -502,24 +521,6 @@ class GameDataVi extends GameData {
   String getName(int id) => names[id] ?? "t.me/nightowleyes ($id)";
 }
 
-class SettingsStringsVi extends SettingsStrings {
-  const SettingsStringsVi();
-  @override String get settingsTitle => "■ BỘ ĐIỀU KHIỂN THỜI GIAN";
-  @override String get settingsGroupTitlePrefix => "TỰ CHUYỂN THÀNH ";
-  @override String get settingsGroupTitleSuffix => " VÀO LÚC";
-  @override String get settingsTo => "đến";
-  @override String get settingsAnd => "và";
-  @override String get settingsBtnAdd => "[ THÊM ]";
-  @override String get settingsGlobalDesc => "> NGOÀI CÁC KHUNG GIỜ TRÊN, APP SẼ: ";
-  @override String get settingsActionNone => "IM LẶNG";
-  @override String get settingsActionSystem => "THÔNG BÁO";
-  @override String get settingsActionFullscreen => "BÁO THỨC";
-  @override String get labelPickStart => "Giờ Bắt Đầu";
-  @override String get labelPickEnd => "Giờ Kết Thúc";
-  @override String get errorOverlap => "LỖI: Khung giờ này bị trùng lặp với một quy tắc đã có!";
-  @override String get btnDeleteRule => "[ XOÁ ]";
-}
-
 // ==========================================
 // BỘ TỪ ĐIỂN TIẾNG ANH
 // ==========================================
@@ -605,8 +606,8 @@ class VillageCardStringsEn extends VillageCardStrings {
   const VillageCardStringsEn();
   @override String get unnamedVillage => "<UNNAMED>";
   @override String get btnDelete => "[ DEL ]";
-  @override String get labelVillageNamePrefix => "Village name: ";
-  @override String get labelTagPrefix => "Village tag: ";
+  @override String get labelVillageNamePrefix => "Village: ";
+  @override String get labelTagPrefix => "Tag: ";
   @override String get statMasterBuilder => "MASTER BUILDER";
   @override String get statStarLaboratory => "STAR LAB";
   @override String get statBuilder => "BUILDER";
@@ -633,6 +634,24 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
   @override String get groupLabNight => "> STAR LABORATORY";
   @override String get groupLabMain => "> LABORATORY";
   @override String get separatorDots => " ......................................";
+}
+
+class SettingsStringsEn extends SettingsStrings {
+  const SettingsStringsEn();
+  @override String get settingsTitle => "■ TIME CONTROLLER";
+  @override String get settingsGroupTitlePrefix => "AUTO SWITCH TO ";
+  @override String get settingsGroupTitleSuffix => " AT";
+  @override String get settingsTo => "to";
+  @override String get settingsAnd => "and";
+  @override String get settingsBtnAdd => "[ ADD ]";
+  @override String get settingsGlobalDesc => "> OUTSIDE THESE HOURS, APP WILL: ";
+  @override String get settingsActionNone => "SILENT";
+  @override String get settingsActionSystem => "NOTIFY";
+  @override String get settingsActionFullscreen => "ALARM";
+  @override String get labelPickStart => "Start Time";
+  @override String get labelPickEnd => "End Time";
+  @override String get errorOverlap => "ERROR: This time range overlaps with an existing rule!";
+  @override String get btnDeleteRule => "[ DEL ]";
 }
 
 class GameDataEn extends GameData {
@@ -677,7 +696,7 @@ class GameDataEn extends GameData {
     93000000: "Builder's Apprentice",
     1000015: "Builder's Hut",
     103000013: "Cake-A-Pult",
-    102000039: "Cake-A-Pult Hitpoints",
+    102000039: "Cake-A-Pult HP",
     102000040: "Cake-A-Pult DPH",
     102000041: "Cake-A-Pult ED",
     4000037: "Cannon Cart",
@@ -732,10 +751,11 @@ class GameDataEn extends GameData {
     1000093: "Helper Hut",
     1000071: "Hero Hall",
     103000012: "Hero Hunter",
-    102000036: "Hero Hunter Hitpoints",
+    102000036: "Hero Hunter HP",
     102000037: "Hero Hunter DPS",
     102000038: "Hero Hunter PSL",
     1000019: "Hidden Tesla",
+    1000043: "Hidden Tesla",
     4000070: "Hog Glider",
     4000011: "Hog Rider",
     103000011: "Hot Candle",
@@ -828,22 +848,4 @@ class GameDataEn extends GameData {
 
   @override
   String getName(int id) => names[id] ?? "t.me/nightowleyes ($id)";
-}
-
-class SettingsStringsEn extends SettingsStrings {
-  const SettingsStringsEn();
-  @override String get settingsTitle => "■ TIME CONTROLLER";
-  @override String get settingsGroupTitlePrefix => "AUTO SWITCH TO ";
-  @override String get settingsGroupTitleSuffix => " AT";
-  @override String get settingsTo => "to";
-  @override String get settingsAnd => "and";
-  @override String get settingsBtnAdd => "[ ADD ]";
-  @override String get settingsGlobalDesc => "> OUTSIDE THESE HOURS, APP WILL: ";
-  @override String get settingsActionNone => "SILENT";
-  @override String get settingsActionSystem => "NOTIFY";
-  @override String get settingsActionFullscreen => "ALARM";
-  @override String get labelPickStart => "Start Time";
-  @override String get labelPickEnd => "End Time";
-  @override String get errorOverlap => "ERROR: This time range overlaps with an existing rule!";
-  @override String get btnDeleteRule => "[ DEL ]";
 }
