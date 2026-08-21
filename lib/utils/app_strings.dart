@@ -102,6 +102,7 @@ abstract class TerminalScreenStrings {
   String get debugParseVillageError;
   String get debugLoadNameError;
   String get debugLoadGeneralError;
+  String get btnUpdateAvailable;
 }
 
 abstract class ScheduleServiceStrings {
@@ -177,12 +178,12 @@ abstract class GameData {
 abstract class SettingsStrings {
   const SettingsStrings();
   String get settingsTitle;
-  String get settingsGroupTitlePrefix;
-  String get settingsGroupTitleSuffix;
+  String get settingsSchedulePrefix;
+  String get settingsAutoSwitchPrefix;
+  String get settingsFrom;
   String get settingsTo;
   String get settingsAnd;
   String get settingsBtnAdd;
-  String get settingsGlobalDesc;
   String get settingsActionNone;
   String get settingsActionSystem;
   String get settingsActionFullscreen;
@@ -190,6 +191,19 @@ abstract class SettingsStrings {
   String get labelPickEnd;
   String get errorOverlap;
   String get btnDeleteRule;
+  String get settingsPreAlarmTitle;
+  String get labelPreAlarm;
+  String get labelAppInfo;
+  String get settingsAutoCheckUpdate;
+  String get btnCheckUpdateNow;
+  String get statusUpToDate;
+  String get statusUpdateAvailable;
+  String get statusUpdateError;
+  String get labelVersion;
+  String get btnPrivacyPolicy;
+  String get btnLicenses;
+  String get privacyDialogTitle;
+  String get privacyDialogContent;
 }
 
 // ==========================================
@@ -197,7 +211,7 @@ abstract class SettingsStrings {
 // ==========================================
 class TerminalScreenStringsVi extends TerminalScreenStrings {
   const TerminalScreenStringsVi();
-  @override String get headerSmallTitle => "COC.TIMER";
+  @override String get headerSmallTitle => "Giấy phép: GNU GPL v3.0";
   @override String get labelRealTime => "NGÀY HOÀN TẤT";
   @override String get toggleOn => "[ BẬT ]";
   @override String get toggleOff => "[ TẮT ]";
@@ -241,6 +255,7 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get debugParseVillageError => "Lỗi parse {key}: {e}";
   @override String get debugLoadNameError => "Lỗi load tên làng: {e}";
   @override String get debugLoadGeneralError => "Lỗi load: {e}";
+  @override String get btnUpdateAvailable => "[ TẢI BẢN {version} ]";
 }
 
 class ScheduleServiceStringsVi extends ScheduleServiceStrings {
@@ -309,20 +324,33 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
 
 class SettingsStringsVi extends SettingsStrings {
   const SettingsStringsVi();
-  @override String get settingsTitle => "■ BỘ ĐIỀU KHIỂN THỜI GIAN";
-  @override String get settingsGroupTitlePrefix => "TỰ CHUYỂN THÀNH ";
-  @override String get settingsGroupTitleSuffix => " VÀO LÚC";
+  @override String get settingsTitle => "■ CÀI ĐẶT";
+  @override String get settingsSchedulePrefix => "LỊCH ";
+  @override String get settingsAutoSwitchPrefix => "Tự động chuyển thành ";
+  @override String get settingsFrom => "từ";
   @override String get settingsTo => "đến";
   @override String get settingsAnd => "và";
   @override String get settingsBtnAdd => "[ THÊM ]";
-  @override String get settingsGlobalDesc => "> NGOÀI CÁC KHUNG GIỜ TRÊN, APP SẼ: ";
-  @override String get settingsActionNone => "IM LẶNG";
-  @override String get settingsActionSystem => "THÔNG BÁO";
-  @override String get settingsActionFullscreen => "BÁO THỨC";
+  @override String get settingsActionNone => "im lặng";
+  @override String get settingsActionSystem => "thông báo";
+  @override String get settingsActionFullscreen => "báo thức";
   @override String get labelPickStart => "Giờ Bắt Đầu";
   @override String get labelPickEnd => "Giờ Kết Thúc";
-  @override String get errorOverlap => "LỖI: Khung giờ này bị trùng lặp với một quy tắc đã có!";
+  @override String get errorOverlap => "LỖI: Khung giờ trùng lặp!";
   @override String get btnDeleteRule => "[ XOÁ ]";
+  @override String get settingsPreAlarmTitle => "TÙY CHỌN NHẮC";
+  @override String get labelPreAlarm => "Báo trước (phút):";
+  @override String get labelAppInfo => "THÔNG TIN ỨNG DỤNG";
+  @override String get settingsAutoCheckUpdate => "TỰ ĐỘNG KIỂM TRA CẬP NHẬT";
+  @override String get btnCheckUpdateNow => "[ KIỂM TRA NGAY ]";
+  @override String get statusUpToDate => "> Đang ở bản mới nhất";
+  @override String get statusUpdateAvailable => "> CÓ BẢN MỚI: {newVersion}";
+  @override String get statusUpdateError => "> Lỗi mạng!";
+  @override String get labelVersion => "Phiên bản: {version}";
+  @override String get btnPrivacyPolicy => "[ BẢO MẬT ]";
+  @override String get btnLicenses => "[GIẤY PHÉP]";
+  @override String get privacyDialogTitle => "■ BẢO MẬT DỮ LIỆU";
+  @override String get privacyDialogContent => "- Ứng dụng hoạt động 100% Offline (Không cần mạng).\n\n- Dữ liệu JSON bạn dán vào chỉ được lưu trữ cục bộ trên điện thoại của bạn.\n\n- Chúng tôi KHÔNG thu thập, KHÔNG gửi bất kỳ thông tin nào về làng của bạn lên Server.";
 }
 
 class GameDataVi extends GameData {
@@ -336,10 +364,12 @@ class GameDataVi extends GameData {
     26000123: "Thần chú giận dữ",
     4000097: "Quản giáo tập sự",
     28000001: "Nữ hoảng cung thủ",
+    1000009: "Tháp cung thủ",
     1000048: "Tháp cung thủ",
     4000001: "Cung thủ",
     1000000: "Doanh trại quân đội",
     1000042: "Doanh trại quân đội",
+    4000023: "Tiểu long",
     4000041: "Tiểu long",
     4000005: "Khinh khí cầu",
     28000000: "Man di vương",
@@ -371,6 +401,7 @@ class GameDataVi extends GameData {
     102000040: "Máy ném bánh - DPH",
     102000041: "Máy ném bánh - ED",
     4000037: "Xe đại bác",
+    1000008: "Đại bác",
     1000044: "Đại bác",
     1000014: "Hội thành",
     1000039: "Tháp đồng hồ",
@@ -379,7 +410,9 @@ class GameDataVi extends GameData {
     1000055: "Máy đập",
     1000026: "Trại lính hắc ám",
     1000023: "Dàn khoan hắc tiên dược",
+
     1000024: "Kho chứa hắc tiên dược",
+
     1000029: "Nhà máy hắc thần chú",
     73000008: "Tê tê độn thổ",
     1000041: "Đại bác nòng kép",
@@ -394,7 +427,9 @@ class GameDataVi extends GameData {
     73000002: "Cú điện",
     4000095: "Chiến binh phóng điện",
     4000106: "Pháp sư lửa điện",
+    1000002: "Máy hút tiên dược",
     1000035: "Máy hút tiên dược",
+    1000003: "Kho chứa tiên dược",
     1000036: "Kho chứa tiên dược",
     1000050: "Pháo hoa",
     1000089: "Súng phun lửa",
@@ -408,7 +443,9 @@ class GameDataVi extends GameData {
     4000003: "Khổng nhân",
     12000020: "Bom siêu khủng",
     4000002: "Yêu tinh",
+    1000004: "Mỏ vàng",
     1000037: "Mỏ vàng",
+    1000005: "Kho chứa vàng",
     1000038: "Kho chứa vàng",
     4000013: "Thạch nhân",
     28000002: "Đại quản giáo",
@@ -494,6 +531,7 @@ class GameDataVi extends GameData {
     1000020: "Nh máy thần chú",
     1000072: "Tháp thần chú",
     73000010: "Cáo linh hồn",
+    12000001: "Bẫy bật",
     12000010: "Bẫy bật",
     1000046: "Phòng thí nghiệm sao",
     4000062: "Máy bay thả đá",
@@ -526,7 +564,7 @@ class GameDataVi extends GameData {
 // ==========================================
 class TerminalScreenStringsEn extends TerminalScreenStrings {
   const TerminalScreenStringsEn();
-  @override String get headerSmallTitle => "COC.TIMER";
+  @override String get headerSmallTitle => "License: GNU GPL v3.0";
   @override String get labelRealTime => "DATE OF COMPLETION";
   @override String get toggleOn => "[ ON ]";
   @override String get toggleOff => "[ OFF ]";
@@ -570,6 +608,7 @@ class TerminalScreenStringsEn extends TerminalScreenStrings {
   @override String get debugParseVillageError => "Parse error {key}: {e}";
   @override String get debugLoadNameError => "Error loading village name: {e}";
   @override String get debugLoadGeneralError => "Load error: {e}";
+  @override String get btnUpdateAvailable => "[ GET {version} ]";
 }
 
 class ScheduleServiceStringsEn extends ScheduleServiceStrings {
@@ -638,20 +677,33 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
 
 class SettingsStringsEn extends SettingsStrings {
   const SettingsStringsEn();
-  @override String get settingsTitle => "■ TIME CONTROLLER";
-  @override String get settingsGroupTitlePrefix => "AUTO SWITCH TO ";
-  @override String get settingsGroupTitleSuffix => " AT";
+  @override String get settingsTitle => "■ SETTINGS";
+  @override String get settingsSchedulePrefix => "SCHEDULE: ";
+  @override String get settingsAutoSwitchPrefix => "Auto switch to ";
+  @override String get settingsFrom => "from";
   @override String get settingsTo => "to";
   @override String get settingsAnd => "and";
   @override String get settingsBtnAdd => "[ ADD ]";
-  @override String get settingsGlobalDesc => "> OUTSIDE THESE HOURS, APP WILL: ";
-  @override String get settingsActionNone => "SILENT";
-  @override String get settingsActionSystem => "NOTIFY";
-  @override String get settingsActionFullscreen => "ALARM";
+  @override String get settingsActionNone => "silent";
+  @override String get settingsActionSystem => "notify";
+  @override String get settingsActionFullscreen => "alarm";
   @override String get labelPickStart => "Start Time";
   @override String get labelPickEnd => "End Time";
-  @override String get errorOverlap => "ERROR: This time range overlaps with an existing rule!";
+  @override String get errorOverlap => "ERROR: Time overlaps!";
   @override String get btnDeleteRule => "[ DEL ]";
+  @override String get settingsPreAlarmTitle => "REMINDER OPTIONS";
+  @override String get labelPreAlarm => "Pre-alarm (min):";
+  @override String get labelAppInfo => "APP INFO";
+  @override String get settingsAutoCheckUpdate => "AUTO CHECK UPDATE";
+  @override String get btnCheckUpdateNow => "[ CHECK NOW ]";
+  @override String get statusUpToDate => "> Up to date";
+  @override String get statusUpdateAvailable => "> UPDATE: {newVersion}";
+  @override String get statusUpdateError => "> Network Error!";
+  @override String get labelVersion => "Version: {version}";
+  @override String get btnPrivacyPolicy => "[ PRIVACY ]";
+  @override String get btnLicenses => "[LICENSES]";
+  @override String get privacyDialogTitle => "■ DATA PRIVACY";
+  @override String get privacyDialogContent => "- The app works 100% Offline.\n\n- Your JSON data is stored locally on your device.\n\n- We DO NOT collect or send any information about your village to any server.";
 }
 
 class GameDataEn extends GameData {
@@ -665,10 +717,12 @@ class GameDataEn extends GameData {
     26000123: "Angry Spell",
     4000097: "Apprentice Warden",
     28000001: "Archer Queen",
+    1000009: "Archer Tower",
     1000048: "Archer Tower",
     4000001: "Archer",
     1000000: "Army Camp",
     1000042: "Army Camp",
+    4000023: "Baby Dragon",
     4000041: "Baby Dragon",
     4000005: "Balloon",
     28000000: "Barbarian King",
@@ -700,6 +754,7 @@ class GameDataEn extends GameData {
     102000040: "Cake-A-Pult DPH",
     102000041: "Cake-A-Pult ED",
     4000037: "Cannon Cart",
+    1000008: "Cannon",
     1000044: "Cannon",
     1000014: "Clan Castle",
     1000039: "Clock Tower",
@@ -723,7 +778,9 @@ class GameDataEn extends GameData {
     73000002: "Electro Owl",
     4000095: "Electro Titan",
     4000106: "Electrofire Wizard",
+    1000002: "Elixir Collector",
     1000035: "Elixir Collector",
+    1000003: "Elixir Storage",
     1000036: "Elixir Storage",
     1000050: "Firecrackers",
     1000089: "Firespitter",
@@ -737,7 +794,9 @@ class GameDataEn extends GameData {
     4000003: "Giant",
     12000020: "Giga Bomb",
     4000002: "Goblin",
+    1000004: "Gold Mine",
     1000037: "Gold Mine",
+    1000005: "Gold Storage",
     1000038: "Gold Storage",
     4000013: "Golem",
     28000002: "Grand Warden",
@@ -823,6 +882,7 @@ class GameDataEn extends GameData {
     1000020: "Spell Factory",
     1000072: "Spell Tower",
     73000010: "Spirit Fox",
+    12000001: "Spring Trap",
     12000010: "Spring Trap",
     1000046: "Star Laboratory",
     4000062: "Stone Slammer",

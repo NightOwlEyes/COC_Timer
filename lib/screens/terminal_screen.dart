@@ -6,6 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alarm/alarm.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/village_models.dart';
 import '../utils/village_parser.dart';
@@ -46,6 +49,10 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   bool _isBuilderBase = false;
   bool _xiaomiAcknowledged = false;
 
+  // BIẾN LƯU THÔNG TIN CẬP NHẬT KHI PHÁT HIỆN BẢN MỚI
+  String? _updateVersion;
+  String? _updateUrl;
+
   Color get _themeColor => _isBuilderBase ? const Color(0xFFf8a4bd) : const Color(0xFFB54545);
   Color get _bgTagColor => _isBuilderBase ? const Color(0x22f8a4bd) : const Color(0x228B2B2B);
 
@@ -56,8 +63,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Nạp quy tắc tự động khi mở app
-    RuleManager.init();
+    // Nạp quy tắc tự động khi mở app VÀ kiểm tra bản mới nếu có Bật Auto
+    RuleManager.init().then((_) {
+      if (RuleManager.autoCheckUpdate) {
+        _checkGithubUpdate();
+      }
+    });
 
     if (_activePopups.isEmpty) {
       ScheduleService.disableAlarmMode();
@@ -104,6 +115,50 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         debugPrint(AppStrings.format(AppStrings.terminal.debugLoadGeneralError, {'e': "Alarm Stream: $e"}));
       }
     });
+  }
+
+  // THÊM: HÀM QUÉT GITHUB NGẦM TRONG BACKGROUND (Không làm kẹt UI)
+  Future<void> _checkGithubUpdate() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
+      final response = await http.get(
+        Uri.parse('https://api.github.com/repos/NightOwlEyes/COC_Timer/releases/latest'),
+        headers: {'Accept': 'application/vnd.github.v3+json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String tagName = data['tag_name'] as String;
+        String htmlUrl = data['html_url'] as String;
+        String latestVersion = tagName.split('-').first.replaceAll('v', '');
+
+        if (_isVersionGreater(latestVersion, currentVersion)) {
+          if (mounted) {
+            setState(() {
+              _updateVersion = latestVersion;
+              _updateUrl = htmlUrl;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Bỏ qua lỗi ngầm, không hiện thông báo rác khi mất mạng
+    }
+  }
+
+  // THÊM: HÀM SO SÁNH VERSION Tương tự như trong Dialog
+  bool _isVersionGreater(String newVersion, String currentVersion) {
+    List<String> v1 = newVersion.split('.');
+    List<String> v2 = currentVersion.split('.');
+    for (int i = 0; i < 3; i++) {
+      int num1 = i < v1.length ? int.tryParse(v1[i]) ?? 0 : 0;
+      int num2 = i < v2.length ? int.tryParse(v2[i]) ?? 0 : 0;
+      if (num1 > num2) return true;
+      if (num1 < num2) return false;
+    }
+    return false;
   }
 
   @override
@@ -595,11 +650,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
             child: CustomPaint(
               painter: TerminalFramePainter(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                // SỬA: Chỉnh padding dọc xuống 10.0 để Header và Log ôm sát góc viền
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
                 child: Column(
                   children: [
                     _buildHeader(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 9.5), // SỬA: Thu hẹp chân header xuống 10px
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
@@ -620,7 +676,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12), // SỬA: Khoảng cách giữa khối cuộn và thanh Log 12px
                     Row(
                       children: [
                         Expanded(
@@ -664,7 +720,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(AppStrings.terminal.headerSmallTitle, style: const TextStyle(color: Color(0xFF666666), fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
             InkWell(
               onTap: () {
                 FocusManager.instance.primaryFocus?.unfocus();
@@ -685,7 +741,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 ],
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
             // CỤM NÚT NGÔN NGỮ THÔ VÀ TỐI GIẢN
             InkWell(
               onTap: () async {
@@ -716,42 +772,75 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
             ),
           ],
         ),
+
+        // CỘT BÊN PHẢI ĐÃ BỎ BỚT WRAPPER THỪA
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(AppStrings.terminal.labelServer, style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,
               child: Text("$offsetString $_currentTime", style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
             ),
-            const SizedBox(height: 8), // KHOẢNG CÁCH
+            const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
+
+            // NÚT CẬP NHẬT (CHỈ HIỆN KHI CÓ BẢN MỚI)
+            if (_updateUrl != null) ...[
+              InkWell(
+                onTap: () async {
+                  final Uri url = Uri.parse('https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md');
+                  try {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    debugPrint("Không thể mở link: $e");
+                  }
+                },
+                child: Text(
+                  AppStrings.format(AppStrings.terminal.btnUpdateAvailable, {'version': "v$_updateVersion"}),
+                  style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
+            ],
 
             // NÚT CÀI ĐẶT QUY TẮC
             InkWell(
-              onTap: () {
+              onTap: () async {
                 FocusManager.instance.primaryFocus?.unfocus();
-                showDialog(
+
+                // 1. CHỤP LẠI TRẠNG THÁI CÀI ĐẶT TRƯỚC KHI MỞ
+                final oldRules = jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList());
+                final oldEnabled = jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v)));
+                final oldPreAlarm = RuleManager.preAlarmMinutes;
+
+                await showDialog(
                   context: context,
                   builder: (ctx) => SettingsDialog(themeColor: _themeColor),
-                ).then((_) async {
-                  // Ép chạy lại toàn bộ quy tắc ngay lập tức trên các làng đang có
+                );
+
+                // 2. SO SÁNH TRẠNG THÁI SAU KHI ĐÓNG HỘP THOẠI
+                final newRules = jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList());
+                final newEnabled = jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v)));
+                final newPreAlarm = RuleManager.preAlarmMinutes;
+
+                // 3. CHỈ ĐỒNG BỘ NẾU NGƯỜI DÙNG THỰC SỰ THAY ĐỔI DỮ LIỆU
+                if (oldRules != newRules || oldEnabled != newEnabled || oldPreAlarm != newPreAlarm) {
                   if (_villages.isNotEmpty) {
                     for (var v in _villages.values) {
                       await _applySavedAlarmState(v, syncWithOS: true, forceApplyRules: true);
                     }
-                    await _saveAlarmStatesToPrefs(); // Lưu cấu hình mới
+                    await _saveAlarmStatesToPrefs();
 
-                    // Chốt an toàn cho Wakelock
                     await Future.delayed(const Duration(milliseconds: 500));
                     if (mounted && _activePopups.isEmpty) {
                       ScheduleService.disableAlarmMode();
                     }
 
-                    if (mounted) setState(() {}); // Làm mới giao diện
+                    if (mounted) setState(() {});
                   }
-                });
+                }
               },
               child: Text(
                 AppStrings.terminal.btnSettings,

@@ -85,7 +85,7 @@ class CocTimerApp extends StatelessWidget {
 
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0A0C0B),
+        scaffoldBackgroundColor: const Color(0xFF121212),
         primaryColor: const Color(0xFFE0E0E0),
         fontFamily: 'monospace',
       ),

@@ -10,6 +10,7 @@ import 'dart:io';
 
 import '../models/village_models.dart';
 import '../utils/app_strings.dart';
+import '../utils/rule_manager.dart';
 
 class ScheduleService {
   static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -128,17 +129,24 @@ class ScheduleService {
 
     if (item.realEta.isBefore(DateTime.now())) return;
 
+    // TÍNH TOÁN THỜI GIAN BÁO TRƯỚC
+    DateTime triggerTime = item.realEta.subtract(Duration(minutes: RuleManager.preAlarmMinutes));
+    if (triggerTime.isBefore(DateTime.now())) {
+      // Nếu thời gian báo trước đã qua, nhưng công trình chưa xong -> Cho báo ngay lập tức sau 2s
+      triggerTime = DateTime.now().add(const Duration(seconds: 2));
+    }
+
     switch (item.alarmType) {
       case AlarmType.none:
         debugPrint(AppStrings.format(AppStrings.schedule.debugAlarmDisabledLog, {'id': id.toString(), 'instanceId': item.instanceId}));
         break;
       case AlarmType.system:
-        await _scheduleSystemNotification(id, item.realEta, "${item.typeString} (Lv.${item.level})", villageTag, villageName);
-        debugPrint(AppStrings.format(AppStrings.schedule.debugSystemNotificationScheduledLog, {'id': id.toString(), 'realEta': item.realEta.toString()}));
+        await _scheduleSystemNotification(id, triggerTime, "${item.typeString} (Lv.${item.level})", villageTag, villageName);
+        debugPrint(AppStrings.format(AppStrings.schedule.debugSystemNotificationScheduledLog, {'id': id.toString(), 'realEta': triggerTime.toString()}));
         break;
       case AlarmType.fullscreen:
-        await _scheduleFullScreenAlarm(id, item.realEta, "${item.typeString} (Lv.${item.level})", villageTag, villageName);
-        debugPrint(AppStrings.format(AppStrings.schedule.debugFullscreenAlarmScheduledLog, {'id': id.toString(), 'realEta': item.realEta.toString()}));
+        await _scheduleFullScreenAlarm(id, triggerTime, "${item.typeString} (Lv.${item.level})", villageTag, villageName);
+        debugPrint(AppStrings.format(AppStrings.schedule.debugFullscreenAlarmScheduledLog, {'id': id.toString(), 'realEta': triggerTime.toString()}));
         break;
     }
   }

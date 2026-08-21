@@ -33,6 +33,8 @@ class TimeRule {
 
 class RuleManager {
   static List<TimeRule> activeRules = [];
+  static int preAlarmMinutes = 0;
+  static bool autoCheckUpdate = true;
 
   // LƯU TRẠNG THÁI BẬT/TẮT [X] CỦA TỪNG KHỐI
   static Map<AlarmType, bool> groupEnabled = {
@@ -55,6 +57,8 @@ class RuleManager {
         AlarmType.system: true,
         AlarmType.none: false, // Tắt mặc định
       };
+      preAlarmMinutes = 0;
+      autoCheckUpdate = true;
       await save();
     } else {
       String? rulesJson = prefs.getString('rule_time_ranges');
@@ -79,6 +83,9 @@ class RuleManager {
           // Bỏ qua lỗi parse Json nếu dữ liệu bị hỏng
         }
       }
+
+      preAlarmMinutes = prefs.getInt('pre_alarm_minutes') ?? 0;
+      autoCheckUpdate = prefs.getBool('auto_check_update') ?? true; // ĐỌC TỪ BỘ NHỚ
     }
   }
 
@@ -93,6 +100,8 @@ class RuleManager {
       enabledJson[key.name] = value;
     });
     await prefs.setString('rule_group_enabled', jsonEncode(enabledJson));
+    await prefs.setInt('pre_alarm_minutes', preAlarmMinutes);
+    await prefs.setBool('auto_check_update', autoCheckUpdate);
   }
 
   // THÊM MỚI: Hàm trả về danh sách ĐÍCH DANH các quy tắc gây ra lỗi đụng độ

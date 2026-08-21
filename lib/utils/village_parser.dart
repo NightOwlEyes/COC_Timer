@@ -19,7 +19,7 @@ class VillageParser {
     int baseBuilders = 0;
     if (data.containsKey('buildings')) {
       for (var item in data['buildings']) {
-        if (item['data'] == 1000015 || item['data'] == 1000077) {
+        if (item['data'] == 1000015 || item['data'] == 1000064) {
           baseBuilders += (item['cnt'] as int? ?? 1);
         }
       }

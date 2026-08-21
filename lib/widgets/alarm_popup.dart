@@ -58,7 +58,7 @@ class _AlarmPopupState extends State<AlarmPopup> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFF0A0C0B),
+          color: const Color(0xFF0D0F0E),
           border: Border.all(color: const Color(0xFFB54545), width: 2),
         ),
         child: Column(

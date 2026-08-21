@@ -31,6 +31,12 @@ The app supports **3 reminder modes** for each item:
 The app also includes a **Settings** section to automatically switch between three modes based on the time of day.
 *For example, you can configure it to automatically switch to notification mode between 10:00 PM and 6:00 AM, eliminating the need to make manual adjustments every time you input JSON.*
 
+## Settings
+
+- Time Controller (Schedule): Set specific timeframes for the app to automatically switch reminder modes. Example: Automatically switch all alarms to Silent (or Notify) from 22:00 to 06:00 so your sleep isn't disturbed.
+- Pre-alarm: Set the alarm/notification to trigger *X* minutes before the upgrade actually finishes, giving you time to log in to the game.
+- Auto Check Update: The app automatically checks GitHub on launch and alerts you to download if a new version is available.
+
 ## How to use
 
 1. In the game, go to **Settings** > **More Settings** > **Export village data as JSON**

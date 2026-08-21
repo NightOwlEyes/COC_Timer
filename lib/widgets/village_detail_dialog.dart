@@ -61,7 +61,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(16),
       child: Material(
-        color: const Color(0xFF0A0C0B),
+        color: const Color(0xFF0D0F0E),
         shape: RoundedRectangleBorder(
           side: BorderSide(color: widget.themeColor, width: 2), // ĐỔI MÀU THEO SERVER
         ),

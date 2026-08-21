@@ -29,8 +29,11 @@
 | 🔔 Nhắc nhở bằng thông báo | Gửi thông báo khi hoàn thành |
 | ⏰ Báo thức | Phát chuông báo khi hoàn thành |
 
-Ứng dụng cũng có mục **Cài đặt** để tự động chuyển chuyển đổi 3 chế độ tuỳ vào thời gian trong ngày.
-*Ví dụ bạn có thể đặt tự động chuyển thành thông báo từ 22 giờ đến 6 giờ sáng để bạn không cần phải đặt thủ công mỗi khi nhập json*
+## Cài đặt
+
+- Bộ điều khiển thời gian (Lịch tự động): Cho phép thiết lập các khung giờ để app tự động chuyển đổi chế độ nhắc nhở. Ví dụ: Tự động chuyển toàn bộ báo thức thành Im lặng (hoặc Thông báo) từ 22:00 đêm đến 06:00 sáng để không làm phiền giấc ngủ.
+- Báo trước (Pre-alarm): Cài đặt thời gian đổ chuông/thông báo sớm *X* phút trước khi công trình thực sự hoàn tất để bạn có thời gian chuẩn bị vào game.
+- Tự động cập nhật: Ứng dụng tự động quét GitHub lúc khởi động và hiển thị thông báo tải về nếu có phiên bản mới.
 
 ## Cách sử dụng
 
