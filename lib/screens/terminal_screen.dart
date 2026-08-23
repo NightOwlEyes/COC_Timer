@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:collection';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alarm/alarm.dart';
 import 'package:android_intent_plus/android_intent.dart';
@@ -14,13 +15,15 @@ import '../models/village_models.dart';
 import '../utils/village_parser.dart';
 import '../utils/app_strings.dart';
 import '../utils/rule_manager.dart';
-import '../widgets/terminal_frame_painter.dart';
 import '../services/schedule_service.dart';
 
+import '../widgets/terminal_frame_painter.dart';
 import '../widgets/alarm_popup.dart';
 import '../widgets/village_card.dart';
 import '../widgets/village_detail_dialog.dart';
 import '../widgets/settings_dialog.dart';
+import '../widgets/terminal_header.dart';
+import '../widgets/terminal_components.dart';
 
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({super.key});
@@ -40,16 +43,19 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   Map<String, String> _savedRawJsons = {};
   final Map<String, String> _villageNames = {};
 
+  final Map<String, bool> _trackHome = {};
+  final Map<String, bool> _trackBuilder = {};
   final Map<String, String> _savedAlarmStates = {};
-  final Set<int> _activePopups = {};
+
+  final Queue<AlarmSettings> _alarmQueue = Queue<AlarmSettings>();
+  bool _isAlarmPopupShowing = false;
+  int? _currentShowingAlarmId; // THÊM BIẾN NÀY ĐỂ TRÁNH BẬT LẠI POPUP CŨ
 
   String _parseStatus = AppStrings.terminal.statusWaitingJson;
-
   bool _showRealEta = true;
   bool _isBuilderBase = false;
   bool _xiaomiAcknowledged = false;
 
-  // BIẾN LƯU THÔNG TIN CẬP NHẬT KHI PHÁT HIỆN BẢN MỚI
   String? _updateVersion;
   String? _updateUrl;
 
@@ -63,29 +69,24 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Nạp quy tắc tự động khi mở app VÀ kiểm tra bản mới nếu có Bật Auto
     RuleManager.init().then((_) {
-      if (RuleManager.autoCheckUpdate) {
-        _checkGithubUpdate();
-      }
+      if (RuleManager.autoCheckUpdate) _checkGithubUpdate();
     });
 
-    if (_activePopups.isEmpty) {
+    if (_alarmQueue.isEmpty && !_isAlarmPopupShowing) {
       ScheduleService.disableAlarmMode();
     }
 
-    // FIX 1: Chốt an toàn cho lần mở app đầu tiên
     ScheduleService.checkAndRequestPermissions().then((_) {
-      if (mounted && _activePopups.isEmpty) {
+      if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
         ScheduleService.disableAlarmMode();
       }
     });
 
-    // CHỐT BẢO VỆ ĐA TẦNG: Đợi Flutter vẽ xong, sau đó trễ thêm 1.5s
-    // để đảm bảo Activity của Native Android đã sẵn sàng nhận lệnh Window.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted && _activePopups.isEmpty) {
+      // FIX 1: Tăng độ trễ an toàn lên 2.5 giây khi khởi động lạnh
+      Future.delayed(const Duration(milliseconds: 2500), () {
+        if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
           ScheduleService.disableAlarmMode();
         }
       });
@@ -98,17 +99,23 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
     _startClockTimer();
 
-    // FIX LỖI CRASH APP LÚC ĐẾM NGƯỢC XONG GÂY MẤT DỮ LIỆU
     _alarmSubscription = Alarm.ringing.listen((dynamic event) {
       try {
+        // GỌI LỆNH XUYÊN MÀN HÌNH KHÓA NGAY LẬP TỨC
         ScheduleService.enableAlarmMode();
+
         if (mounted) {
+          // BẮT SỰ KIỆN TƯƠNG THÍCH VỚI MỌI PHIÊN BẢN ALARM PACKAGE
           if (event is AlarmSettings) {
-            _showFullscreenPopup(event);
+            _queueAlarm(event);
           } else {
-            for (final alarmSettings in event.alarms) {
-              _showFullscreenPopup(alarmSettings);
-            }
+            try {
+              for (final alarmSettings in event.alarms) {
+                if (alarmSettings is AlarmSettings) {
+                  _queueAlarm(alarmSettings);
+                }
+              }
+            } catch (_) {}
           }
         }
       } catch (e) {
@@ -117,12 +124,10 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
   }
 
-  // THÊM: HÀM QUÉT GITHUB NGẦM TRONG BACKGROUND (Không làm kẹt UI)
   Future<void> _checkGithubUpdate() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
-
       final response = await http.get(
         Uri.parse('https://api.github.com/repos/NightOwlEyes/COC_Timer/releases/latest'),
         headers: {'Accept': 'application/vnd.github.v3+json'},
@@ -134,21 +139,16 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         String htmlUrl = data['html_url'] as String;
         String latestVersion = tagName.split('-').first.replaceAll('v', '');
 
-        if (_isVersionGreater(latestVersion, currentVersion)) {
-          if (mounted) {
-            setState(() {
-              _updateVersion = latestVersion;
-              _updateUrl = htmlUrl;
-            });
-          }
+        if (_isVersionGreater(latestVersion, currentVersion) && mounted) {
+          setState(() {
+            _updateVersion = latestVersion;
+            _updateUrl = htmlUrl;
+          });
         }
       }
-    } catch (e) {
-      // Bỏ qua lỗi ngầm, không hiện thông báo rác khi mất mạng
-    }
+    } catch (e) { debugPrint("Lỗi kiểm tra cập nhật: $e"); }
   }
 
-  // THÊM: HÀM SO SÁNH VERSION Tương tự như trong Dialog
   bool _isVersionGreater(String newVersion, String currentVersion) {
     List<String> v1 = newVersion.split('.');
     List<String> v2 = currentVersion.split('.');
@@ -175,10 +175,17 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      if (_activePopups.isEmpty) {
-        ScheduleService.disableAlarmMode();
-      } else {
+      if (_isAlarmPopupShowing || _alarmQueue.isNotEmpty) {
         ScheduleService.enableAlarmMode();
+      } else {
+        // FIX LỖI MÀN HÌNH KHÓA 3: Tăng thời gian chờ lên 2.5 giây.
+        // Khi báo thức Native đánh thức máy, app sẽ chuyển sang resumed TRƯỚC KHI
+        // stream Alarm.ringing kịp chạy. Nếu gỡ cờ ngay lúc này, app sẽ bị giấu sau mật khẩu.
+        Future.delayed(const Duration(milliseconds: 2500), () {
+          if (mounted && !_isAlarmPopupShowing && _alarmQueue.isEmpty) {
+            ScheduleService.disableAlarmMode();
+          }
+        });
       }
     }
   }
@@ -187,14 +194,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     _clockTimer?.cancel();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
-
       try {
         final now = DateTime.now();
         bool needsUpdate = false;
 
-        for (var villageTag in _villages.keys.toList()) {
-          final village = _villages[villageTag]!;
-
+        for (var village in _villages.values) {
           void checkAlarm(List<UpgradeItem> items) {
             for (var item in items) {
               final diff = item.realEta.difference(now).inSeconds;
@@ -245,23 +249,70 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
   }
 
-  void _showFullscreenPopup(AlarmSettings settings) {
-    if (_activePopups.contains(settings.id)) return;
-    _activePopups.add(settings.id);
+  void _queueAlarm(AlarmSettings settings) {
+    // NGĂN CHẶN LỖI NHÁY 0.5s: Nếu ID này đang được hiển thị, bỏ qua sự kiện rác
+    if (_currentShowingAlarmId == settings.id) return;
 
+    if (!_alarmQueue.any((a) => a.id == settings.id)) _alarmQueue.add(settings);
+    _processNextAlarm();
+  }
+
+  Future<void> _processNextAlarm() async {
+    // 1. Nếu đang có popup hiển thị, dừng lại chờ nó đóng
+    if (_isAlarmPopupShowing) return;
+
+    // 2. NẾU HÀNG ĐỢI TRỐNG: DỌN DẸP VÀ ẨN APP NGAY LẬP TỨC (Sửa lỗi kẹt Terminal)
+    if (_alarmQueue.isEmpty) {
+      ScheduleService.disableAlarmMode();
+      ScheduleService.handleAlarmDismiss();
+      return;
+    }
+
+    final alarm = _alarmQueue.removeFirst();
+
+    // CHẶN BÁO THỨC MA: Kiểm tra xem chuông có bị tắt ngầm trước khi popup kịp mở không
+    final activeAlarms = await Alarm.getAlarms();
+    final stillActive = activeAlarms.any((a) => a.id == alarm.id);
+    if (!stillActive) {
+      _processNextAlarm(); // Bỏ qua cái đã chết, chạy đệ quy kiểm tra cái tiếp theo
+      return;
+    }
+
+    _isAlarmPopupShowing = true;
+    _currentShowingAlarmId = alarm.id; // Đánh dấu ID đang hiển thị
+
+    // Chốt an toàn một lần nữa
     ScheduleService.enableAlarmMode();
-    final globalContext = ScheduleService.navigatorKey.currentContext;
-    if (globalContext == null) return;
+
+    BuildContext? globalContext = ScheduleService.navigatorKey.currentContext;
+    int retryCount = 0;
+
+    // VÒNG LẶP SINH TỬ: Chờ tối đa 5 giây để UI Flutter kịp khởi tạo
+    // (Rất quan trọng khi app bị đánh thức từ chế độ ngủ sâu/khóa màn hình)
+    while ((globalContext == null || !globalContext.mounted) && retryCount < 10) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      globalContext = ScheduleService.navigatorKey.currentContext;
+      retryCount++;
+    }
+
+    // Nếu sau 5 giây máy vẫn lác không load nổi UI thì mới bỏ cuộc
+    if (globalContext == null || !globalContext.mounted) {
+      _isAlarmPopupShowing = false;
+      _currentShowingAlarmId = null;
+      _processNextAlarm();
+      return;
+    }
 
     showDialog(
         context: globalContext,
         barrierDismissible: false,
-        builder: (dialogContext) => AlarmPopup(settings: settings)
+        builder: (dialogContext) => AlarmPopup(settings: alarm)
     ).then((_) {
-      _activePopups.remove(settings.id);
-      if (_activePopups.isEmpty) {
-        ScheduleService.disableAlarmMode();
-      }
+      _isAlarmPopupShowing = false;
+      _currentShowingAlarmId = null; // Reset cờ khi đóng popup
+
+      // Nghỉ nửa giây rồi gọi lại hàm, để nó tự quyết định đi tiếp hay ẩn app
+      Future.delayed(const Duration(milliseconds: 500), _processNextAlarm);
     });
   }
 
@@ -269,21 +320,21 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     final prefs = await SharedPreferences.getInstance();
     final savedData = prefs.getString('saved_villages_map');
     final savedNames = prefs.getString('saved_village_names');
+    final savedTrackHome = prefs.getString('saved_track_home');
+    final savedTrackBuilder = prefs.getString('saved_track_builder');
     final savedAlarmJson = prefs.getString('saved_alarm_states');
-    final savedShowEta = prefs.getBool('show_real_eta');
+
+    if (prefs.getBool('show_real_eta') != null) _showRealEta = prefs.getBool('show_real_eta')!;
     _xiaomiAcknowledged = prefs.getBool('xiaomi_acknowledged') ?? false;
 
-    if (savedShowEta != null) _showRealEta = savedShowEta;
-
+    if (savedTrackHome != null) {
+      try { jsonDecode(savedTrackHome).forEach((key, value) => _trackHome[key] = value as bool); } catch (e) { debugPrint("Lỗi tải TrackHome: $e"); }
+    }
+    if (savedTrackBuilder != null) {
+      try { jsonDecode(savedTrackBuilder).forEach((key, value) => _trackBuilder[key] = value as bool); } catch (e) { debugPrint("Lỗi tải TrackBuilder: $e"); }
+    }
     if (savedAlarmJson != null) {
-      try {
-        final Map<String, dynamic> decodedAlarms = jsonDecode(savedAlarmJson);
-        decodedAlarms.forEach((key, value) {
-          _savedAlarmStates[key] = value.toString();
-        });
-      } catch (e) {
-        debugPrint(AppStrings.format(AppStrings.terminal.debugLoadAlarmStateError, {'e': e.toString()}));
-      }
+      try { jsonDecode(savedAlarmJson).forEach((key, value) => _savedAlarmStates[key] = value.toString()); } catch (e) { debugPrint("Lỗi tải AlarmStates: $e"); }
     }
 
     if (savedData != null) {
@@ -294,12 +345,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
         decoded.forEach((key, value) {
           try {
-            final parsed = VillageParser.parse(value.toString());
-            loadedVillages[key] = parsed;
+            loadedVillages[key] = VillageParser.parse(value.toString());
             loadedRaws[key] = value.toString();
-          } catch (e) {
-            debugPrint(AppStrings.format(AppStrings.terminal.debugParseVillageError, {'key': key, 'e': e.toString()}));
-          }
+          } catch (e) { debugPrint("Lỗi Parse dữ liệu làng: $e"); }
         });
 
         if (mounted) {
@@ -309,70 +357,55 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
             if (_villages.isNotEmpty) _parseStatus = AppStrings.terminal.statusLoadedSavedData;
 
             if (savedNames != null) {
-              try {
-                final Map<String, dynamic> decodedNames = jsonDecode(savedNames);
-                decodedNames.forEach((key, value) {
-                  _villageNames[key] = value.toString();
-                });
-              } catch (e) {
-                debugPrint(AppStrings.format(AppStrings.terminal.debugLoadNameError, {'e': e.toString()}));
-              }
+              try { jsonDecode(savedNames).forEach((key, value) => _villageNames[key] = value.toString()); } catch (e) { debugPrint("Lỗi tải tên làng: $e"); }
             }
             for (var v in _villages.values) {
-              // Tải dữ liệu lúc khởi động thì KHÔNG chạy quy tắc ghi đè (giữ nguyên cấu hình cũ)
               _applySavedAlarmState(v, syncWithOS: false, forceApplyRules: false);
             }
           });
         }
-      } catch (e) {
-        debugPrint(AppStrings.format(AppStrings.terminal.debugLoadGeneralError, {'e': e.toString()}));
-      }
+      } catch (e) { debugPrint("Lỗi giải mã dữ liệu đã lưu: $e"); }
     }
   }
 
   Future<void> _applySavedAlarmState(VillageData village, {bool syncWithOS = false, bool forceApplyRules = false}) async {
+    bool tHome = _trackHome[village.tag] ?? true;
+    bool tBuilder = _trackBuilder[village.tag] ?? true;
     List<Future> futures = [];
-    void apply(List<UpgradeItem> items) {
+
+    void apply(List<UpgradeItem> items, bool isTracked) {
       for (var item in items) {
         String uniqueKey = item.instanceId;
+        AlarmType intendedType;
 
-        // HƯỚNG B: Nếu là dán JSON mới, Ép chạy Bộ quy tắc (Quét ETA và ghi đè)
         if (forceApplyRules) {
-          item.alarmType = RuleManager.evaluateEta(item.realEta);
-          _savedAlarmStates[uniqueKey] = item.alarmType.name;
+          intendedType = RuleManager.evaluateEta(item.realEta);
+          _savedAlarmStates[uniqueKey] = intendedType.name;
         } else {
-          // Nếu khởi động lại app thông thường, ưu tiên đọc cấu hình cũ do người dùng tự lưu
           String? stateStr = _savedAlarmStates[uniqueKey];
           if (stateStr != null) {
-            if (stateStr == "none") {
-              item.alarmType = AlarmType.none;
-            } else if (stateStr == "system") {
-              item.alarmType = AlarmType.system;
-            } else if (stateStr == "fullscreen") {
-              item.alarmType = AlarmType.fullscreen;
-            }
+            intendedType = stateStr == "system" ? AlarmType.system : (stateStr == "fullscreen" ? AlarmType.fullscreen : AlarmType.none);
           } else {
-            // Mạng lưới an toàn: Có dữ liệu rác không có stateStr -> Cũng ép chạy quy tắc
-            item.alarmType = RuleManager.evaluateEta(item.realEta);
-            _savedAlarmStates[uniqueKey] = item.alarmType.name;
+            intendedType = RuleManager.evaluateEta(item.realEta);
+            _savedAlarmStates[uniqueKey] = intendedType.name;
           }
         }
 
+        item.alarmType = isTracked ? intendedType : AlarmType.none;
         if (syncWithOS) {
           String vName = _villageNames[village.tag] ?? AppStrings.terminal.defaultVillageNameUnset;
           futures.add(ScheduleService.syncItemSchedule(village.tag, vName, item));
         }
       }
     }
-    apply(village.buildersItems);
-    apply(village.petItems);
-    apply(village.labItems);
-    apply(village.builders2Items);
-    apply(village.lab2Items);
 
-    if (syncWithOS) {
-      await Future.wait(futures);
-    }
+    apply(village.buildersItems, tHome);
+    apply(village.petItems, tHome);
+    apply(village.labItems, tHome);
+    apply(village.builders2Items, tBuilder);
+    apply(village.lab2Items, tBuilder);
+
+    if (syncWithOS) await Future.wait(futures);
   }
 
   Future<void> _saveAlarmStatesToPrefs() async {
@@ -385,6 +418,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     await prefs.setString('saved_villages_map', jsonEncode(_savedRawJsons));
     await prefs.setString('saved_village_names', jsonEncode(_villageNames));
     await prefs.setBool('show_real_eta', _showRealEta);
+    await prefs.setString('saved_track_home', jsonEncode(_trackHome));
+    await prefs.setString('saved_track_builder', jsonEncode(_trackBuilder));
   }
 
   void _confirmDeleteVillage(String tag) {
@@ -392,7 +427,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: const Color(0xFF0A0C0B),
-        shape: RoundedRectangleBorder(side: const BorderSide(color: Color(0xFFB54545), width: 1)),
+        shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1)),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
@@ -407,7 +442,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF444444)), shape: const RoundedRectangleBorder()),
+                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF444444))),
                       onPressed: () => Navigator.pop(ctx),
                       child: Text(AppStrings.terminal.btnCancel, style: const TextStyle(color: Color(0xFF888888))),
                     ),
@@ -415,7 +450,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFB54545), shape: const RoundedRectangleBorder()),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFB54545)),
                       onPressed: () {
                         Navigator.pop(ctx);
                         _deleteVillage(tag);
@@ -434,14 +469,13 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   void _deleteVillage(String tag) {
     if (!mounted) return;
-
-    if (_villages.containsKey(tag)) {
-      ScheduleService.cancelAllForVillage(_villages[tag]!);
-    }
+    if (_villages.containsKey(tag)) ScheduleService.cancelAllForVillage(_villages[tag]!);
 
     setState(() {
       _villages.remove(tag);
       _savedRawJsons.remove(tag);
+      _trackHome.remove(tag);
+      _trackBuilder.remove(tag);
       _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
       _parseStatus = _villages.isEmpty ? AppStrings.terminal.statusWaitingJson : AppStrings.format(AppStrings.terminal.statusVillageDeleted, {'tag': tag});
     });
@@ -450,63 +484,51 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   void _cycleAlarmForItem(String villageTag, UpgradeItem item) {
-    setState(() {
-      String itemName = AppStrings.gameData.getName(item.dataId);
-      if (item.alarmType == AlarmType.system) {
-        item.alarmType = AlarmType.fullscreen;
-        _parseStatus = AppStrings.format(AppStrings.terminal.statusAlarmSetFullscreen, {'typeString': itemName.toUpperCase(), 'dataId': ""});
-      } else if (item.alarmType == AlarmType.fullscreen) {
-        item.alarmType = AlarmType.none;
-        _parseStatus = AppStrings.format(AppStrings.terminal.statusAlarmOff, {'typeString': itemName.toUpperCase(), 'dataId': ""});
-      } else {
-        item.alarmType = AlarmType.system;
-        _parseStatus = AppStrings.format(AppStrings.terminal.statusNotificationSetSystem, {'typeString': itemName.toUpperCase(), 'dataId': ""});
-      }
+    String uniqueKey = item.instanceId;
+    String currentState = _savedAlarmStates[uniqueKey] ?? RuleManager.evaluateEta(item.realEta).name;
+    AlarmType nextType = currentState == "system" ? AlarmType.fullscreen : (currentState == "fullscreen" ? AlarmType.none : AlarmType.system);
 
-      String uniqueKey = item.instanceId;
-      _savedAlarmStates[uniqueKey] = item.alarmType.name;
-      _saveAlarmStatesToPrefs();
-    });
+    _savedAlarmStates[uniqueKey] = nextType.name;
+    _saveAlarmStatesToPrefs();
 
-    String vName = _villageNames[villageTag] ?? AppStrings.terminal.defaultVillageNameUnset;
-    ScheduleService.syncItemSchedule(villageTag, vName, item).then((_) {
-      if (mounted && _activePopups.isEmpty) {
-        ScheduleService.disableAlarmMode();
-      }
+    String itemName = AppStrings.gameData.getName(item.dataId);
+    if (nextType == AlarmType.system) {
+      _parseStatus = AppStrings.format(AppStrings.terminal.statusNotificationSetSystem, {'typeString': itemName.toUpperCase(), 'dataId': ""});
+    } else if (nextType == AlarmType.fullscreen) {
+      _parseStatus = AppStrings.format(AppStrings.terminal.statusAlarmSetFullscreen, {'typeString': itemName.toUpperCase(), 'dataId': ""});
+    } else {
+      _parseStatus = AppStrings.format(AppStrings.terminal.statusAlarmOff, {'typeString': itemName.toUpperCase(), 'dataId': ""});
+    }
+
+    _applySavedAlarmState(_villages[villageTag]!, syncWithOS: true).then((_) {
+      if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
+      setState(() {});
     });
   }
 
   void _cycleAlarmForGroup(String villageTag, String groupName, List<UpgradeItem> items) {
     if (items.isEmpty) return;
-    setState(() {
-      bool hasSystem = items.any((i) => i.alarmType == AlarmType.system);
-      bool hasFullscreen = items.any((i) => i.alarmType == AlarmType.fullscreen);
+    bool hasSystem = false, hasFullscreen = false;
 
-      AlarmType targetType = AlarmType.system;
-      if (hasSystem) {
-        targetType = AlarmType.fullscreen;
-      } else if (hasFullscreen) {
-        targetType = AlarmType.none;
-      }
+    for (var item in items) {
+      String currentState = _savedAlarmStates[item.instanceId] ?? RuleManager.evaluateEta(item.realEta).name;
+      if (currentState == "system") hasSystem = true;
+      if (currentState == "fullscreen") hasFullscreen = true;
+    }
 
-      for (var item in items) {
-        item.alarmType = targetType;
-        String uniqueKey = item.instanceId;
-        _savedAlarmStates[uniqueKey] = targetType.name;
+    AlarmType targetType = hasSystem ? AlarmType.fullscreen : (hasFullscreen ? AlarmType.none : AlarmType.system);
+    for (var item in items) {
+      _savedAlarmStates[item.instanceId] = targetType.name;
+    }
 
-        String vName = _villageNames[villageTag] ?? AppStrings.terminal.defaultVillageNameUnset;
-        ScheduleService.syncItemSchedule(villageTag, vName, item).then((_) {
-          if (mounted && _activePopups.isEmpty) {
-            ScheduleService.disableAlarmMode();
-          }
-        });
-      }
+    _parseStatus = targetType == AlarmType.none
+        ? AppStrings.format(AppStrings.terminal.statusGroupAllOff, {'groupName': groupName})
+        : AppStrings.format(AppStrings.terminal.statusGroupModeChanged, {'groupName': groupName, 'alarmType': targetType.name.toUpperCase()});
 
-      _parseStatus = targetType == AlarmType.none
-          ? AppStrings.format(AppStrings.terminal.statusGroupAllOff, {'groupName': groupName})
-          : AppStrings.format(AppStrings.terminal.statusGroupModeChanged, {'groupName': groupName, 'alarmType': targetType.name.toUpperCase()});
-
-      _saveAlarmStatesToPrefs();
+    _saveAlarmStatesToPrefs();
+    _applySavedAlarmState(_villages[villageTag]!, syncWithOS: true).then((_) {
+      if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
+      setState(() {});
     });
   }
 
@@ -517,13 +539,16 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
     try {
       final parsed = VillageParser.parse(inputData);
-
       if (!_villageNames.containsKey(parsed.tag)) {
-        String? newName = await _promptForVillageName(parsed.tag);
-        if (newName != null && newName.trim().isNotEmpty) {
-          _villageNames[parsed.tag] = newName.trim();
+        Map<String, dynamic>? result = await _promptForVillageName(parsed.tag);
+        if (result != null) {
+          _villageNames[parsed.tag] = (result['name'] as String).trim().isNotEmpty ? result['name'] : AppStrings.terminal.defaultVillageNameFallback;
+          _trackHome[parsed.tag] = result['home'] as bool;
+          _trackBuilder[parsed.tag] = result['builder'] as bool;
         } else {
           _villageNames[parsed.tag] = AppStrings.terminal.defaultVillageNameFallback;
+          _trackHome[parsed.tag] = true;
+          _trackBuilder[parsed.tag] = true;
         }
       }
 
@@ -532,69 +557,98 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         _savedAlarmStates.removeWhere((key, value) => key.startsWith("${parsed.tag}_"));
       }
 
-      // ÉP CHẠY BỘ QUY TẮC CÀN QUÉT VÌ ĐÂY LÀ DÁN JSON
       await _applySavedAlarmState(parsed, syncWithOS: true, forceApplyRules: true);
+      if (!mounted) return;
 
-      if (mounted) {
-        setState(() {
-          _villages[parsed.tag] = parsed;
-          _savedRawJsons[parsed.tag] = inputData;
-          _parseStatus = AppStrings.format(AppStrings.terminal.statusUpdated, {'villageName': _villageNames[parsed.tag]!, 'tag': parsed.tag});
-          _jsonController.clear();
-        });
-      }
+      setState(() {
+        _villages[parsed.tag] = parsed;
+        _savedRawJsons[parsed.tag] = inputData;
+        _parseStatus = AppStrings.format(AppStrings.terminal.statusUpdated, {'villageName': _villageNames[parsed.tag]!, 'tag': parsed.tag});
+        _jsonController.clear();
+      });
       _saveDataToPrefs();
 
       await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted && _activePopups.isEmpty) {
-        ScheduleService.disableAlarmMode();
-      }
+      if (!mounted) return;
+      if (_alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
 
     } catch (e) {
-      setState(() {
-        _parseStatus = AppStrings.terminal.statusErrorInvalidJson;
-      });
+      if (mounted) setState(() => _parseStatus = AppStrings.terminal.statusErrorInvalidJson);
     }
   }
 
-  Future<String?> _promptForVillageName(String tag) {
+  Future<Map<String, dynamic>?> _promptForVillageName(String tag) {
     TextEditingController tempController = TextEditingController();
-    return showDialog<String>(
+    bool trackHome = true, trackBuilder = true;
+
+    return showDialog<Map<String, dynamic>>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0A0C0B),
-        shape: RoundedRectangleBorder(side: const BorderSide(color: Color(0xFF4CAF50), width: 1)),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(AppStrings.terminal.newVillageDialogTitle, style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(AppStrings.format(AppStrings.terminal.newVillageDialogTagLabel, {'tag': tag}), style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
-              const SizedBox(height: 16),
-              TextField(
-                controller: tempController,
-                autofocus: false,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: AppStrings.terminal.newVillageNameHint,
-                  hintStyle: const TextStyle(color: Color(0xFF444444)),
-                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF444444))),
-                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF4CAF50))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateSB) => Dialog(
+          backgroundColor: const Color(0xFF0A0C0B),
+          shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFF4CAF50), width: 1)),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(AppStrings.terminal.newVillageDialogTitle, style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text(AppStrings.format(AppStrings.terminal.newVillageDialogTagLabel, {'tag': tag}), style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: tempController,
+                  autofocus: false,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: AppStrings.terminal.newVillageNameHint,
+                    hintStyle: const TextStyle(color: Color(0xFF444444)),
+                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF444444))),
+                    focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF4CAF50))),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50), shape: const RoundedRectangleBorder()),
-                  onPressed: () => Navigator.pop(ctx, tempController.text),
-                  child: Text(AppStrings.terminal.btnSaveAndAddVillage, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 24),
+                Align(alignment: Alignment.centerLeft, child: Text(AppStrings.terminal.trackingOptionsLabel, style: const TextStyle(color: Color(0xFF888888), fontSize: 12))),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 16, runSpacing: 12,
+                  children: [
+                    InkWell(
+                      onTap: () => setStateSB(() => trackHome = !trackHome),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(trackHome ? Icons.check_box : Icons.check_box_outline_blank, color: trackHome ? const Color(0xFF4CAF50) : const Color(0xFF444444), size: 18),
+                          const SizedBox(width: 6),
+                          Text(AppStrings.terminal.trackingHomeVillage, style: TextStyle(color: trackHome ? Colors.white : const Color(0xFF888888), fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => setStateSB(() => trackBuilder = !trackBuilder),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(trackBuilder ? Icons.check_box : Icons.check_box_outline_blank, color: trackBuilder ? const Color(0xFF4CAF50) : const Color(0xFF444444), size: 18),
+                          const SizedBox(width: 6),
+                          Text(AppStrings.terminal.trackingBuilderBase, style: TextStyle(color: trackBuilder ? Colors.white : const Color(0xFF888888), fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              )
-            ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
+                    onPressed: () => Navigator.pop(ctx, {'name': tempController.text, 'home': trackHome, 'builder': trackBuilder}),
+                    child: Text(AppStrings.terminal.btnSaveAndAddVillage, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                  ),
+                )
+              ],
+            ),
           ),
         ),
       ),
@@ -603,38 +657,23 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   void _pasteFromClipboard() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data != null && data.text != null) {
-      if (!mounted) return;
-      setState(() {
-        _jsonController.text = data.text!;
-      });
+    if (data != null && data.text != null && mounted) {
+      setState(() => _jsonController.text = data.text!);
       _processJson();
     }
   }
 
   void _openXiaomiSettings() async {
-    setState(() {
-      _xiaomiAcknowledged = true;
-    });
+    setState(() => _xiaomiAcknowledged = true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('xiaomi_acknowledged', true);
 
     if (Platform.isAndroid) {
       try {
-        final intent = const AndroidIntent(
-          action: 'miui.intent.action.APP_PERM_EDITOR',
-          arguments: {'extra_pkgname': 'coctimer.nightowleyes.coctimer'},
-        );
-        await intent.launch();
-        if (!mounted) return;
-        setState(() {
-          _parseStatus = AppStrings.terminal.statusXiaomiPromptSuccess;
-        });
+        await const AndroidIntent(action: 'miui.intent.action.APP_PERM_EDITOR', arguments: {'extra_pkgname': 'coctimer.nightowleyes.coctimer'}).launch();
+        if (mounted) setState(() => _parseStatus = AppStrings.terminal.statusXiaomiPromptSuccess);
       } catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _parseStatus = AppStrings.terminal.statusXiaomiPromptError;
-        });
+        if (mounted) setState(() => _parseStatus = AppStrings.terminal.statusXiaomiPromptError);
       }
     }
   }
@@ -650,51 +689,133 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
             child: CustomPaint(
               painter: TerminalFramePainter(),
               child: Padding(
-                // SỬA: Chỉnh padding dọc xuống 10.0 để Header và Log ôm sát góc viền
                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
                 child: Column(
                   children: [
-                    _buildHeader(),
-                    const SizedBox(height: 9.5), // SỬA: Thu hẹp chân header xuống 10px
+                    TerminalHeader(
+                      showRealEta: _showRealEta,
+                      currentTime: _currentTime,
+                      updateUrl: _updateUrl,
+                      updateVersion: _updateVersion,
+                      onToggleEta: () {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        setState(() => _showRealEta = !_showRealEta);
+                        _saveDataToPrefs();
+                      },
+                      onLanguageChange: () async {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
+                        for (var v in _villages.values) {
+                          await _applySavedAlarmState(v, syncWithOS: true);
+                        }
+                        await Future.delayed(const Duration(milliseconds: 500));
+                        if (mounted) {
+                          if (_alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
+                          setState(() {});
+                        }
+                      },
+                      onSettingsTap: () async {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        final oldRules = jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList());
+                        final oldEnabled = jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v)));
+                        final oldPreAlarm = RuleManager.preAlarmMinutes;
+
+                        await showDialog(context: context, builder: (ctx) => SettingsDialog(themeColor: _themeColor));
+
+                        if (oldRules != jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList()) ||
+                            oldEnabled != jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v))) ||
+                            oldPreAlarm != RuleManager.preAlarmMinutes) {
+                          if (_villages.isNotEmpty) {
+                            for (var v in _villages.values) {
+                              await _applySavedAlarmState(v, syncWithOS: true, forceApplyRules: true);
+                            }
+                            await _saveAlarmStatesToPrefs();
+                            await Future.delayed(const Duration(milliseconds: 500));
+                            if (mounted) {
+                              if (_alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
+                              setState(() {});
+                            }
+                          }
+                        }
+                      },
+                      onUpdateTap: () async {
+                        try {
+                          await launchUrl(Uri.parse('https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md'), mode: LaunchMode.externalApplication);
+                        } catch (e) { debugPrint("Không thể mở link: $e"); }
+                      },
+                    ),
+                    const SizedBox(height: 9.5),
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _buildSecurityTag(),
+                            TerminalSecurityTag(
+                                isBuilderBase: _isBuilderBase,
+                                themeColor: _themeColor,
+                                bgTagColor: _bgTagColor,
+                                onToggle: () {
+                                  FocusManager.instance.primaryFocus?.unfocus();
+                                  setState(() => _isBuilderBase = !_isBuilderBase);
+                                }
+                            ),
                             const SizedBox(height: 30),
-                            _buildLogoArea(),
+                            const TerminalLogo(),
                             const SizedBox(height: 30),
-                            _buildVillagesList(),
+                            if (_villages.isNotEmpty)
+                              Column(
+                                children: _villages.values.map((village) => VillageCard(
+                                  village: village,
+                                  villageName: _villageNames[village.tag] ?? "",
+                                  isBuilderBase: _isBuilderBase,
+                                  themeColor: _themeColor,
+                                  onDelete: () => _confirmDeleteVillage(village.tag),
+                                  onTap: () {
+                                    FocusManager.instance.primaryFocus?.unfocus();
+                                    showDialog(
+                                      context: context,
+                                      builder: (ctx) => VillageDetailDialog(
+                                        village: village, villageName: _villageNames[village.tag] ?? "",
+                                        isBuilderBase: _isBuilderBase, themeColor: _themeColor, showRealEta: _showRealEta,
+                                        initialTrackHome: _trackHome[village.tag] ?? true, initialTrackBuilder: _trackBuilder[village.tag] ?? true,
+                                        onNameChanged: (newName) {
+                                          _villageNames[village.tag] = newName; _saveDataToPrefs(); setState(() {});
+                                        },
+                                        onTrackingChanged: (trackH, trackB) {
+                                          _trackHome[village.tag] = trackH; _trackBuilder[village.tag] = trackB; _saveDataToPrefs();
+                                          _applySavedAlarmState(village, syncWithOS: true).then((_) => setState(() {}));
+                                        },
+                                        onCycleGroup: (groupName, items) => _cycleAlarmForGroup(village.tag, groupName, items),
+                                        onCycleItem: (item) => _cycleAlarmForItem(village.tag, item),
+                                      ),
+                                    );
+                                  },
+                                )).toList(),
+                              ),
                             const SizedBox(height: 30),
-                            _buildInputField(),
+                            TerminalInputArea(
+                              controller: _jsonController,
+                              onPaste: _pasteFromClipboard,
+                              onSubmit: _processJson,
+                            ),
                             const SizedBox(height: 20),
-                            _buildSubmitButton(),
-                            const SizedBox(height: 20),
-                            _buildFooter(),
+                            TerminalFooter(
+                              xiaomiAcknowledged: _xiaomiAcknowledged,
+                              onXiaomiTap: _openXiaomiSettings,
+                            ),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12), // SỬA: Khoảng cách giữa khối cuộn và thanh Log 12px
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            _parseStatus,
-                            style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold),
-                            overflow: TextOverflow.clip,
-                            maxLines: 1,
-                          ),
+                          child: Text(_parseStatus, style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.clip, maxLines: 1),
                         ),
                         ValueListenableBuilder<bool>(
                           valueListenable: _showCursor,
-                          builder: (context, show, child) {
-                            return Opacity(
-                              opacity: show ? 1.0 : 0.0,
-                              child: const Text("█", style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
-                            );
-                          },
+                          builder: (context, show, child) => Opacity(opacity: show ? 1.0 : 0.0, child: const Text("█", style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 13))),
                         ),
                       ],
                     ),
@@ -705,352 +826,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    final offset = DateTime.now().timeZoneOffset;
-    final offsetString = "UTC${offset.isNegative ? '-' : '+'}${offset.inHours.abs()}";
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(AppStrings.terminal.headerSmallTitle, style: const TextStyle(color: Color(0xFF666666), fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
-            InkWell(
-              onTap: () {
-                FocusManager.instance.primaryFocus?.unfocus();
-                setState(() => _showRealEta = !_showRealEta);
-                _saveDataToPrefs();
-              },
-              child: Row(
-                children: [
-                  Text("${AppStrings.terminal.labelRealTime}: ", style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
-                  Text(
-                    _showRealEta ? AppStrings.terminal.toggleOn : AppStrings.terminal.toggleOff,
-                    style: TextStyle(
-                        color: _showRealEta ? const Color(0xFF4CAF50) : const Color(0xFF8B2B2B),
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold
-                    ),
-                  )
-                ],
-              ),
-            ),
-            const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
-            // CỤM NÚT NGÔN NGỮ THÔ VÀ TỐI GIẢN
-            InkWell(
-              onTap: () async {
-                FocusManager.instance.primaryFocus?.unfocus();
-                String newLang = AppStrings.languageCode == 'en' ? 'vi' : 'en';
-                await AppStrings.changeLanguage(newLang);
-
-                for (var v in _villages.values) {
-                  await _applySavedAlarmState(v, syncWithOS: true);
-                }
-
-                await Future.delayed(const Duration(milliseconds: 500));
-                if (mounted && _activePopups.isEmpty) {
-                  ScheduleService.disableAlarmMode();
-                }
-
-                setState(() {});
-              },
-              child: Row(
-                children: [
-                  Text(AppStrings.languageCode == 'vi' ? "NGÔN NGỮ: " : "LANGUAGE: ", style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
-                  Text(
-                    AppStrings.languageCode == 'en' ? "[ EN ]" : "[ VI ]",
-                    style: const TextStyle(color: Color(0xFF888888), fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-
-        // CỘT BÊN PHẢI ĐÃ BỎ BỚT WRAPPER THỪA
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(AppStrings.terminal.labelServer, style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
-            const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Text("$offsetString $_currentTime", style: const TextStyle(color: Color(0xFF666666), fontSize: 12)),
-            ),
-            const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
-
-            // NÚT CẬP NHẬT (CHỈ HIỆN KHI CÓ BẢN MỚI)
-            if (_updateUrl != null) ...[
-              InkWell(
-                onTap: () async {
-                  final Uri url = Uri.parse('https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md');
-                  try {
-                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                  } catch (e) {
-                    debugPrint("Không thể mở link: $e");
-                  }
-                },
-                child: Text(
-                  AppStrings.format(AppStrings.terminal.btnUpdateAvailable, {'version': "v$_updateVersion"}),
-                  style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 6), // SỬA: Đưa về chuẩn đối xứng 6px
-            ],
-
-            // NÚT CÀI ĐẶT QUY TẮC
-            InkWell(
-              onTap: () async {
-                FocusManager.instance.primaryFocus?.unfocus();
-
-                // 1. CHỤP LẠI TRẠNG THÁI CÀI ĐẶT TRƯỚC KHI MỞ
-                final oldRules = jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList());
-                final oldEnabled = jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v)));
-                final oldPreAlarm = RuleManager.preAlarmMinutes;
-
-                await showDialog(
-                  context: context,
-                  builder: (ctx) => SettingsDialog(themeColor: _themeColor),
-                );
-
-                // 2. SO SÁNH TRẠNG THÁI SAU KHI ĐÓNG HỘP THOẠI
-                final newRules = jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList());
-                final newEnabled = jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v)));
-                final newPreAlarm = RuleManager.preAlarmMinutes;
-
-                // 3. CHỈ ĐỒNG BỘ NẾU NGƯỜI DÙNG THỰC SỰ THAY ĐỔI DỮ LIỆU
-                if (oldRules != newRules || oldEnabled != newEnabled || oldPreAlarm != newPreAlarm) {
-                  if (_villages.isNotEmpty) {
-                    for (var v in _villages.values) {
-                      await _applySavedAlarmState(v, syncWithOS: true, forceApplyRules: true);
-                    }
-                    await _saveAlarmStatesToPrefs();
-
-                    await Future.delayed(const Duration(milliseconds: 500));
-                    if (mounted && _activePopups.isEmpty) {
-                      ScheduleService.disableAlarmMode();
-                    }
-
-                    if (mounted) setState(() {});
-                  }
-                }
-              },
-              child: Text(
-                AppStrings.terminal.btnSettings,
-                style: const TextStyle(color: Color(0xFF888888), fontSize: 11, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecurityTag() {
-    return Column(
-      children: [
-        Text(AppStrings.terminal.labelTapToSwitchServer, style: const TextStyle(color: Color(0xFF666666), fontSize: 10, letterSpacing: 1.0)),
-        const SizedBox(height: 4),
-        InkWell(
-          onTap: () {
-            FocusManager.instance.primaryFocus?.unfocus();
-            setState(() {
-              _isBuilderBase = !_isBuilderBase;
-            });
-          },
-          splashColor: _themeColor.withValues(alpha: 0.3),
-          highlightColor: _themeColor.withValues(alpha: 0.1),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: _themeColor, width: 1),
-                bottom: BorderSide(color: _themeColor, width: 1),
-              ),
-              color: _bgTagColor,
-            ),
-            child: Center(
-              child: Text(
-                _isBuilderBase ? AppStrings.terminal.tabBuilderBase : AppStrings.terminal.tabMainVillage,
-                style: TextStyle(color: _themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLogoArea() {
-    return Column(
-      children: [
-        Image.asset('assets/LogoMain.png', height: 80),
-        const SizedBox(height: 16),
-        Text(
-          AppStrings.terminal.logoTitle,
-          style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 4.0),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          AppStrings.terminal.logoSubtitle,
-          style: const TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.5),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Expanded(child: Container(height: 1, color: const Color(0xFF333333))),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10.0),
-              child: Icon(Icons.diamond, size: 10, color: Color(0xFF666666)),
-            ),
-            Expanded(child: Container(height: 1, color: const Color(0xFF333333))),
-          ],
-        )
-      ],
-    );
-  }
-
-  Widget _buildVillagesList() {
-    if (_villages.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: _villages.values.map((village) {
-        return VillageCard(
-          village: village,
-          villageName: _villageNames[village.tag] ?? "",
-          isBuilderBase: _isBuilderBase,
-          themeColor: _themeColor,
-          onDelete: () => _confirmDeleteVillage(village.tag),
-          onTap: () {
-            FocusManager.instance.primaryFocus?.unfocus();
-            showDialog(
-              context: context,
-              builder: (ctx) => VillageDetailDialog(
-                village: village,
-                villageName: _villageNames[village.tag] ?? "",
-                isBuilderBase: _isBuilderBase,
-                themeColor: _themeColor,
-                showRealEta: _showRealEta,
-                onNameChanged: (newName) {
-                  _villageNames[village.tag] = newName;
-                  _saveDataToPrefs();
-                  setState(() {});
-                },
-                onCycleGroup: (groupName, items) => _cycleAlarmForGroup(village.tag, groupName, items),
-                onCycleItem: (item) => _cycleAlarmForItem(village.tag, item),
-              ),
-            );
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildInputField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(AppStrings.terminal.inputSectionLabel, style: const TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0)),
-        const SizedBox(height: 8),
-        Stack(
-          children: [
-            TextField(
-              controller: _jsonController,
-              autofocus: false,
-              maxLines: 4,
-              style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 14),
-              decoration: InputDecoration(
-                hintText: AppStrings.terminal.inputHint,
-                hintStyle: const TextStyle(color: Color(0xFF444444)),
-                filled: true,
-                fillColor: const Color(0xFF141615),
-                border: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
-                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: Color(0xFF666666), width: 1)),
-              ),
-            ),
-            Positioned(
-              right: 0,
-              top: 0,
-              child: InkWell(
-                onTap: _pasteFromClipboard,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: const Color(0xFF333333),
-                  child: Text(AppStrings.terminal.btnPaste, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            )
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return Material(
-      color: const Color(0xFFB0B3A6),
-      child: InkWell(
-        onTap: _processJson,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          alignment: Alignment.center,
-          child: Text(
-            AppStrings.terminal.btnSubmit,
-            style: const TextStyle(color: Color(0xFF111111), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFooter() {
-    return Column(
-      children: [
-        if (!_xiaomiAcknowledged && Platform.isAndroid)
-          InkWell(
-            onTap: _openXiaomiSettings,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0x33B54545),
-                border: Border.all(color: const Color(0xFFB54545), width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545), size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    AppStrings.terminal.btnXiaomiPermission,
-                    style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          InkWell(
-            onTap: _openXiaomiSettings,
-            child: Text(
-                AppStrings.terminal.btnXiaomiPermission,
-                style: const TextStyle(color: Color(0xFF666666), fontSize: 11, fontWeight: FontWeight.bold)
-            ),
-          ),
-
-        const SizedBox(height: 16),
-        Text(AppStrings.terminal.footerHowtoTitle, style: const TextStyle(color: Color(0xFF666666), fontSize: 11, letterSpacing: 1.0)),
-        const SizedBox(height: 4),
-        Text(AppStrings.terminal.footerHowtoDesc, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF888888), fontSize: 11, letterSpacing: 1.0)),
-      ],
     );
   }
 }

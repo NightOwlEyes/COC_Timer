@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:alarm/alarm.dart';
-import '../services/schedule_service.dart';
 import '../utils/app_strings.dart';
 
 class AlarmPopup extends StatefulWidget {
@@ -39,7 +38,6 @@ class _AlarmPopupState extends State<AlarmPopup> {
 
         if (mounted) {
           Navigator.pop(context);
-          ScheduleService.handleAlarmDismiss();
         }
       }
     });
@@ -93,7 +91,6 @@ class _AlarmPopupState extends State<AlarmPopup> {
 
                   Alarm.stop(widget.settings.id); // Dừng chuông
                   Navigator.pop(context); // Đóng popup
-                  ScheduleService.handleAlarmDismiss(); // Thu nhỏ app nếu đang khóa màn hình
                 },
                 child: Text(AppStrings.alarm.btnConfirmAndClose, style: const TextStyle(fontWeight: FontWeight.bold)),
               ),

@@ -98,6 +98,9 @@ abstract class TerminalScreenStrings {
   String get newVillageDialogTagLabel;
   String get newVillageNameHint;
   String get btnSaveAndAddVillage;
+  String get trackingOptionsLabel;
+  String get trackingHomeVillage;
+  String get trackingBuilderBase;
   String get debugLoadAlarmStateError;
   String get debugParseVillageError;
   String get debugLoadNameError;
@@ -159,6 +162,7 @@ abstract class VillageDetailDialogStrings {
   String get btnClose;
   String get labelVillageName;
   String get hintEnterVillageName;
+  String get baseAlarmsToggleLabel;
   String get groupBuilderNight;
   String get groupBuilder;
   String get statusWorkingSuffix;
@@ -217,7 +221,7 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get toggleOff => "[ TẮT ]";
   @override String get labelServer => "SERVER: LOCAL";
   @override String get labelTapToSwitchServer => "[ BẤM ĐỂ CHUYỂN ĐỔI LÀNG ]";
-  @override String get tabBuilderBase => "■  L À N G   T H Ợ   X Â Y  ■";
+  @override String get tabBuilderBase => "■  C Ă N   C Ứ   T H Ợ   X Â Y  ■";
   @override String get tabMainVillage => "■  L À N G   C H Í N H  ■";
   @override String get logoTitle => "C O C   T I M E R";
   @override String get logoSubtitle => "ĐẾM NGƯỢC THỜI GIAN NÂNG";
@@ -251,6 +255,9 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get newVillageDialogTagLabel => "Mã: {tag}";
   @override String get newVillageNameHint => "Nhập tên làng (VD: Acc Chính)...";
   @override String get btnSaveAndAddVillage => "LƯU & THÊM LÀNG";
+  @override String get trackingOptionsLabel => "TÙY CHỌN THEO DÕI:";
+  @override String get trackingHomeVillage => "Làng Chính";
+  @override String get trackingBuilderBase => "Căn cứ Thợ Xây";
   @override String get debugLoadAlarmStateError => "Lỗi load trạng thái báo thức: {e}";
   @override String get debugParseVillageError => "Lỗi parse {key}: {e}";
   @override String get debugLoadNameError => "Lỗi load tên làng: {e}";
@@ -312,6 +319,7 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
   @override String get btnClose => "[ ĐÓNG ]";
   @override String get labelVillageName => "TÊN LÀNG: ";
   @override String get hintEnterVillageName => "[ NHẬP TÊN LÀNG... ]";
+  @override String get baseAlarmsToggleLabel => "THÔNG BÁO LÀNG NÀY:";
   @override String get groupBuilderNight => "> THỢ XÂY";
   @override String get groupBuilder => "> LỀU THỢ XÂY";
   @override String get statusWorkingSuffix => "ĐANG NÂNG";
@@ -570,7 +578,7 @@ class TerminalScreenStringsEn extends TerminalScreenStrings {
   @override String get toggleOff => "[ OFF ]";
   @override String get labelServer => "SERVER: LOCAL";
   @override String get labelTapToSwitchServer => "[CLICK TO SWITCH VILLAGE]";
-  @override String get tabBuilderBase => "■ B U I L D E R  V I L L A G E ■";
+  @override String get tabBuilderBase => "■  B U I L D E R   B A S E  ■";
   @override String get tabMainVillage => "■  H O M E   V I L L A G E  ■";
   @override String get logoTitle => "C O C   T I M E R";
   @override String get logoSubtitle => "COUNTDOWN TO THE UPGRADE";
@@ -604,6 +612,9 @@ class TerminalScreenStringsEn extends TerminalScreenStrings {
   @override String get newVillageDialogTagLabel => "Tag: {tag}";
   @override String get newVillageNameHint => "Enter village name (e.g., Main Acc)...";
   @override String get btnSaveAndAddVillage => "SAVE and ADD VILLAGE";
+  @override String get trackingOptionsLabel => "TRACKING OPTIONS:";
+  @override String get trackingHomeVillage => "Home Village";
+  @override String get trackingBuilderBase => "Builder Base";
   @override String get debugLoadAlarmStateError => "Error loading alarm state: {e}";
   @override String get debugParseVillageError => "Parse error {key}: {e}";
   @override String get debugLoadNameError => "Error loading village name: {e}";
@@ -665,6 +676,7 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
   @override String get btnClose => "[ CLOSE ]";
   @override String get labelVillageName => "VILLAGE NAME: ";
   @override String get hintEnterVillageName => "[ ENTER VILLAGE NAME... ]";
+  @override String get baseAlarmsToggleLabel => "BASE ALARMS:";
   @override String get groupBuilderNight => "> BUILDER";
   @override String get groupBuilder => "> BUILDER's HUT";
   @override String get statusWorkingSuffix => "UPGRADING";
