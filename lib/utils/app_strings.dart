@@ -215,7 +215,7 @@ abstract class SettingsStrings {
 // ==========================================
 class TerminalScreenStringsVi extends TerminalScreenStrings {
   const TerminalScreenStringsVi();
-  @override String get headerSmallTitle => "Giấy phép: GNU GPL v3.0";
+  @override String get headerSmallTitle => "GPL-3.0";
   @override String get labelRealTime => "NGÀY HOÀN TẤT";
   @override String get toggleOn => "[ BẬT ]";
   @override String get toggleOff => "[ TẮT ]";
@@ -368,7 +368,7 @@ class GameDataVi extends GameData {
     1000054: "Bom phòng không",
     1000012: "Tháp phòng không",
     1000028: "Tháp thổi khí",
-    73000011: "Sứa dữ tơn",
+    73000011: "Sứa dữ tợn",
     26000123: "Thần chú giận dữ",
     4000097: "Quản giáo tập sự",
     28000001: "Nữ hoảng cung thủ",
@@ -572,7 +572,7 @@ class GameDataVi extends GameData {
 // ==========================================
 class TerminalScreenStringsEn extends TerminalScreenStrings {
   const TerminalScreenStringsEn();
-  @override String get headerSmallTitle => "License: GNU GPL v3.0";
+  @override String get headerSmallTitle => "GPL-3.0";
   @override String get labelRealTime => "DATE OF COMPLETION";
   @override String get toggleOn => "[ ON ]";
   @override String get toggleOff => "[ OFF ]";

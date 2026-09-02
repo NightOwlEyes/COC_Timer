@@ -49,6 +49,10 @@ This document describes in detail the function of each component in the **CocTim
   *Component that displays a summary of village status on the main screen.*
 - **terminal_frame_painter.dart**: Sử dụng `CustomPainter` để tạo hiệu ứng khung viền kỹ thuật số Retro cho giao diện.
   *Uses `CustomPainter` to render the retro digital border-frame effect for the UI.*
+- **terminal_header.dart**: Hộp chứa tiêu đề màn hình terminal, hiển thị thời gian, các nút chuyển đổi chế độ và truy cập cài đặt.
+  *Terminal screen header container, displaying time, mode toggles, and settings access.*
+- **terminal_components.dart**: Chứa các thành phần giao diện nhỏ của màn hình terminal như Logo, khu vực nhập liệu và chân trang.
+  *Contains small UI components for the terminal screen such as the Logo, input area, and footer.*
 
 ## 📁 assets/ (Tài nguyên) / assets/ (Assets)
 - **LogoMain.png**: Logo chính hiển thị trong giao diện Terminal.

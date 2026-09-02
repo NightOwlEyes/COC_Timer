@@ -25,6 +25,8 @@ import '../widgets/settings_dialog.dart';
 import '../widgets/terminal_header.dart';
 import '../widgets/terminal_components.dart';
 
+import 'online_screen.dart'; // THÊM IMPORT MÀN HÌNH MỚI
+
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({super.key});
 
@@ -693,10 +695,24 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 child: Column(
                   children: [
                     TerminalHeader(
+                      isOnline: false,
                       showRealEta: _showRealEta,
                       currentTime: _currentTime,
                       updateUrl: _updateUrl,
                       updateVersion: _updateVersion,
+                      onToggleServer: () {
+                        // CHUYỂN HƯỚNG SANG MÀN HÌNH ONLINE
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder: (context, animation, secondaryAnimation) => const OnlineScreen(),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              return FadeTransition(opacity: animation, child: child);
+                            },
+                          ),
+                        );
+                      },
                       onToggleEta: () {
                         FocusManager.instance.primaryFocus?.unfocus();
                         setState(() => _showRealEta = !_showRealEta);
