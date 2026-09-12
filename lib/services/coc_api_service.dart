@@ -3,27 +3,34 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class CocApiService {
-  // ĐÃ THAY BẰNG LINK CLOUDFLARE WORKER CỦA BẠN
-  static const String workerUrl = "https://dry-forest-f702.dohuytruc1922tlh.workers.dev";
 
-  /// ==========================================
-  /// HÀM MỚI: XÁC THỰC VÀ LẤY THÔNG TIN CLAN CƠ BẢN
-  /// ==========================================
+  static const String workerUrl = "https://dry-forest-f702.dohuytruc1922tlh.workers.dev";
   static Future<Map<String, dynamic>?> verifyAndGetClanInfo(String clanTag) async {
     String cleanTag = clanTag.replaceAll('#', '').toUpperCase();
 
-    // Gọi API lấy thông tin cơ bản của Clan
     var clanData = await _fetchEndpoint('/v1/clans/%2523$cleanTag');
 
     if (clanData.isNotEmpty && clanData.containsKey('name')) {
       return {
-        'tag': clanData['tag'], // Đã có sẵn dấu # từ API
+        'tag': clanData['tag'],
         'name': clanData['name'],
         'badgeUrl': clanData['badgeUrls'] != null ? clanData['badgeUrls']['small'] : '',
         'clanLevel': clanData['clanLevel'] ?? 1,
       };
     }
-    return null; // Không tìm thấy hoặc lỗi
+    return null;
+  }
+
+  static Future<String?> fetchPlayerName(String tag) async {
+    String cleanTag = tag.replaceAll('#', '').toUpperCase();
+
+    // Gọi API qua worker với double-encoding dấu # (%2523)
+    var playerData = await _fetchEndpoint('/v1/players/%2523$cleanTag');
+
+    if (playerData.isNotEmpty && playerData.containsKey('name')) {
+      return playerData['name']?.toString();
+    }
+    return null;
   }
 
   /// Hàm điều phối chính: Quyết định gọi API nào trước dựa vào ngày trong tháng

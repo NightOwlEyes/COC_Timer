@@ -2,7 +2,7 @@ name: coctimer
 description: "A new Flutter project."
 publish_to: "none"
 
-version: 1.1.0-beta
+version: 1.1.0
 
 environment:
   sdk: ^3.11.1
@@ -21,6 +21,7 @@ dependencies:
   package_info_plus: ^10.2.1
   http: ^1.6.0
   url_launcher: ^6.3.2
+  workmanager: ^0.10.9
 
 dev_dependencies:
   flutter_test:

@@ -36,6 +36,16 @@ class RuleManager {
   static int preAlarmMinutes = 0;
   static bool autoCheckUpdate = true;
 
+  // 1. KHAI BÁO CÁC BIẾN STATIC Ở ĐÂY
+  static bool warPreAlarmEnabled = true;
+  static int warPreAlarmMinutes = 30;
+  static AlarmType warPreAlarmType = AlarmType.system;
+
+  static bool warEndAlarmEnabled = false;
+  static AlarmType warEndAlarmType = AlarmType.system;
+
+  static bool warAutoSync = true;
+
   // LƯU TRẠNG THÁI BẬT/TẮT [X] CỦA TỪNG KHỐI
   static Map<AlarmType, bool> groupEnabled = {
     AlarmType.none: true,
@@ -86,6 +96,16 @@ class RuleManager {
 
       preAlarmMinutes = prefs.getInt('pre_alarm_minutes') ?? 0;
       autoCheckUpdate = prefs.getBool('auto_check_update') ?? true; // ĐỌC TỪ BỘ NHỚ
+
+      // 2. ĐỌC DỮ LIỆU TỪ PREFS TRONG HÀM INIT
+      warPreAlarmEnabled = prefs.getBool('war_pre_alarm_enabled') ?? true;
+      warPreAlarmMinutes = prefs.getInt('war_pre_alarm_minutes') ?? 30;
+      warPreAlarmType = AlarmType.values.firstWhere((e) => e.name == (prefs.getString('war_pre_alarm_type') ?? 'system'), orElse: () => AlarmType.system);
+
+      warEndAlarmEnabled = prefs.getBool('war_end_alarm_enabled') ?? false;
+      warEndAlarmType = AlarmType.values.firstWhere((e) => e.name == (prefs.getString('war_end_alarm_type') ?? 'system'), orElse: () => AlarmType.system);
+
+      warAutoSync = prefs.getBool('war_auto_sync') ?? true;
     }
   }
 
@@ -102,7 +122,18 @@ class RuleManager {
     await prefs.setString('rule_group_enabled', jsonEncode(enabledJson));
     await prefs.setInt('pre_alarm_minutes', preAlarmMinutes);
     await prefs.setBool('auto_check_update', autoCheckUpdate);
+
+    // 3. LƯU DỮ LIỆU TRONG HÀM SAVE
+    await prefs.setBool('war_pre_alarm_enabled', warPreAlarmEnabled);
+    await prefs.setInt('war_pre_alarm_minutes', warPreAlarmMinutes);
+    await prefs.setString('war_pre_alarm_type', warPreAlarmType.name);
+
+    await prefs.setBool('war_end_alarm_enabled', warEndAlarmEnabled);
+    await prefs.setString('war_end_alarm_type', warEndAlarmType.name);
+
+    await prefs.setBool('war_auto_sync', warAutoSync);
   }
+
 
   // THÊM MỚI: Hàm trả về danh sách ĐÍCH DANH các quy tắc gây ra lỗi đụng độ
   static List<TimeRule> getConflictingRules(AlarmType targetGroup) {

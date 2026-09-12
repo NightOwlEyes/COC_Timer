@@ -16,6 +16,7 @@ import '../utils/village_parser.dart';
 import '../utils/app_strings.dart';
 import '../utils/rule_manager.dart';
 import '../services/schedule_service.dart';
+import '../services/coc_api_service.dart';
 
 import '../widgets/terminal_frame_painter.dart';
 import '../widgets/alarm_popup.dart';
@@ -25,7 +26,7 @@ import '../widgets/settings_dialog.dart';
 import '../widgets/terminal_header.dart';
 import '../widgets/terminal_components.dart';
 
-import 'online_screen.dart'; // THÊM IMPORT MÀN HÌNH MỚI
+import 'online_screen.dart';
 
 class TerminalScreen extends StatefulWidget {
   const TerminalScreen({super.key});
@@ -51,7 +52,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   final Queue<AlarmSettings> _alarmQueue = Queue<AlarmSettings>();
   bool _isAlarmPopupShowing = false;
-  int? _currentShowingAlarmId; // THÊM BIẾN NÀY ĐỂ TRÁNH BẬT LẠI POPUP CŨ
+  int? _currentShowingAlarmId;
 
   String _parseStatus = AppStrings.terminal.statusWaitingJson;
   bool _showRealEta = true;
@@ -86,7 +87,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // FIX 1: Tăng độ trễ an toàn lên 2.5 giây khi khởi động lạnh
       Future.delayed(const Duration(milliseconds: 2500), () {
         if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
           ScheduleService.disableAlarmMode();
@@ -103,11 +103,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
     _alarmSubscription = Alarm.ringing.listen((dynamic event) {
       try {
-        // GỌI LỆNH XUYÊN MÀN HÌNH KHÓA NGAY LẬP TỨC
         ScheduleService.enableAlarmMode();
-
         if (mounted) {
-          // BẮT SỰ KIỆN TƯƠNG THÍCH VỚI MỌI PHIÊN BẢN ALARM PACKAGE
           if (event is AlarmSettings) {
             _queueAlarm(event);
           } else {
@@ -180,9 +177,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       if (_isAlarmPopupShowing || _alarmQueue.isNotEmpty) {
         ScheduleService.enableAlarmMode();
       } else {
-        // FIX LỖI MÀN HÌNH KHÓA 3: Tăng thời gian chờ lên 2.5 giây.
-        // Khi báo thức Native đánh thức máy, app sẽ chuyển sang resumed TRƯỚC KHI
-        // stream Alarm.ringing kịp chạy. Nếu gỡ cờ ngay lúc này, app sẽ bị giấu sau mật khẩu.
         Future.delayed(const Duration(milliseconds: 2500), () {
           if (mounted && !_isAlarmPopupShowing && _alarmQueue.isEmpty) {
             ScheduleService.disableAlarmMode();
@@ -252,18 +246,14 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   void _queueAlarm(AlarmSettings settings) {
-    // NGĂN CHẶN LỖI NHÁY 0.5s: Nếu ID này đang được hiển thị, bỏ qua sự kiện rác
     if (_currentShowingAlarmId == settings.id) return;
-
     if (!_alarmQueue.any((a) => a.id == settings.id)) _alarmQueue.add(settings);
     _processNextAlarm();
   }
 
   Future<void> _processNextAlarm() async {
-    // 1. Nếu đang có popup hiển thị, dừng lại chờ nó đóng
     if (_isAlarmPopupShowing) return;
 
-    // 2. NẾU HÀNG ĐỢI TRỐNG: DỌN DẸP VÀ ẨN APP NGAY LẬP TỨC (Sửa lỗi kẹt Terminal)
     if (_alarmQueue.isEmpty) {
       ScheduleService.disableAlarmMode();
       ScheduleService.handleAlarmDismiss();
@@ -272,32 +262,27 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
     final alarm = _alarmQueue.removeFirst();
 
-    // CHẶN BÁO THỨC MA: Kiểm tra xem chuông có bị tắt ngầm trước khi popup kịp mở không
     final activeAlarms = await Alarm.getAlarms();
     final stillActive = activeAlarms.any((a) => a.id == alarm.id);
     if (!stillActive) {
-      _processNextAlarm(); // Bỏ qua cái đã chết, chạy đệ quy kiểm tra cái tiếp theo
+      _processNextAlarm();
       return;
     }
 
     _isAlarmPopupShowing = true;
-    _currentShowingAlarmId = alarm.id; // Đánh dấu ID đang hiển thị
+    _currentShowingAlarmId = alarm.id;
 
-    // Chốt an toàn một lần nữa
     ScheduleService.enableAlarmMode();
 
     BuildContext? globalContext = ScheduleService.navigatorKey.currentContext;
     int retryCount = 0;
 
-    // VÒNG LẶP SINH TỬ: Chờ tối đa 5 giây để UI Flutter kịp khởi tạo
-    // (Rất quan trọng khi app bị đánh thức từ chế độ ngủ sâu/khóa màn hình)
     while ((globalContext == null || !globalContext.mounted) && retryCount < 10) {
       await Future.delayed(const Duration(milliseconds: 500));
       globalContext = ScheduleService.navigatorKey.currentContext;
       retryCount++;
     }
 
-    // Nếu sau 5 giây máy vẫn lác không load nổi UI thì mới bỏ cuộc
     if (globalContext == null || !globalContext.mounted) {
       _isAlarmPopupShowing = false;
       _currentShowingAlarmId = null;
@@ -311,9 +296,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         builder: (dialogContext) => AlarmPopup(settings: alarm)
     ).then((_) {
       _isAlarmPopupShowing = false;
-      _currentShowingAlarmId = null; // Reset cờ khi đóng popup
-
-      // Nghỉ nửa giây rồi gọi lại hàm, để nó tự quyết định đi tiếp hay ẩn app
+      _currentShowingAlarmId = null;
       Future.delayed(const Duration(milliseconds: 500), _processNextAlarm);
     });
   }
@@ -476,6 +459,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     setState(() {
       _villages.remove(tag);
       _savedRawJsons.remove(tag);
+      _villageNames.remove(tag); // THÊM DÒNG NÀY ĐỂ XÓA TÊN KHỎI BỘ NHỚ
       _trackHome.remove(tag);
       _trackBuilder.remove(tag);
       _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
@@ -541,46 +525,109 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
     try {
       final parsed = VillageParser.parse(inputData);
-      if (!_villageNames.containsKey(parsed.tag)) {
-        Map<String, dynamic>? result = await _promptForVillageName(parsed.tag);
-        if (result != null) {
-          _villageNames[parsed.tag] = (result['name'] as String).trim().isNotEmpty ? result['name'] : AppStrings.terminal.defaultVillageNameFallback;
-          _trackHome[parsed.tag] = result['home'] as bool;
-          _trackBuilder[parsed.tag] = result['builder'] as bool;
-        } else {
-          _villageNames[parsed.tag] = AppStrings.terminal.defaultVillageNameFallback;
-          _trackHome[parsed.tag] = true;
-          _trackBuilder[parsed.tag] = true;
-        }
+      final String tag = parsed.tag;
+      final bool isNewVillage = !_villageNames.containsKey(tag);
+
+      // 1. XỬ LÝ JSON VÀ ÁP DỤNG BÁO THỨC NGAY LẬP TỨC (Không chờ 5s API)
+      if (_villages.containsKey(tag)) {
+        ScheduleService.cancelAllForVillage(_villages[tag]!);
+        _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
+      } else {
+        // Gán cờ mặc định cho làng mới để hệ thống đếm ngược hoạt động bình thường
+        _trackHome[tag] = true;
+        _trackBuilder[tag] = true;
+        _villageNames[tag] = "ĐANG TÌM TÊN LÀNG..."; // Tên hiển thị tạm
       }
 
-      if (_villages.containsKey(parsed.tag)) {
-        ScheduleService.cancelAllForVillage(_villages[parsed.tag]!);
-        _savedAlarmStates.removeWhere((key, value) => key.startsWith("${parsed.tag}_"));
-      }
+      // Đưa dữ liệu vào RAM ngay lập tức
+      _villages[tag] = parsed;
+      _savedRawJsons[tag] = inputData;
 
+      // Kích hoạt báo thức chốt thời gian với cấu hình mặc định (Bật tất cả)
       await _applySavedAlarmState(parsed, syncWithOS: true, forceApplyRules: true);
-      if (!mounted) return;
 
-      setState(() {
-        _villages[parsed.tag] = parsed;
-        _savedRawJsons[parsed.tag] = inputData;
-        _parseStatus = AppStrings.format(AppStrings.terminal.statusUpdated, {'villageName': _villageNames[parsed.tag]!, 'tag': parsed.tag});
-        _jsonController.clear();
-      });
+      if (mounted) {
+        setState(() {
+          _parseStatus = isNewVillage
+              ? "> ĐANG TRUY XUẤT TÊN LÀNG [ $tag ]..."
+              : AppStrings.format(AppStrings.terminal.statusUpdated, {'villageName': _villageNames[tag]!, 'tag': tag});
+          _jsonController.clear();
+        });
+      }
       _saveDataToPrefs();
 
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (!mounted) return;
-      if (_alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
+      // 2. RẼ NHÁNH TÌM TÊN CHO LÀNG MỚI VÀ LUÔN LUÔN BẬT POPUP
+      if (isNewVillage) {
+        _fetchNameAndShowPopup(tag);
+      } else {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
+          ScheduleService.disableAlarmMode();
+        }
+      }
 
     } catch (e) {
       if (mounted) setState(() => _parseStatus = AppStrings.terminal.statusErrorInvalidJson);
     }
   }
 
-  Future<Map<String, dynamic>?> _promptForVillageName(String tag) {
-    TextEditingController tempController = TextEditingController();
+  Future<void> _fetchNameAndShowPopup(String tag) async {
+    String? fetchedName;
+
+    try {
+      // GỌI API LẤY TÊN PLAYER (ÉP TIMEOUT TỐI ĐA 5 GIÂY)
+      fetchedName = await CocApiService.fetchPlayerName(tag).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => null, // Hết 5s tự động trả về null
+      );
+    } catch (e) {
+      debugPrint("Lỗi lấy tên làng qua API: $e");
+    }
+
+    if (!mounted) return;
+
+    // Cập nhật trạng thái trước khi bật Popup
+    setState(() {
+      if (fetchedName != null && fetchedName.isNotEmpty) {
+        _parseStatus = "> ĐÃ TÌM THẤY TÊN: $fetchedName. ĐANG CHỜ XÁC NHẬN...";
+      } else {
+        _parseStatus = "> LỖI API / QUÁ GIỜ: VUI LÒNG NHẬP TÊN THỦ CÔNG";
+      }
+    });
+
+    // BƯỚC 3: LUÔN LUÔN BẬT POPUP (Truyền tên vừa tìm được vào nếu có)
+    Map<String, dynamic>? result = await _promptForVillageName(tag, prefilledName: fetchedName);
+
+    if (mounted) {
+      if (result != null) {
+        setState(() {
+          _villageNames[tag] = (result['name'] as String).trim().isNotEmpty ? result['name'] : AppStrings.terminal.defaultVillageNameFallback;
+          _trackHome[tag] = result['home'] as bool;
+          _trackBuilder[tag] = result['builder'] as bool;
+          _parseStatus = "> ĐÃ LƯU THIẾT LẬP: ${_villageNames[tag]}";
+        });
+      } else {
+        // Trường hợp người dùng bấm ra ngoài tắt Popup mà không lưu
+        setState(() {
+          _villageNames[tag] = (fetchedName != null && fetchedName.isNotEmpty) ? fetchedName : AppStrings.terminal.defaultVillageNameFallback;
+          _parseStatus = "> ĐÃ LƯU MẶC ĐỊNH: ${_villageNames[tag]}";
+        });
+      }
+      _saveDataToPrefs();
+
+      // ÁP DỤNG LẠI BÁO THỨC SAU KHI CÓ KẾT QUẢ TỪ CHECKBOX
+      await _applySavedAlarmState(_villages[tag]!, syncWithOS: true, forceApplyRules: true);
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
+        ScheduleService.disableAlarmMode();
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>?> _promptForVillageName(String tag, {String? prefilledName}) {
+    // ĐIỀN SẴN TÊN VÀO CONTROLLER NẾU API TÌM ĐƯỢC
+    TextEditingController tempController = TextEditingController(text: prefilledName ?? "");
     bool trackHome = true, trackBuilder = true;
 
     return showDialog<Map<String, dynamic>>(
@@ -776,7 +823,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                 }
                             ),
                             const SizedBox(height: 30),
-                            const TerminalLogo(),
+                            // XÓA CHỮ const Ở ĐÂY ĐỂ CHO PHÉP RENDER LẠI THEO NGÔN NGỮ
+                            TerminalLogo(),
                             const SizedBox(height: 30),
                             if (_villages.isNotEmpty)
                               Column(

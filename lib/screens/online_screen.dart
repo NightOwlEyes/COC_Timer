@@ -3,10 +3,18 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../widgets/terminal_frame_painter.dart';
 import '../widgets/terminal_header.dart';
+import '../widgets/settings_dialog.dart';
+import '../widgets/terminal_components.dart';
 import '../services/coc_api_service.dart';
+import '../services/war_sync_service.dart';
+import '../services/schedule_service.dart';
 import '../widgets/war_dashboard_widget.dart';
+import '../screens/war_detail_screen.dart';
+import '../utils/rule_manager.dart';
 import '../utils/app_strings.dart';
 
 class OnlineScreen extends StatefulWidget {
@@ -20,27 +28,22 @@ class _OnlineScreenState extends State<OnlineScreen> {
   final TextEditingController _tagController = TextEditingController();
 
   bool _isLoading = false;
-  String _statusText = "> SẴN SÀNG KẾT NỐI API...";
+  late String _statusText;
 
   List<Map<String, dynamic>> _savedClans = [];
 
-  // Đồng hồ và con trỏ nhấp nháy y hệt TerminalScreen
   Timer? _clockTimer;
   String _currentTime = "";
   final ValueNotifier<bool> _showCursor = ValueNotifier(true);
   Timer? _cursorTimer;
 
-  // Lấy state từ SharedPreferences để hiển thị cho Header
-  bool _showRealEta = true;
-
   @override
   void initState() {
     super.initState();
+    _statusText = AppStrings.onlineScreen.statusReadyApi;
     _loadSavedClans();
-    _loadSettings();
     _startClockTimer();
 
-    // Khởi tạo con trỏ nhấp nháy
     _cursorTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
       if (mounted) _showCursor.value = !_showCursor.value;
     });
@@ -53,15 +56,6 @@ class _OnlineScreenState extends State<OnlineScreen> {
     _showCursor.dispose();
     _tagController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _showRealEta = prefs.getBool('show_real_eta') ?? true;
-      });
-    }
   }
 
   void _startClockTimer() {
@@ -106,7 +100,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
     }
 
     if (_savedClans.any((clan) => clan['tag'] == tagInput)) {
-      setState(() => _statusText = "> CLAN NÀY ĐÃ CÓ TRONG DANH SÁCH!");
+      setState(() => _statusText = AppStrings.onlineScreen.statusClanExists);
       return;
     }
 
@@ -114,7 +108,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
 
     setState(() {
       _isLoading = true;
-      _statusText = "> ĐANG TÌM KIẾM CLAN [ $tagInput ] TRÊN SERVER...";
+      _statusText = AppStrings.format(AppStrings.onlineScreen.statusSearchingClan, {'tag': tagInput});
     });
 
     try {
@@ -125,7 +119,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
       if (clanInfo != null) {
         setState(() {
           _savedClans.add(clanInfo);
-          _statusText = "> ĐÃ THÊM CLAN: ${clanInfo['name']}";
+          _statusText = AppStrings.format(AppStrings.onlineScreen.statusAddedClan, {'name': clanInfo['name']});
           _tagController.clear();
           _isLoading = false;
         });
@@ -133,68 +127,94 @@ class _OnlineScreenState extends State<OnlineScreen> {
       } else {
         setState(() {
           _isLoading = false;
-          _statusText = "> LỖI: KHÔNG TÌM THẤY CLAN (SAI MÃ HOẶC MẠNG KÉM)";
+          _statusText = AppStrings.onlineScreen.statusErrorNotFound;
         });
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        if (e.toString().contains("BẢO TRÌ")) {
-          _statusText = "> $e";
+        // Bắt luôn cả tiếng Anh và tiếng Việt từ Service quăng lên
+        if (e.toString().contains("BẢO TRÌ") || e.toString().contains("MAINTENANCE")) {
+          _statusText = AppStrings.onlineScreen.statusMaintenance;
         } else {
-          _statusText = "> LỖI KẾT NỐI API: $e";
+          _statusText = AppStrings.format(AppStrings.onlineScreen.statusErrorApi, {'error': e.toString()});
         }
       });
     }
   }
 
   void _deleteClan(String tag) {
+    ScheduleService.cancelWarSchedule(tag);
     setState(() {
       _savedClans.removeWhere((clan) => clan['tag'] == tag);
-      _statusText = "> ĐÃ XÓA CLAN KHỎI DANH SÁCH.";
+      _statusText = AppStrings.onlineScreen.statusDeletedClan;
     });
     _saveClansToPrefs();
   }
 
   Future<void> _openWarDashboard(String clanTag, String clanName) async {
-    setState(() {
-      _isLoading = true;
-      _statusText = "> ĐANG TẢI DỮ LIỆU WAR CỦA [ $clanName ]...";
-    });
+    bool isCancelled = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => TerminalLoadingOverlay(
+        clanName: clanName,
+        onCancel: () {
+          isCancelled = true;
+          Navigator.pop(ctx);
+        },
+      ),
+    );
 
     try {
       final result = await CocApiService.fetchWarData(clanTag);
 
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-        if (result['type'] == 'REGULAR' || result['type'] == 'CWL') {
-          _statusText = "> TẢI DỮ LIỆU WAR THÀNH CÔNG!";
-          showDialog(
-            context: context,
-            builder: (ctx) => Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.all(16.0),
-              child: WarDashboardWidget(
-                warData: result,
-                myClanTag: clanTag,
-              ),
+      if (isCancelled) {
+        setState(() => _statusText = AppStrings.onlineScreen.statusCancelledFetch);
+        return;
+      }
+
+      Navigator.pop(context);
+
+      if (result['type'] == 'REGULAR') {
+        setState(() => _statusText = AppStrings.onlineScreen.statusWarDataSuccess);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) => WarDetailScreen(
+              apiResult: result,
+              myTag: clanTag,
             ),
-          );
-        } else {
-          _statusText = "> CLAN [ $clanName ] KHÔNG CÓ TRẬN WAR NÀO.";
-        }
-      });
+          ),
+        );
+      } else if (result['type'] == 'CWL') {
+        setState(() => _statusText = AppStrings.onlineScreen.statusWarDataSuccess);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) => WarDashboardWidget(
+              warData: result,
+              myClanTag: clanTag,
+            ),
+          ),
+        );
+      } else {
+        setState(() => _statusText = AppStrings.format(AppStrings.onlineScreen.statusNoWar, {'name': clanName}));
+      }
     } catch (e) {
       if (!mounted) return;
+      if (isCancelled) return;
+
+      Navigator.pop(context);
       setState(() {
-        _isLoading = false;
-        if (e.toString().contains("BẢO TRÌ")) {
-          _statusText = "> $e";
+        if (e.toString().contains("BẢO TRÌ") || e.toString().contains("MAINTENANCE")) {
+          _statusText = AppStrings.onlineScreen.statusMaintenance;
         } else {
-          _statusText = "> LỖI TẢI DỮ LIỆU WAR: $e";
+          _statusText = AppStrings.format(AppStrings.onlineScreen.statusWarDataError, {'error': e.toString()});
         }
       });
     }
@@ -205,6 +225,58 @@ class _OnlineScreenState extends State<OnlineScreen> {
     if (data != null && data.text != null && mounted) {
       setState(() => _tagController.text = data.text!);
     }
+  }
+
+  void _showSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => const SettingsDialog(themeColor: Color(0xFF4CAF50)),
+    );
+  }
+
+  Future<void> _handleToggleAutoSync() async {
+    if (RuleManager.warAutoSync) {
+      bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF0D0F0E),
+          shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1.5)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545)),
+              const SizedBox(width: 8),
+              Text(AppStrings.onlineScreen.dialogWarningTitle, style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            ],
+          ),
+          content: Text(
+            AppStrings.onlineScreen.dialogWarningContent,
+            style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5, fontFamily: 'monospace'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(AppStrings.onlineScreen.btnCancelDialog, style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(AppStrings.onlineScreen.btnForceDisable, style: const TextStyle(color: Color(0xFFB54545), fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+    }
+
+    setState(() {
+      RuleManager.warAutoSync = !RuleManager.warAutoSync;
+      RuleManager.save();
+      if (RuleManager.warAutoSync) {
+        WarSyncService.registerPeriodicTask();
+      } else {
+        WarSyncService.cancelTask();
+      }
+    });
   }
 
   @override
@@ -221,16 +293,26 @@ class _OnlineScreenState extends State<OnlineScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
                 child: Column(
                   children: [
-                    // SỬ DỤNG CHUNG TERMINAL HEADER
                     TerminalHeader(
                       isOnline: true,
-                      showRealEta: _showRealEta,
+                      customToggleLabel: AppStrings.onlineScreen.labelSync,
+                      showRealEta: RuleManager.warAutoSync,
+                      onToggleEta: _handleToggleAutoSync,
                       currentTime: _currentTime,
-                      onToggleEta: () {}, // Vô hiệu hóa tính năng cài đặt ở màn online để tránh rườm rà
-                      onLanguageChange: () {},
-                      onSettingsTap: () {},
-                      onUpdateTap: () {},
-                      onToggleServer: () => Navigator.pop(context), // ẤN VÀO NÚT SERVER ĐỂ QUAY VỀ
+                      onLanguageChange: () async {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      },
+                      onSettingsTap: _showSettingsDialog,
+                      onUpdateTap: () async {
+                        try {
+                          await launchUrl(Uri.parse('https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md'), mode: LaunchMode.externalApplication);
+                        } catch (e) { debugPrint("Không thể mở link: $e"); }
+                      },
+                      onToggleServer: () => Navigator.pop(context),
                     ),
                     const SizedBox(height: 9.5),
 
@@ -239,191 +321,224 @@ class _OnlineScreenState extends State<OnlineScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // KHUNG LOGO BANNER (ĐỒNG BỘ THIẾT KẾ VỚI SECURITY TAG CỦA MÀN HÌNH LOCAL)
+                            // === THÊM BANNER TIÊU ĐỀ Ở ĐÂY ===
                             Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              margin: const EdgeInsets.only(top: 10, bottom: 30),
                               decoration: const BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(color: Color(0xFF4CAF50), width: 1),
+                                  bottom: BorderSide(color: Color(0xFF4CAF50), width: 1),
+                                ),
                                 color: Color(0x224CAF50),
-                                border: Border.symmetric(horizontal: BorderSide(color: Color(0xFF4CAF50), width: 1)),
                               ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text("■", style: TextStyle(color: Color(0xFF4CAF50), fontSize: 10)),
-                                  SizedBox(width: 12),
-                                  Text(
-                                    "C L A N   C O N N E C T",
-                                    style: TextStyle(color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 4.0),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Text("■", style: TextStyle(color: Color(0xFF4CAF50), fontSize: 10)),
-                                ],
+                              child: Center(
+                                child: Text(
+                                  AppStrings.onlineScreen.bannerClanWar,
+                                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                                ),
                               ),
                             ),
 
-                            const SizedBox(height: 30),
-
-                            // GIAO DIỆN NHẬP CODE ĐỒNG BỘ Y HỆT TERMINAL INPUT AREA (DÁN JSON)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "T H Ê M   C L A N   T H E O   D Õ I",
-                                  style: TextStyle(color: Color(0xFF555555), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 3.0),
-                                ),
-                                const SizedBox(height: 12),
-
-                                // KHUNG NHẬP LIỆU LỚN
-                                Container(
-                                  height: 110, // Chiều cao giống khung dán JSON
-                                  color: const Color(0xFF111111), // Màu xám đen
-                                  child: Stack(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.all(12.0),
-                                        child: TextField(
-                                          controller: _tagController,
-                                          enabled: !_isLoading,
-                                          maxLines: null,
-                                          style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontFamily: 'Courier'),
-                                          textCapitalization: TextCapitalization.characters,
-                                          decoration: const InputDecoration.collapsed(
-                                            hintText: "DÁN MÃ TAG VÀO ĐÂY (VD: #2YGYCUCC8)...",
-                                            hintStyle: TextStyle(color: Color(0xFF444444), fontSize: 12),
-                                          ),
-                                        ),
-                                      ),
-                                      // NÚT DÁN Ở GÓC TRÊN BÊN PHẢI NHƯ MÀN HÌNH LOCAL
-                                      Positioned(
-                                        top: 10,
-                                        right: 10,
-                                        child: InkWell(
-                                          onTap: _pasteFromClipboard,
-                                          child: Container(
-                                            color: const Color(0xFF333333),
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                            child: const Text("DÁN", style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 11)),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                // NÚT XÁC NHẬN DÍNH LIỀN BÊN DƯỚI
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF4CAF50), // Màu xanh lá đặc trưng của màn Online
-                                      disabledBackgroundColor: const Color(0xFF222222),
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                                      elevation: 0,
-                                    ),
-                                    onPressed: _isLoading ? null : _addNewClan,
-                                    child: _isLoading
-                                        ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-                                        : const Text("X Á C   N H Ậ N   ►", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: 3.0)),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            TerminalLogo(),
 
                             const SizedBox(height: 30),
 
-                            // DANH SÁCH CLAN ĐÃ LƯU
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4.0),
-                              child: Text("> DANH SÁCH CLAN:", style: TextStyle(color: Color(0xFF4CAF50), fontSize: 12, fontWeight: FontWeight.bold)),
-                            ),
-                            const SizedBox(height: 12),
-
-                            if (_savedClans.isEmpty)
-                              Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(border: Border.all(color: const Color(0xFF333333), style: BorderStyle.solid), color: const Color(0xFF141615)),
-                                child: const Center(
-                                  child: Text("CHƯA CÓ CLAN NÀO ĐƯỢC THÊM.", textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF666666), fontSize: 12, height: 1.5)),
-                                ),
-                              )
-                            else
+                            if (_savedClans.isNotEmpty)
                               ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: _savedClans.length,
                                 itemBuilder: (context, index) {
                                   final clan = _savedClans[index];
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    decoration: BoxDecoration(border: Border.all(color: const Color(0xFF333333), width: 1), color: const Color(0xFF141615)),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: _isLoading ? null : () => _openWarDashboard(clan['tag'], clan['name']),
-                                        splashColor: const Color(0x334CAF50),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(12.0),
-                                          child: Row(
+
+                                  return InkWell(
+                                    onTap: _isLoading ? null : () => _openWarDashboard(clan['tag'], clan['name']),
+                                    splashColor: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                                    highlightColor: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 16.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment: CrossAxisAlignment.center,
                                             children: [
-                                              // LOGO CLAN
-                                              Container(
-                                                width: 45, height: 45,
-                                                decoration: const BoxDecoration(color: Color(0xFF0A0C0B)),
-                                                child: clan['badgeUrl'].toString().isNotEmpty
-                                                    ? Image.network(clan['badgeUrl'], errorBuilder: (c, e, s) => const Icon(Icons.shield, color: Color(0xFF4CAF50)))
-                                                    : const Icon(Icons.shield, color: Color(0xFF4CAF50)),
+                                              Expanded(
+                                                child: RichText(
+                                                  text: TextSpan(
+                                                    style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                                                    children: [
+                                                      TextSpan(text: AppStrings.onlineScreen.labelClanName, style: const TextStyle(color: Color(0xFF888888))),
+                                                      TextSpan(text: clan['name'], style: const TextStyle(color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold)),
+                                                    ],
+                                                  ),
+                                                ),
                                               ),
-                                              const SizedBox(width: 16),
-                                              // THÔNG TIN
+                                              InkWell(
+                                                onTap: _isLoading ? null : () => _deleteClan(clan['tag']),
+                                                child: Text(
+                                                    AppStrings.onlineScreen.btnDeleteClan,
+                                                    style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+
+                                          RichText(
+                                            text: TextSpan(
+                                              style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                                              children: [
+                                                TextSpan(text: AppStrings.onlineScreen.labelClanTag, style: const TextStyle(color: Color(0xFF555555))),
+                                                TextSpan(text: clan['tag'], style: const TextStyle(color: Color(0xFF666666))),
+                                              ],
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 28),
+
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                            children: [
                                               Expanded(
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    Text(clan['name'], style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 16, fontWeight: FontWeight.bold)),
-                                                    const SizedBox(height: 6),
-                                                    Row(
-                                                      children: [
-                                                        Text(clan['tag'], style: const TextStyle(color: Color(0xFF888888), fontSize: 12, fontFamily: 'Courier')),
-                                                        const Text("  |  ", style: TextStyle(color: Color(0xFF444444))),
-                                                        Text("Lv.${clan['clanLevel']}", style: const TextStyle(color: Color(0xFFE2B714), fontSize: 12, fontWeight: FontWeight.bold)),
-                                                      ],
-                                                    )
+                                                    Text(
+                                                      AppStrings.onlineScreen.labelBadge,
+                                                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                                    ),
+                                                    const SizedBox(height: 14),
+                                                    SizedBox(
+                                                      width: 40, height: 40,
+                                                      child: clan['badgeUrl'].toString().isNotEmpty
+                                                          ? Image.network(clan['badgeUrl'], errorBuilder: (c, e, s) => const Icon(Icons.shield, color: Color(0xFF4CAF50)))
+                                                          : const Icon(Icons.shield, color: Color(0xFF4CAF50)),
+                                                    ),
                                                   ],
                                                 ),
                                               ),
-                                              // NÚT XÓA
-                                              IconButton(
-                                                icon: const Icon(Icons.delete_outline, color: Color(0xFFB54545), size: 22),
-                                                onPressed: () => _deleteClan(clan['tag']),
-                                              )
+
+                                              Container(
+                                                width: 1,
+                                                height: 46,
+                                                color: const Color(0xFF333333),
+                                              ),
+
+                                              Expanded(
+                                                child: Column(
+                                                  children: [
+                                                    Text(
+                                                      AppStrings.onlineScreen.labelLevel,
+                                                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                                    ),
+                                                    const SizedBox(height: 14),
+                                                    Text(
+                                                      "${clan['clanLevel']}",
+                                                      style: const TextStyle(
+                                                        fontFamily: 'monospace',
+                                                        color: Color(0xFF4CAF50),
+                                                        fontSize: 15,
+                                                        fontWeight: FontWeight.bold,
+                                                        letterSpacing: 1.5,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
                                             ],
                                           ),
-                                        ),
+
+                                          const SizedBox(height: 28),
+                                          const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
+                                        ],
                                       ),
                                     ),
                                   );
                                 },
                               ),
-                            const SizedBox(height: 20),
+
+                            const SizedBox(height: 30),
+
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  AppStrings.onlineScreen.labelAddClan,
+                                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0),
+                                ),
+                                const SizedBox(height: 8),
+
+                                Stack(
+                                  children: [
+                                    TextField(
+                                      controller: _tagController,
+                                      enabled: !_isLoading,
+                                      autofocus: false,
+                                      maxLines: 4,
+                                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 14),
+                                      textCapitalization: TextCapitalization.characters,
+                                      decoration: InputDecoration(
+                                        hintText: AppStrings.onlineScreen.hintPasteTag,
+                                        hintStyle: const TextStyle(fontFamily: 'monospace', color: Color(0xFF444444)),
+                                        filled: true,
+                                        fillColor: const Color(0xFF141615),
+                                        border: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
+                                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: Color(0xFF666666), width: 1)),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      child: InkWell(
+                                        onTap: _pasteFromClipboard,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          color: const Color(0xFF333333),
+                                          child: Text(AppStrings.terminal.btnPaste, style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ),
+                                    )
+                                  ],
+                                ),
+
+                                const SizedBox(height: 20),
+
+                                Material(
+                                  color: const Color(0xFF4CAF50),
+                                  child: InkWell(
+                                    onTap: _isLoading ? null : _addNewClan,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 18),
+                                      alignment: Alignment.center,
+                                      child: _isLoading
+                                          ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                                          : Text(
+                                        AppStrings.onlineScreen.btnConfirmAdd,
+                                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF111111), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 12),
-                    // KHUNG TRẠNG THÁI CUỐI CÙNG (CÙNG VỊ TRÍ, BỐ CỤC Y HỆT TERMINAL SCREEN)
                     Row(
                       children: [
                         Expanded(
-                          child: Text(_statusText, style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.clip, maxLines: 1),
+                          child: Text(_statusText, style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.clip, maxLines: 1),
                         ),
                         ValueListenableBuilder<bool>(
                           valueListenable: _showCursor,
                           builder: (context, show, child) => Opacity(
                             opacity: show ? 1.0 : 0.0,
-                            child: const Text("█", style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
+                            child: const Text("█", style: TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13)),
                           ),
                         ),
                       ],
@@ -433,6 +548,115 @@ class _OnlineScreenState extends State<OnlineScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class TerminalLoadingOverlay extends StatefulWidget {
+  final String clanName;
+  final VoidCallback onCancel;
+
+  const TerminalLoadingOverlay({
+    super.key,
+    required this.clanName,
+    required this.onCancel,
+  });
+
+  @override
+  State<TerminalLoadingOverlay> createState() => _TerminalLoadingOverlayState();
+}
+
+class _TerminalLoadingOverlayState extends State<TerminalLoadingOverlay> {
+  final List<String> _frames = ['|', '/', '-', '\\'];
+  int _currentFrame = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 150), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentFrame = (_currentFrame + 1) % _frames.length;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0A0C0B),
+          border: Border.all(color: const Color(0xFF4CAF50), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+              blurRadius: 20,
+              spreadRadius: 5,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.satellite_alt_outlined, color: Color(0xFF4CAF50), size: 36),
+            const SizedBox(height: 16),
+            Text(
+              AppStrings.onlineScreen.overlayFetchingData,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "${AppStrings.onlineScreen.overlayClanPrefix}${widget.clanName}",
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 12),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  AppStrings.onlineScreen.overlayLoading,
+                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888), fontSize: 14),
+                ),
+                Text(
+                  "[ ${_frames[_currentFrame]} ]",
+                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE2B714), fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1A1C1B),
+                  side: const BorderSide(color: Color(0xFFB54545), width: 1),
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: widget.onCancel,
+                child: Text(
+                  AppStrings.onlineScreen.btnCancelDialog,
+                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFB54545), fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

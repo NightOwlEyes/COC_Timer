@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
+import 'game_data.dart';
 
 class AppStrings {
   static String languageCode = 'vi';
@@ -48,9 +49,10 @@ class AppStrings {
   static MainStrings get mainApp => languageCode == 'vi' ? const MainStringsVi() : const MainStringsEn();
   static VillageDetailDialogStrings get dialog => languageCode == 'vi' ? const VillageDetailDialogStringsVi() : const VillageDetailDialogStringsEn();
   static GameData get gameData => languageCode == 'vi' ? const GameDataVi() : const GameDataEn();
-
-  // THÊM DÒNG NÀY
   static SettingsStrings get settings => languageCode == 'vi' ? const SettingsStringsVi() : const SettingsStringsEn();
+  static OnlineScreenStrings get onlineScreen => languageCode == 'vi' ? const OnlineScreenStringsVi() : const OnlineScreenStringsEn();
+  static WarDetailScreenStrings get warDetail => languageCode == 'vi' ? const WarDetailScreenStringsVi() : const WarDetailScreenStringsEn();
+  static WarDashboardWidgetStrings get warDashboard => languageCode == 'vi' ? const WarDashboardWidgetStringsVi() : const WarDashboardWidgetStringsEn();
 }
 
 // ==========================================
@@ -106,6 +108,14 @@ abstract class TerminalScreenStrings {
   String get debugLoadNameError;
   String get debugLoadGeneralError;
   String get btnUpdateAvailable;
+  String get defaultVillageNameSearching;
+  String get statusFetchingVillageName;
+  String get statusFoundNameWaitingConfirm;
+  String get statusApiTimeoutManualInput;
+  String get statusSavedSettings;
+  String get statusSavedDefault;
+  String get labelLanguage;
+  String get labelServerOnline;
 }
 
 abstract class ScheduleServiceStrings {
@@ -130,6 +140,11 @@ abstract class ScheduleServiceStrings {
   String get debugDisableAlarmModeError;
   String get welcomeNotificationTitle;
   String get welcomeNotificationBody;
+  String get channelName;
+  String get channelDescription;
+  String get warPreAlarmTitle;
+  String get warEndAlarmTitle;
+  String get debugCancelledWarAlarms;
 }
 
 abstract class AlarmPopupStrings {
@@ -171,6 +186,11 @@ abstract class VillageDetailDialogStrings {
   String get groupLabNight;
   String get groupLabMain;
   String get separatorDots;
+  String get logGroupNameBuilderNight;
+  String get logGroupNameBuilder;
+  String get logGroupNamePet;
+  String get logGroupNameLabNight;
+  String get logGroupNameLabMain;
 }
 
 abstract class GameData {
@@ -178,7 +198,6 @@ abstract class GameData {
   String getName(int id);
 }
 
-// THÊM INTERFACE CHO CÀI ĐẶT
 abstract class SettingsStrings {
   const SettingsStrings();
   String get settingsTitle;
@@ -208,8 +227,84 @@ abstract class SettingsStrings {
   String get btnLicenses;
   String get privacyDialogTitle;
   String get privacyDialogContent;
+  String get dialogWarningTitle;
+  String get dialogWarningContent;
+  String get btnCancelDialog;
+  String get btnForceDisable;
+  String get errorCannotOpenLink;
+  String get warAlarmConfigTitle;
+  String get warPreAlarmLabel;
+  String get warEndAlarmLabel;
+  String get warAutoSyncLabel;
+  String get btnTypeNotification;
+  String get btnTypeAlarm;
 }
 
+abstract class OnlineScreenStrings {
+  const OnlineScreenStrings();
+  String get statusReadyApi;
+  String get statusClanExists;
+  String get statusSearchingClan;
+  String get statusAddedClan;
+  String get statusErrorNotFound;
+  String get statusErrorApi;
+  String get statusDeletedClan;
+  String get statusCancelledFetch;
+  String get statusWarDataSuccess;
+  String get statusNoWar;
+  String get statusWarDataError;
+  String get statusMaintenance; // BỔ SUNG TRẠNG THÁI BẢO TRÌ
+  String get labelSync;
+  String get dialogWarningTitle;
+  String get dialogWarningContent;
+  String get btnCancelDialog;
+  String get btnForceDisable;
+  String get labelClanName;
+  String get btnDeleteClan;
+  String get labelClanTag;
+  String get labelBadge;
+  String get labelLevel;
+  String get labelAddClan;
+  String get hintPasteTag;
+  String get btnConfirmAdd;
+  String get overlayFetchingData;
+  String get overlayClanPrefix;
+  String get overlayLoading;
+  String get bannerClanWar;
+}
+
+abstract class WarDetailScreenStrings {
+  const WarDetailScreenStrings();
+  String get statusCalculating;
+  String get statusUnknown;
+  String get statusEndedCalculating;
+  String get statusEndsIn;
+  String get statusPrepCalculating;
+  String get statusStartsIn;
+  String get statusEnded;
+
+  String get dialogTitleMissedAttacks;
+  String get dialogMyClanCompleted;
+  String get dialogEnemyCompleted;
+  String get dialogAttacksCount;
+  String get loadingData;
+  String get btnBack;
+  String get labelVs;
+  String get labelMe;
+  String get labelEnemy;
+  String get btnMissedAttacks;
+}
+
+abstract class WarDashboardWidgetStrings {
+  const WarDashboardWidgetStrings();
+  String get errorEmptyCwlData;
+  String get errorNoClanList;
+  String get cwlAnalysisTitle;
+  String get colClanName;
+  String get btnViewMatchDetails;
+  String get btnBack;
+  String get errorNoWarData;
+}
 // ==========================================
 // BỘ TỪ ĐIỂN TIẾNG VIỆT
 // ==========================================
@@ -237,7 +332,7 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get statusLoadedSavedData => "> ĐÃ TẢI DỮ LIỆU LƯU TRỮ";
   @override String get statusVillageDeleted => "> ĐÃ XÓA LÀNG: {tag}";
   @override String get statusAlarmSetFullscreen => "> [BÁO THỨC] {typeString} {dataId}";
-  @override String get statusAlarmOff => "> [ĐÃ TẮT] {typeString} {dataId}";
+  @override String get statusAlarmOff => "> [ĐĐ TẮT] {typeString} {dataId}";
   @override String get statusNotificationSetSystem => "> [THÔNG BÁO] {typeString} {dataId}";
   @override String get statusGroupAllOff => "> ĐÃ TẮT TOÀN BỘ NHÓM: {groupName}";
   @override String get statusGroupModeChanged => "> ĐÃ ĐỔI NHÓM {groupName} SANG CHẾ ĐỘ {alarmType}";
@@ -248,13 +343,13 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get defaultVillageNameFallback => "<CHƯA ĐẶT TÊN>";
   @override String get defaultVillageNameUnset => "Chưa đặt tên";
   @override String get deleteDialogTitle => "XÁC NHẬN XÓA";
-  @override String get deleteDialogMessage => "Bạn có chắc chắn muốn xóa dữ liệu JSON và báo thức của làng {tag} không?\n(Tên làng vẫn sẽ được ghi nhớ)";
+  @override String get deleteDialogMessage => "Bạn có chắc chắn muốn xóa dữ liệu JSON và báo thức của làng {tag} không?";
   @override String get btnCancel => "HỦY";
   @override String get btnDeleteNow => "XÓA NGAY";
   @override String get newVillageDialogTitle => "PHÁT HIỆN LÀNG MỚI";
   @override String get newVillageDialogTagLabel => "Mã: {tag}";
   @override String get newVillageNameHint => "Nhập tên làng (VD: Acc Chính)...";
-  @override String get btnSaveAndAddVillage => "LƯU & THÊM LÀNG";
+  @override String get btnSaveAndAddVillage => "LƯU";
   @override String get trackingOptionsLabel => "TÙY CHỌN THEO DÕI:";
   @override String get trackingHomeVillage => "Làng Chính";
   @override String get trackingBuilderBase => "Căn cứ Thợ Xây";
@@ -263,6 +358,14 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get debugLoadNameError => "Lỗi load tên làng: {e}";
   @override String get debugLoadGeneralError => "Lỗi load: {e}";
   @override String get btnUpdateAvailable => "[ TẢI BẢN {version} ]";
+  @override String get defaultVillageNameSearching => "ĐANG TÌM TÊN LÀNG...";
+  @override String get statusFetchingVillageName => "> ĐANG TRUY XUẤT TÊN LÀNG [ {tag} ]...";
+  @override String get statusFoundNameWaitingConfirm => "> ĐÃ TÌM THẤY TÊN: {name}. ĐANG CHỜ XÁC NHẬN...";
+  @override String get statusApiTimeoutManualInput => "> LỖI API / QUÁ GIỜ: VUI LÒNG NHẬP TÊN THỦ CÔNG";
+  @override String get statusSavedSettings => "> ĐÃ LƯU THIẾT LẬP: {name}";
+  @override String get statusSavedDefault => "> ĐÃ LƯU MẶC ĐỊNH: {name}";
+  @override String get labelLanguage => "NGÔN NGỮ: ";
+  @override String get labelServerOnline => "SERVER: ONLINE";
 }
 
 class ScheduleServiceStringsVi extends ScheduleServiceStrings {
@@ -287,6 +390,12 @@ class ScheduleServiceStringsVi extends ScheduleServiceStrings {
   @override String get debugDisableAlarmModeError => "Lỗi disableAlarmMode: {e}";
   @override String get welcomeNotificationTitle => "THIẾT LẬP THÀNH CÔNG";
   @override String get welcomeNotificationBody => "Hệ thống thông báo đã sẵn sàng!";
+  @override String get channelName => "Thông Báo Hệ Thống";
+  @override String get channelDescription => "Thông báo cơ bản khi hoàn thành nâng cấp";
+  @override String get warPreAlarmTitle => "SẮP KẾT THÚC WAR";
+  @override String get warEndAlarmTitle => "WAR ĐÃ KẾT THÚC";
+  @override String get debugCancelledWarAlarms => "> ĐÃ HỦY TOÀN BỘ BÁO THỨC WAR CỦA CLAN: {clanTag}";
+
 }
 
 class AlarmPopupStringsVi extends AlarmPopupStrings {
@@ -328,6 +437,11 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
   @override String get groupLabNight => "> PHÒNG THÍ NGHIỆM SAO";
   @override String get groupLabMain => "> PHÒNG THÍ NGHIỆM";
   @override String get separatorDots => " ......................................";
+  @override String get logGroupNameBuilderNight => "THỢ XÂY ĐÊM";
+  @override String get logGroupNameBuilder => "THỢ XÂY";
+  @override String get logGroupNamePet => "LINH THÚ";
+  @override String get logGroupNameLabNight => "THÍ NGHIỆM ĐÊM";
+  @override String get logGroupNameLabMain => "PHÒNG THÍ NGHIỆM";
 }
 
 class SettingsStringsVi extends SettingsStrings {
@@ -346,7 +460,7 @@ class SettingsStringsVi extends SettingsStrings {
   @override String get labelPickEnd => "Giờ Kết Thúc";
   @override String get errorOverlap => "LỖI: Khung giờ trùng lặp!";
   @override String get btnDeleteRule => "[ XOÁ ]";
-  @override String get settingsPreAlarmTitle => "TÙY CHỌN NHẮC";
+  @override String get settingsPreAlarmTitle => "TÙY CHỌN NHẮC NÂNG CẤP";
   @override String get labelPreAlarm => "Báo trước (phút):";
   @override String get labelAppInfo => "THÔNG TIN ỨNG DỤNG";
   @override String get settingsAutoCheckUpdate => "TỰ ĐỘNG KIỂM TRA CẬP NHẬT";
@@ -358,215 +472,90 @@ class SettingsStringsVi extends SettingsStrings {
   @override String get btnPrivacyPolicy => "[ BẢO MẬT ]";
   @override String get btnLicenses => "[GIẤY PHÉP]";
   @override String get privacyDialogTitle => "■ BẢO MẬT DỮ LIỆU";
-  @override String get privacyDialogContent => "- Ứng dụng hoạt động 100% Offline (Không cần mạng).\n\n- Dữ liệu JSON bạn dán vào chỉ được lưu trữ cục bộ trên điện thoại của bạn.\n\n- Chúng tôi KHÔNG thu thập, KHÔNG gửi bất kỳ thông tin nào về làng của bạn lên Server.";
+  @override String get privacyDialogContent => "- BẢO MẬT CỤC BỘ: Toàn bộ dữ liệu làng (JSON), mã Clan và cấu hình báo thức chỉ được lưu trữ cục bộ trên thiết bị của bạn.\n\n- KẾT NỐI API: Chế độ Online chỉ gửi yêu cầu đọc dữ liệu công khai từ máy chủ Supercell để đồng bộ lịch War.\n\n- KHÔNG THU THẬP: Chúng tôi tuyệt đối KHÔNG theo dõi, KHÔNG lưu trữ đám mây và KHÔNG chia sẻ bất kỳ dữ liệu cá nhân nào.";
+  @override String get dialogWarningTitle => "CẢNH BÁO HỆ THỐNG";
+  @override String get dialogWarningContent => "> BẠN ĐANG TẮT ĐỒNG BỘ NGẦM!\n\nNếu tắt tính năng này, ứng dụng sẽ KHÔNG THỂ tự động gọi API để cập nhật thời gian War.\n\nHẬU QUẢ:\nBạn sẽ KHÔNG nhận được thông báo hay báo thức khi War kết thúc, trừ khi bạn tự mở ứng dụng lên để làm mới thủ công.\n\nXác nhận tắt?";
+  @override String get btnCancelDialog => "[ HỦY ]";
+  @override String get btnForceDisable => "[ VẪN TẮT ]";
+  @override String get errorCannotOpenLink => "Không thể mở link";
+  @override String get warAlarmConfigTitle => "CẤU HÌNH BÁO THỨC WAR";
+  @override String get warPreAlarmLabel => "BÁO TRƯỚC (PHÚT)";
+  @override String get warEndAlarmLabel => "BÁO LÚC KẾT THÚC";
+  @override String get warAutoSyncLabel => "TỰ LÀM MỚI NGẦM (12H/LẦN)";
+  @override String get btnTypeNotification => "[ THÔNG BÁO ]";
+  @override String get btnTypeAlarm => "[ BÁO THỨC ]";
 }
 
-class GameDataVi extends GameData {
-  const GameDataVi();
+class OnlineScreenStringsVi extends OnlineScreenStrings {
+  const OnlineScreenStringsVi();
+  @override String get statusReadyApi => "> SẴN SÀNG KẾT NỐI API...";
+  @override String get statusClanExists => "> CLAN NÀY ĐÃ CÓ TRONG DANH SÁCH!";
+  @override String get statusSearchingClan => "> ĐANG TÌM KIẾM CLAN [ {tag} ] TRÊN SERVER...";
+  @override String get statusAddedClan => "> ĐÃ THÊM CLAN: {name}";
+  @override String get statusErrorNotFound => "> LỖI: KHÔNG TÌM THẤY CLAN (SAI MÃ HOẶC MẠNG KÉM)";
+  @override String get statusErrorApi => "> LỖI KẾT NỐI API: {error}";
+  @override String get statusDeletedClan => "> ĐÃ XÓA CLAN VÀ HỦY BÁO THỨC LIÊN QUAN.";
+  @override String get statusCancelledFetch => "> ĐÃ HỦY TRUY XUẤT.";
+  @override String get statusWarDataSuccess => "> TẢI DỮ LIỆU WAR THÀNH CÔNG!";
+  @override String get statusNoWar => "> CLAN [ {name} ] KHÔNG CÓ TRẬN WAR NÀO.";
+  @override String get statusWarDataError => "> LỖI TẢI DỮ LIỆU WAR: {error}";
+  @override String get statusMaintenance => "> HỆ THỐNG CLASH OF CLANS ĐANG BẢO TRÌ!"; // ĐÃ THÊM DÒNG NÀY
 
-  final Map<int, String> names = const {
-    1000054: "Bom phòng không",
-    1000012: "Tháp phòng không",
-    1000028: "Tháp thổi khí",
-    73000011: "Sứa dữ tợn",
-    26000123: "Thần chú giận dữ",
-    4000097: "Quản giáo tập sự",
-    28000001: "Nữ hoảng cung thủ",
-    1000009: "Tháp cung thủ",
-    1000048: "Tháp cung thủ",
-    4000001: "Cung thủ",
-    1000000: "Doanh trại quân đội",
-    1000042: "Doanh trại quân đội",
-    4000023: "Tiểu long",
-    4000041: "Tiểu long",
-    4000005: "Khinh khí cầu",
-    28000000: "Man di vương",
-    4000000: "Man di",
-    1000006: "Trại lính",
-    26000028: "Thần chú dơi",
-    4000052: "Khí cầu chiến",
-    1000080: "Bệ trực thăng chiến đấu",
-    28000005: "Trực thăng chiến đấu",
-    4000092: "Máy khoan chiến tranh",
-    1000053: "Bệ cỗ máy chiến đấu",
-    28000003: "Cỗ máy chiến đấu",
-    4000033: "Minion Beta",
-    1000070: "Lò rèn",
-    1000065: "Trạm điều khiển B.O.B",
-    1000064: "Lều B.O.B",
-    1000032: "Tháp bom",
-    12000000: "Bom",
-    4000035: "Bom thủ",
-    1000047: "Lều của B.O.T.O",
-    4000022: "Thạch thủ",
-    4000034: "Võ sĩ khổng nhân",
-    1000040: "Trại lính thợ xây",
-    1000034: "Hội trường thợ xây",
-    93000000: "Thợ xây học việc",
-    1000015: "Lều thợ xây",
-    103000013: "Máy ném bánh",
-    102000039: "Máy ném bánh - HP",
-    102000040: "Máy ném bánh - DPH",
-    102000041: "Máy ném bánh - ED",
-    4000037: "Xe đại bác",
-    1000008: "Đại bác",
-    1000044: "Đại bác",
-    1000014: "Hội thành",
-    1000039: "Tháp đồng hồ",
-    26000016: "Thần chú nhân bản",
-    1000097: "Phòng thủ tự chế",
-    1000055: "Máy đập",
-    1000026: "Trại lính hắc ám",
-    1000023: "Dàn khoan hắc tiên dược",
+  @override String get labelSync => "ĐỒNG BỘ: ";
+  @override String get dialogWarningTitle => "CẢNH BÁO HỆ THỐNG";
+  @override String get dialogWarningContent => "> BẠN ĐANG TẮT ĐỒNG BỘ NGẦM!\n\nNếu tắt tính năng này, ứng dụng sẽ KHÔNG THỂ tự động gọi API để cập nhật thời gian War.\n\nHẬU QUẢ:\nBạn sẽ KHÔNG nhận được thông báo hay báo thức khi War kết thúc, trừ khi bạn tự mở ứng dụng lên để làm mới thủ công.\n\nXác nhận tắt?";
+  @override String get btnCancelDialog => "[ HỦY ]";
+  @override String get btnForceDisable => "[ VẪN TẮT ]";
 
-    1000024: "Kho chứa hắc tiên dược",
+  @override String get labelClanName => "Tên clan: ";
+  @override String get btnDeleteClan => "[ XÓA ]";
+  @override String get labelClanTag => "Mã clan:  ";
+  @override String get labelBadge => "HUY HIỆU";
+  @override String get labelLevel => "CẤP ĐỘ";
 
-    1000029: "Nhà máy hắc thần chú",
-    73000008: "Tê tê độn thổ",
-    1000041: "Đại bác nòng kép",
-    28000007: "Công tước rồng",
-    4000065: "Kỵ sĩ rồng",
-    4000008: "Rồng",
-    4000038: "Tàu thả xuống",
-    4000123: "Thuật sĩ",
-    1000031: "Pháo đại bàng",
-    26000010: "Thần chú động đất",
-    4000059: "Rồng điện",
-    73000002: "Cú điện",
-    4000095: "Chiến binh phóng điện",
-    4000106: "Pháp sư lửa điện",
-    1000002: "Máy hút tiên dược",
-    1000035: "Máy hút tiên dược",
-    1000003: "Kho chứa tiên dược",
-    1000036: "Kho chứa tiên dược",
-    1000050: "Pháo hoa",
-    1000089: "Súng phun lửa",
-    4000091: "Xe phóng lửa",
-    26000005: "Thần chú đóng băng",
-    73000009: "Voi biển băng giá",
-    4000150: "Lò lửa",
-    1000058: "Mỏ ngọc",
-    12000002: "Bom khổng lồ",
-    1000057: "Đại bác khổng lồ",
-    4000003: "Khổng nhân",
-    12000020: "Bom siêu khủng",
-    4000002: "Yêu tinh",
-    1000004: "Mỏ vàng",
-    1000037: "Mỏ vàng",
-    1000005: "Kho chứa vàng",
-    1000038: "Kho chứa vàng",
-    4000013: "Thạch nhân",
-    28000002: "Đại quản giáo",
-    73000017: "Quạ tham lam",
-    1000051: "Vọng gác",
-    26000011: "Thần chú tăng tốc",
-    4000082: "Thợ săn tướng",
-    4000007: "Thầy thuốc",
-    1000082: "Lều hồi máu",
-    26000001: "Thần chú hồi máu",
-    1000093: "Lều người hỗ trợ",
-    1000071: "Hội trường tướng",
-    103000012: "Tháp săn tướng",
-    102000036: "Tháp săn tướng - HP",
-    102000037: "Tháp săn tướng - DPS",
-    102000038: "Tháp săn tướng - PSL",
-    1000019: "Tháp hồ quang điện ẩn",
-    1000043: "Tháp hồ quang điện ẩn",
-    4000070: "Trư bay lượn",
-    4000011: "Trư kỵ sĩ",
-    103000011: "Cây nến rực lửa",
-    103000033: "Cây nến rực lửa - HP",
-    102000034: "Cây nến rực lửa - DPS",
-    102000035: "Cây nến rực lửa - TSA",
-    26000109: "Thần chú khiên chắn băng",
-    4000058: "Băng thạch nhân",
-    1000027: "Tháp hoả ngục",
-    26000035: "Thần chú tàng hình",
-    26000003: "Thần chú bật nhảy",
-    93000001: "Phụ tá phòng thí nghiệm",
-    1000007: "Phòng thí nghiệm",
-    73000000: "L.A.S.S.I",
-    4000017: "Nham khuyển",
-    1000063: "Máy phóng dung nham",
-    26000000: "Thần chú sấm sét",
-    107000008: "Tiều phu",
-    4000087: "Máy phóng khúc gỗ",
-    107000000: "Xạ thủ tầm xa",
-    12000014: "Mìn siêu cấp",
-    1000052: "Tháp hồ quang điện siêu cấp",
-    4000177: "Thạch nhân thiên thạch",
-    73000001: "Bò Tây Tạng dũng mãnh",
-    12000013: "Mìn",
-    4000024: "Thợ mỏ",
-    28000006: "Hoàng tử Minion",
-    4000010: "Minion",
-    1000077: "Pháo đài đá",
-    1000013: "Súng cối",
-    1000084: "Tháp nhiều cung thủ",
-    1000079: "Tháp đa năng",
-    1000045: "Súng cối đa nòng",
-    4000042: "Phù thuỷ bóng đêm",
-    1000078: "Điền đồn O.T.T.O",
-    26000070: "Thần chú siêu tăng trưởng",
-    4000009: "P.E.K.K.A",
-    1000068: "Chuồng linh thú",
-    73000004: "Phượng hoàng lửa",
-    73000007: "Thằn lằn phun độc",
-    26000009: "Thần chú độc dược",
-    4000036: "P.E.K.K.A dũng mãnh",
-    93000002: "Người tìm mỏ",
-    12000011: "Bẫy đẩy",
-    26000002: "Thần chú thịnh nộ",
-    4000031: "Man di cuồng nộ",
-    26000053: "Thần chú thu quân",
-    1000049: "Trại quân tiếp viện",
-    1000086: "Tháp phục thù",
-    26000098: "Thần chú hồi sinh",
-    1000085: "Đại bác bật nẩy",
-    1000056: "Lò nung",
-    4000110: "Kỵ sĩ rễ cây",
-    28000004: "Nữ tướng hoàng gia",
-    4000109: "Phù thuỷ tàn tích",
-    1000067: "Máy bắn đá",
-    12000006: "Mìn bay tầm diệt",
-    4000075: "Trại lính bay",
-    4000188: "Cỗ xe bay",
-    26000017: "Thần chú bộ xương",
-    12000008: "Bẫy bộ xương",
-    107000001: "Kẻ huỷ diệt",
-    4000032: "Cung thủ lén lút",
-    73000016: "Dơi hắt xì",
-    1000020: "Nh máy thần chú",
-    1000072: "Tháp thần chú",
-    73000010: "Cáo linh hồn",
-    12000001: "Bẫy bật",
-    12000010: "Bẫy bật",
-    1000046: "Phòng thí nghiệm sao",
-    4000062: "Máy bay thả đá",
-    1000102: "Tháp siêu pháp sư",
-    4000132: "Cao thủ ném lao",
-    12000016: "Bẫy lốc xoáy",
-    26000120: "Thần chú vật tổ",
-    1000001: "Nhà chính",
-    4000135: "Máy phóng binh lính",
-    73000003: "Ngựa một sừng",
-    4000012: "Valkyrie",
-    4000004: "Công thành binh",
-    4000051: "Xe phá thành",
-    1000033: "Tường thành",
-    4000015: "Phù thuỷ",
-    1000011: "Tháp pháp sư",
-    4000006: "Pháp sư",
-    1000059: "Xưởng chế tạo",
-    1000081: "Tháp cung",
-    1000021: "Tháp cung",
-    4000053: "Người tuyết Yeti"
-  };
+  @override String get labelAddClan => "T H Ê M   C L A N   T H E O   D Õ I";
+  @override String get hintPasteTag => "DÁN MÃ TAG VÀO ĐÂY";
+  @override String get btnConfirmAdd => "X Á C   N H Ậ N   ►";
 
-  @override
-  String getName(int id) => names[id] ?? "t.me/nightowleyes ($id)";
+  @override String get overlayFetchingData => "TRUY XUẤT DỮ LIỆU TỪ SERVER";
+  @override String get overlayClanPrefix => "> CLAN: ";
+  @override String get overlayLoading => "ĐANG TẢI ";
+  @override String get bannerClanWar => "■ H Ộ I   C H I Ế N ■";
 }
 
+class WarDetailScreenStringsVi extends WarDetailScreenStrings {
+  const WarDetailScreenStringsVi();
+  @override String get statusCalculating => "Đang tính toán...";
+  @override String get statusUnknown => "Unknown";
+  @override String get statusEndedCalculating => " KẾT THÚC: [ ĐANG TỔNG KẾT ]";
+  @override String get statusEndsIn => " KẾT THÚC: [ {time} ]";
+  @override String get statusPrepCalculating => " VÀO TRẬN: [ ĐANG CHUẨN BỊ ]";
+  @override String get statusStartsIn => " VÀO TRẬN: [ {time} ]";
+  @override String get statusEnded => " TRẠNG THÁI: [ ĐÃ KẾT THÚC ]";
+
+  @override String get dialogTitleMissedAttacks => "TRUY XUẤT: CHƯA ĐÁNH HẾT";
+  @override String get dialogMyClanCompleted => "HOÀN THÀNH 100%";
+  @override String get dialogEnemyCompleted => "KẺ ĐỊCH ĐÃ ĐÁNH HẾT";
+  @override String get dialogAttacksCount => "ĐÁNH: {atkCount}/{maxAttacks}";
+
+  @override String get loadingData => "> ĐANG TRUY XUẤT DỮ LIỆU...";
+  @override String get btnBack => "TRỞ VỀ";
+  @override String get labelVs => "VS";
+  @override String get labelMe => "Ta";
+  @override String get labelEnemy => "Địch";
+  @override String get btnMissedAttacks => "CHƯA TẤN CÔNG";
+}
+
+class WarDashboardWidgetStringsVi extends WarDashboardWidgetStrings {
+  const WarDashboardWidgetStringsVi();
+  @override String get errorEmptyCwlData => "> DỮ LIỆU CWL TRỐNG";
+  @override String get errorNoClanList => "> KHÔNG TÌM THẤY DANH SÁCH CLAN";
+  @override String get cwlAnalysisTitle => "CLAN WAR LEAGUE - PHÂN TÍCH ĐỘI HÌNH";
+  @override String get colClanName => "TÊN HỘI";
+  @override String get btnViewMatchDetails => "TRUY XUẤT CHI TIẾT TRẬN ĐẤU";
+  @override String get btnBack => "TRỞ VỀ";
+  @override String get errorNoWarData => "> KHÔNG TÌM THẤY DỮ LIỆU WAR";
+}
 // ==========================================
 // BỘ TỪ ĐIỂN TIẾNG ANH
 // ==========================================
@@ -605,13 +594,13 @@ class TerminalScreenStringsEn extends TerminalScreenStrings {
   @override String get defaultVillageNameFallback => "<UNNAMED>";
   @override String get defaultVillageNameUnset => "Unnamed";
   @override String get deleteDialogTitle => "CONFIRM DELETION";
-  @override String get deleteDialogMessage => "Are you sure you want to delete the JSON data and alarms for village {tag}?\n(The village name will still be remembered)";
+  @override String get deleteDialogMessage => "Are you sure you want to delete the JSON data and alarms for village {tag}?";
   @override String get btnCancel => "CANCEL";
   @override String get btnDeleteNow => "DELETE";
   @override String get newVillageDialogTitle => "NEW VILLAGE DETECTED";
   @override String get newVillageDialogTagLabel => "Tag: {tag}";
   @override String get newVillageNameHint => "Enter village name (e.g., Main Acc)...";
-  @override String get btnSaveAndAddVillage => "SAVE and ADD VILLAGE";
+  @override String get btnSaveAndAddVillage => "SAVE";
   @override String get trackingOptionsLabel => "TRACKING OPTIONS:";
   @override String get trackingHomeVillage => "Home Village";
   @override String get trackingBuilderBase => "Builder Base";
@@ -620,6 +609,14 @@ class TerminalScreenStringsEn extends TerminalScreenStrings {
   @override String get debugLoadNameError => "Error loading village name: {e}";
   @override String get debugLoadGeneralError => "Load error: {e}";
   @override String get btnUpdateAvailable => "[ GET {version} ]";
+  @override String get defaultVillageNameSearching => "SEARCHING VILLAGE NAME...";
+  @override String get statusFetchingVillageName => "> FETCHING VILLAGE NAME [ {tag} ]...";
+  @override String get statusFoundNameWaitingConfirm => "> NAME FOUND: {name}. WAITING FOR CONFIRMATION...";
+  @override String get statusApiTimeoutManualInput => "> API ERROR / TIMEOUT: PLEASE ENTER NAME MANUALLY";
+  @override String get statusSavedSettings => "> SAVED SETTINGS: {name}";
+  @override String get statusSavedDefault => "> SAVED DEFAULT: {name}";
+  @override String get labelLanguage => "LANGUAGE: ";
+  @override String get labelServerOnline => "SERVER: ONLINE";
 }
 
 class ScheduleServiceStringsEn extends ScheduleServiceStrings {
@@ -644,6 +641,11 @@ class ScheduleServiceStringsEn extends ScheduleServiceStrings {
   @override String get debugDisableAlarmModeError => "Error disableAlarmMode: {e}";
   @override String get welcomeNotificationTitle => "SETUP COMPLETED";
   @override String get welcomeNotificationBody => "The notification is ready!";
+  @override String get channelName => "System Notifications";
+  @override String get channelDescription => "Basic notifications when an upgrade completes";
+  @override String get warPreAlarmTitle => "WAR ENDING SOON";
+  @override String get warEndAlarmTitle => "WAR HAS ENDED";
+  @override String get debugCancelledWarAlarms => "> CANCELLED ALL WAR ALARMS FOR CLAN: {clanTag}";
 }
 
 class AlarmPopupStringsEn extends AlarmPopupStrings {
@@ -685,6 +687,11 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
   @override String get groupLabNight => "> STAR LABORATORY";
   @override String get groupLabMain => "> LABORATORY";
   @override String get separatorDots => " ......................................";
+  @override String get logGroupNameBuilderNight => "MASTER BUILDER";
+  @override String get logGroupNameBuilder => "BUILDER";
+  @override String get logGroupNamePet => "PET";
+  @override String get logGroupNameLabNight => "STAR LABORATORY";
+  @override String get logGroupNameLabMain => "LABORATORY";
 }
 
 class SettingsStringsEn extends SettingsStrings {
@@ -703,7 +710,7 @@ class SettingsStringsEn extends SettingsStrings {
   @override String get labelPickEnd => "End Time";
   @override String get errorOverlap => "ERROR: Time overlaps!";
   @override String get btnDeleteRule => "[ DEL ]";
-  @override String get settingsPreAlarmTitle => "REMINDER OPTIONS";
+  @override String get settingsPreAlarmTitle => "UPGRADE REMINDER OPTION";
   @override String get labelPreAlarm => "Pre-alarm (min):";
   @override String get labelAppInfo => "APP INFO";
   @override String get settingsAutoCheckUpdate => "AUTO CHECK UPDATE";
@@ -715,209 +722,87 @@ class SettingsStringsEn extends SettingsStrings {
   @override String get btnPrivacyPolicy => "[ PRIVACY ]";
   @override String get btnLicenses => "[LICENSES]";
   @override String get privacyDialogTitle => "■ DATA PRIVACY";
-  @override String get privacyDialogContent => "- The app works 100% Offline.\n\n- Your JSON data is stored locally on your device.\n\n- We DO NOT collect or send any information about your village to any server.";
+  @override String get privacyDialogContent => "- LOCAL STORAGE: All village data (JSON), Clan tags, and alarm settings are stored strictly locally on your device.\n\n- API CONNECTIONS: Online Mode only requests public data from Supercell servers to sync War schedules.\n\n- NO TRACKING: We absolutely DO NOT track, cloud-save, or share any of your personal data.";
+  @override String get dialogWarningTitle => "SYSTEM WARNING";
+  @override String get dialogWarningContent => "> YOU ARE DISABLING BACKGROUND SYNC!\n\nIf disabled, the app CANNOT automatically call the API to update War times.\n\nCONSEQUENCES:\nYou will NOT receive notifications or alarms when War ends unless you manually open the app to refresh.\n\nConfirm disable?";
+  @override String get btnCancelDialog => "[ CANCEL ]";
+  @override String get btnForceDisable => "[ DISABLE ANYWAY ]";
+  @override String get errorCannotOpenLink => "Cannot open link";
+  @override String get warAlarmConfigTitle => "WAR ALARM CONFIG";
+  @override String get warPreAlarmLabel => "PRE-ALARM (MIN)";
+  @override String get warEndAlarmLabel => "ALARM ON END";
+  @override String get warAutoSyncLabel => "BACKGROUND SYNC (12H/TIME)";
+  @override String get btnTypeNotification => "[ NOTIFICATION ]";
+  @override String get btnTypeAlarm => "[ ALARM ]";
 }
 
-class GameDataEn extends GameData {
-  const GameDataEn();
+class OnlineScreenStringsEn extends OnlineScreenStrings {
+  const OnlineScreenStringsEn();
+  @override String get statusReadyApi => "> READY TO CONNECT API...";
+  @override String get statusClanExists => "> CLAN ALREADY IN THE LIST!";
+  @override String get statusSearchingClan => "> SEARCHING FOR CLAN [ {tag} ] ON SERVER...";
+  @override String get statusAddedClan => "> CLAN ADDED: {name}";
+  @override String get statusErrorNotFound => "> ERROR: CLAN NOT FOUND (INVALID TAG OR BAD NETWORK)";
+  @override String get statusErrorApi => "> API CONNECTION ERROR: {error}";
+  @override String get statusDeletedClan => "> DELETED CLAN AND CANCELLED RELATED ALARMS.";
+  @override String get statusCancelledFetch => "> FETCH CANCELLED.";
+  @override String get statusWarDataSuccess => "> WAR DATA LOADED SUCCESSFULLY!";
+  @override String get statusNoWar => "> CLAN [ {name} ] HAS NO ACTIVE WAR.";
+  @override String get statusWarDataError => "> ERROR LOADING WAR DATA: {error}";
+  @override String get statusMaintenance => "> CLASH OF CLANS SERVERS ARE UNDER MAINTENANCE!"; // ĐÃ THÊM DÒNG NÀY
 
-  final Map<int, String> names = const {
-    1000054: "Air Bombs",
-    1000012: "Air Defense",
-    1000028: "Air Sweeper",
-    73000011: "Angry Jelly",
-    26000123: "Angry Spell",
-    4000097: "Apprentice Warden",
-    28000001: "Archer Queen",
-    1000009: "Archer Tower",
-    1000048: "Archer Tower",
-    4000001: "Archer",
-    1000000: "Army Camp",
-    1000042: "Army Camp",
-    4000023: "Baby Dragon",
-    4000041: "Baby Dragon",
-    4000005: "Balloon",
-    28000000: "Barbarian King",
-    4000000: "Barbarian",
-    1000006: "Barracks",
-    26000028: "Bat Spell",
-    4000052: "Battle Blimp",
-    1000080: "Battle Copter Altar",
-    28000005: "Battle Copter",
-    4000092: "Battle Drill",
-    1000053: "Battle Machine Altar",
-    28000003: "Battle Machine",
-    4000033: "Beta Minion",
-    1000070: "Blacksmith",
-    1000065: "B.O.B Control",
-    1000064: "B.O.B's Hut",
-    1000032: "Bomb Tower",
-    12000000: "Bomb",
-    4000035: "Bomber",
-    1000047: "B.O.T.O's Shack",
-    4000022: "Bowler",
-    4000034: "Boxer Giant",
-    1000040: "Builder Barracks",
-    1000034: "Builder Hall",
-    93000000: "Builder's Apprentice",
-    1000015: "Builder's Hut",
-    103000013: "Cake-A-Pult",
-    102000039: "Cake-A-Pult HP",
-    102000040: "Cake-A-Pult DPH",
-    102000041: "Cake-A-Pult ED",
-    4000037: "Cannon Cart",
-    1000008: "Cannon",
-    1000044: "Cannon",
-    1000014: "Clan Castle",
-    1000039: "Clock Tower",
-    26000016: "Clone Spell",
-    1000097: "Crafting Station",
-    1000055: "Crusher",
-    1000026: "Dark Barracks",
-    1000023: "Dark Elixir Drill",
-    1000024: "Dark Elixir Storage",
-    1000029: "Dark Spell Factory",
-    73000008: "Diggy",
-    1000041: "Double Cannon",
-    28000007: "Dragon Duke",
-    4000065: "Dragon Rider",
-    4000008: "Dragon",
-    4000038: "Drop Ship",
-    4000123: "Druid",
-    1000031: "Eagle Artillery",
-    26000010: "Earthquake Spell",
-    4000059: "Electro Dragon",
-    73000002: "Electro Owl",
-    4000095: "Electro Titan",
-    4000106: "Electrofire Wizard",
-    1000002: "Elixir Collector",
-    1000035: "Elixir Collector",
-    1000003: "Elixir Storage",
-    1000036: "Elixir Storage",
-    1000050: "Firecrackers",
-    1000089: "Firespitter",
-    4000091: "Flame Flinger",
-    26000005: "Freeze Spell",
-    73000009: "Frosty",
-    4000150: "Furnace",
-    1000058: "Gem Mine",
-    12000002: "Giant Bomb",
-    1000057: "Giant Cannon",
-    4000003: "Giant",
-    12000020: "Giga Bomb",
-    4000002: "Goblin",
-    1000004: "Gold Mine",
-    1000037: "Gold Mine",
-    1000005: "Gold Storage",
-    1000038: "Gold Storage",
-    4000013: "Golem",
-    28000002: "Grand Warden",
-    73000017: "Greedy Raven",
-    1000051: "Guard Post",
-    26000011: "Haste Spell",
-    4000082: "Headhunter",
-    4000007: "Healer",
-    1000082: "Healing Hut",
-    26000001: "Healing Spell",
-    1000093: "Helper Hut",
-    1000071: "Hero Hall",
-    103000012: "Hero Hunter",
-    102000036: "Hero Hunter HP",
-    102000037: "Hero Hunter DPS",
-    102000038: "Hero Hunter PSL",
-    1000019: "Hidden Tesla",
-    1000043: "Hidden Tesla",
-    4000070: "Hog Glider",
-    4000011: "Hog Rider",
-    103000011: "Hot Candle",
-    103000033: "Hot Candle - HP",
-    102000034: "Hot Candle - DPS",
-    102000035: "Hot Candle - TSA",
-    26000109: "Ice Block Spell",
-    4000058: "Ice Golem",
-    1000027: "Inferno Tower",
-    26000035: "Invisibility Spell",
-    26000003: "Jump Spell",
-    93000001: "Lab Assistant",
-    1000007: "Laboratory",
-    73000000: "L.A.S.S.I",
-    4000017: "Lava Hound",
-    1000063: "Lava Launcher",
-    26000000: "Lightning Spell",
-    107000008: "Logger",
-    4000087: "Log Launcher",
-    107000000: "Longshot",
-    12000014: "Mega Mine",
-    1000052: "Mega Tesla",
-    4000177: "Meteor Golem",
-    73000001: "Mighty Yak",
-    12000013: "Mine",
-    4000024: "Miner",
-    28000006: "Minion Prince",
-    4000010: "Minion",
-    1000077: "Monolith",
-    1000013: "Mortar",
-    1000084: "Multi-Archer Tower",
-    1000079: "Multi-Gear Tower",
-    1000045: "Multi Mortar",
-    4000042: "Night Witch",
-    1000078: "O.T.T.O's Outpost",
-    26000070: "Overgrowth Spell",
-    4000009: "P.E.K.K.A",
-    1000068: "Pet House",
-    73000004: "Phoenix",
-    73000007: "Poison Lizard",
-    26000009: "Poison Spell",
-    4000036: "Power P.E.K.K.A",
-    93000002: "Prospector",
-    12000011: "Push Trap",
-    26000002: "Rage Spell",
-    4000031: "Raged Barbarian",
-    26000053: "Recall Spell",
-    1000049: "Reinforcement Camp",
-    1000086: "Revenge Tower",
-    26000098: "Revive Spell",
-    1000085: "Ricochet Cannon",
-    1000056: "Roaster",
-    4000110: "Root Rider",
-    28000004: "Royal Champion",
-    4000109: "Ruin Witch",
-    1000067: "Scattershot",
-    12000006: "Seeking Air Mine",
-    4000075: "Siege Barracks",
-    4000188: "Sky Wagon",
-    26000017: "Skeleton Spell",
-    12000008: "Skeleton Trap",
-    107000001: "Smasher",
-    4000032: "Sneaky Archer",
-    73000016: "Sneezy",
-    1000020: "Spell Factory",
-    1000072: "Spell Tower",
-    73000010: "Spirit Fox",
-    12000001: "Spring Trap",
-    12000010: "Spring Trap",
-    1000046: "Star Laboratory",
-    4000062: "Stone Slammer",
-    1000102: "Super Wizard Tower",
-    4000132: "Thrower",
-    12000016: "Tornado Trap",
-    26000120: "Totem Spell",
-    1000001: "Town Hall",
-    4000135: "Troop Launcher",
-    73000003: "Unicorn",
-    4000012: "Valkyrie",
-    4000004: "Wall Breaker",
-    4000051: "Wall Wrecker",
-    1000033: "Wall",
-    4000015: "Witch",
-    1000011: "Wizard Tower",
-    4000006: "Wizard",
-    1000059: "Workshop",
-    1000081: "X-Bow",
-    1000021: "X-Bow",
-    4000053: "Yeti"
-  };
+  @override String get labelSync => "SYNC: ";
+  @override String get dialogWarningTitle => "SYSTEM WARNING";
+  @override String get dialogWarningContent => "> YOU ARE DISABLING BACKGROUND SYNC!\n\nIf disabled, the app CANNOT automatically call the API to update War times.\n\nCONSEQUENCES:\nYou will NOT receive notifications or alarms when War ends unless you manually open the app to refresh.\n\nConfirm disable?";
+  @override String get btnCancelDialog => "[ CANCEL ]";
+  @override String get btnForceDisable => "[ DISABLE ANYWAY ]";
 
-  @override
-  String getName(int id) => names[id] ?? "t.me/nightowleyes ($id)";
+  @override String get labelClanName => "Clan: ";
+  @override String get btnDeleteClan => "[ DEL ]";
+  @override String get labelClanTag => "Tag:  ";
+  @override String get labelBadge => "BADGE";
+  @override String get labelLevel => "LEVEL";
+
+  @override String get labelAddClan => "A D D   C L A N   T O   T R A C K";
+  @override String get hintPasteTag => "PASTE TAG HERE";
+  @override String get btnConfirmAdd => "C O N F I R M   ►";
+
+  @override String get overlayFetchingData => "FETCHING DATA FROM SERVER";
+  @override String get overlayClanPrefix => "> CLAN: ";
+  @override String get overlayLoading => "LOADING ";
+  @override String get bannerClanWar => "■ C L A N   W A R ■";
+}
+
+class WarDetailScreenStringsEn extends WarDetailScreenStrings {
+  const WarDetailScreenStringsEn();
+  @override String get statusCalculating => "Calculating...";
+  @override String get statusUnknown => "Unknown";
+  @override String get statusEndedCalculating => " ENDS: [ CALCULATING ]";
+  @override String get statusEndsIn => " ENDS: [ {time} ]";
+  @override String get statusPrepCalculating => " STARTS: [ PREPARING ]";
+  @override String get statusStartsIn => " STARTS: [ {time} ]";
+  @override String get statusEnded => " STATUS: [ ENDED ]";
+
+  @override String get dialogTitleMissedAttacks => "QUERY: MISSED ATTACKS";
+  @override String get dialogMyClanCompleted => "100% COMPLETED";
+  @override String get dialogEnemyCompleted => "ENEMY COMPLETED ALL";
+  @override String get dialogAttacksCount => "ATK: {atkCount}/{maxAttacks}";
+
+  @override String get loadingData => "> FETCHING DATA...";
+  @override String get btnBack => "BACK";
+  @override String get labelVs => "VS";
+  @override String get labelMe => "Me";
+  @override String get labelEnemy => "Enemy";
+  @override String get btnMissedAttacks => "MISSED ATTACKS";
+}
+
+class WarDashboardWidgetStringsEn extends WarDashboardWidgetStrings {
+  const WarDashboardWidgetStringsEn();
+  @override String get errorEmptyCwlData => "> EMPTY CWL DATA";
+  @override String get errorNoClanList => "> CLAN LIST NOT FOUND";
+  @override String get cwlAnalysisTitle => "CLAN WAR LEAGUE - ROSTER ANALYSIS";
+  @override String get colClanName => "CLAN NAME";
+  @override String get btnViewMatchDetails => "FETCH MATCH DETAILS";
+  @override String get btnBack => "BACK";
+  @override String get errorNoWarData => "> WAR DATA NOT FOUND";
 }

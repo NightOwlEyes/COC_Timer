@@ -155,11 +155,13 @@ class TerminalInputArea extends StatelessWidget {
 class TerminalFooter extends StatelessWidget {
   final bool xiaomiAcknowledged;
   final VoidCallback onXiaomiTap;
+  final bool showHowTo; // THÊM BIẾN NÀY ĐỂ BẬT/TẮT HƯỚNG DẪN
 
   const TerminalFooter({
     super.key,
     required this.xiaomiAcknowledged,
     required this.onXiaomiTap,
+    this.showHowTo = true, // Mặc định là true để không ảnh hưởng TerminalScreen
   });
 
   @override
@@ -196,10 +198,13 @@ class TerminalFooter extends StatelessWidget {
                 style: const TextStyle(color: Color(0xFF666666), fontSize: 11, fontWeight: FontWeight.bold)
             ),
           ),
-        const SizedBox(height: 16),
-        Text(AppStrings.terminal.footerHowtoTitle, style: const TextStyle(color: Color(0xFF666666), fontSize: 11, letterSpacing: 1.0)),
-        const SizedBox(height: 4),
-        Text(AppStrings.terminal.footerHowtoDesc, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF888888), fontSize: 11, letterSpacing: 1.0)),
+
+        if (showHowTo) ...[
+          const SizedBox(height: 16),
+          Text(AppStrings.terminal.footerHowtoTitle, style: const TextStyle(color: Color(0xFF666666), fontSize: 11, letterSpacing: 1.0)),
+          const SizedBox(height: 4),
+          Text(AppStrings.terminal.footerHowtoDesc, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF888888), fontSize: 11, letterSpacing: 1.0)),
+        ]
       ],
     );
   }

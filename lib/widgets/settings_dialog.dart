@@ -6,6 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/village_models.dart';
 import '../utils/app_strings.dart';
 import '../utils/rule_manager.dart';
+import '../services/war_sync_service.dart';
+import '../services/schedule_service.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // THÊM DÒNG NÀY
+import '../services/coc_api_service.dart'; // THÊM DÒNG NÀY
 
 class SettingsDialog extends StatefulWidget {
   final Color themeColor;
@@ -31,10 +35,63 @@ class _SettingsDialogState extends State<SettingsDialog> {
   String _updateStatusMsg = "";
   String? _updateUrl;
 
+  late TextEditingController _warPreAlarmController;
+
   @override
   void initState() {
     super.initState();
     _loadAppVersion();
+
+    // Khởi tạo controller cho định dạng hh:mm từ RuleManager.warPreAlarmMinutes
+    int totalMins = RuleManager.warPreAlarmMinutes;
+    int hh = totalMins ~/ 60;
+    int mm = totalMins % 60;
+    _warPreAlarmController = TextEditingController(
+      text: "${hh.toString().padLeft(2, '0')}:${mm.toString().padLeft(2, '0')}",
+    );
+  }
+
+  @override
+  void dispose() {
+    _warPreAlarmController.dispose();
+    super.dispose();
+  }
+
+  // THÊM HÀM ĐỒNG BỘ LẠI LỊCH CHIẾN TRANH KHI THAY ĐỔI CẤU HÌNH
+  Future<void> _syncAllWarSchedules() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? clansJson = prefs.getString('saved_online_clans');
+      if (clansJson != null) {
+        final List<dynamic> savedClans = jsonDecode(clansJson);
+        for (var clan in savedClans) {
+          String tag = clan['tag'];
+          String name = clan['name'];
+
+          var result = await CocApiService.fetchWarData(tag);
+          if (result['type'] == 'REGULAR' && result['data']['state'] == 'inWar') {
+            DateTime endTime = _parseCocDate(result['data']['endTime']);
+            await ScheduleService.syncWarSchedule(tag, name, endTime);
+          } else if (result['type'] == 'CWL' && result['currentWar'] != null) {
+            DateTime endTime = _parseCocDate(result['currentWar']['endTime']);
+            await ScheduleService.syncWarSchedule(tag, name, endTime);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Lỗi sync lại lịch war: $e");
+    }
+  }
+
+  DateTime _parseCocDate(String input) {
+    String clean = input.replaceAll('.000Z', '').replaceAll('Z', '');
+    String y = clean.substring(0, 4);
+    String m = clean.substring(4, 6);
+    String d = clean.substring(6, 8);
+    String h = clean.substring(9, 11);
+    String min = clean.substring(11, 13);
+    String sec = clean.substring(13, 15);
+    return DateTime.parse('$y-$m-${d}T$h:$min:${sec}Z').toLocal();
   }
 
   void _showError(String msg) {
@@ -45,6 +102,52 @@ class _SettingsDialogState extends State<SettingsDialog> {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         setState(() => _errorMessage = "");
+      }
+    });
+  }
+
+  Future<void> _handleToggleWarAutoSync() async {
+    // NẾU ĐANG BẬT VÀ MUỐN TẮT -> HIỆN CẢNH BÁO
+    if (RuleManager.warAutoSync) {
+      bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF0D0F0E),
+          shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1.5)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545)),
+              const SizedBox(width: 8),
+              Text(AppStrings.onlineScreen.dialogWarningTitle, style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            ],
+          ),
+          content: Text(
+            AppStrings.onlineScreen.dialogWarningContent,
+            style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5, fontFamily: 'monospace'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(AppStrings.onlineScreen.btnCancelDialog, style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(AppStrings.onlineScreen.btnForceDisable, style: const TextStyle(color: Color(0xFFB54545), fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+    }
+
+    setState(() {
+      RuleManager.warAutoSync = !RuleManager.warAutoSync;
+      RuleManager.save();
+      if (RuleManager.warAutoSync) {
+        WarSyncService.registerPeriodicTask();
+      } else {
+        WarSyncService.cancelTask();
       }
     });
   }
@@ -116,7 +219,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       try {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } catch (e) {
-        _showError("Cannot open link");
+        _showError(AppStrings.settings.errorCannotOpenLink);
       }
     }
   }
@@ -226,7 +329,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
   }
 
-  // WIDGET VẼ KHUNG FIELDSET CHUẨN TERMINAL
   Widget _buildTerminalBox(String title, Color borderColor, Widget content) {
     return Stack(
       clipBehavior: Clip.none,
@@ -243,7 +345,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           left: 16,
           top: 0,
           child: Container(
-            color: const Color(0xFF0D0F0E), // Background đè lên viền
+            color: const Color(0xFF0D0F0E),
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               title,
@@ -255,7 +357,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
   }
 
-  // CÔNG TẮC ĐÓNG MỞ [   | X ]
   Widget _buildTerminalSwitch(bool isOn, Color color) {
     return Container(
       width: 44,
@@ -290,7 +391,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // HEADER CÀI ĐẶT
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -314,7 +414,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // KHỐI LỖI MÀU ĐỎ
                 if (_errorMessage.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(bottom: 16),
@@ -337,9 +436,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     ),
                   ),
 
-                // BODY CÁC MỤC
                 ...[AlarmType.system, AlarmType.none].map((type) => _buildRuleGroup(type)),
                 _buildPreAlarmSetting(),
+                _buildWarSettings(),
                 _buildAppInfo(),
               ],
             ),
@@ -389,7 +488,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
           const SizedBox(height: 20),
 
-          // DANH SÁCH GIỜ CĂN LỀ CHUẨN THIẾT KẾ
           if (rules.isNotEmpty)
             ...rules.asMap().entries.map((entry) {
               int idx = entry.key;
@@ -520,8 +618,177 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
   }
 
+  Widget _buildWarSettings() {
+    bool isPreEnabled = RuleManager.warPreAlarmEnabled;
+    bool isEndEnabled = RuleManager.warEndAlarmEnabled;
+    bool isAuto = RuleManager.warAutoSync;
+
+    Color preColor = isPreEnabled ? _themeColor : const Color(0xFF444444);
+    Color endColor = isEndEnabled ? _themeColor : const Color(0xFF444444);
+    Color autoColor = isAuto ? _themeColor : const Color(0xFF444444);
+
+    Widget buildTypeBtn(AlarmType type, Color color, VoidCallback onTap) {
+      String txt = type == AlarmType.system ? AppStrings.settings.btnTypeNotification : AppStrings.settings.btnTypeAlarm;
+      return InkWell(
+        onTap: onTap,
+        child: Text(txt, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+      );
+    }
+
+    return _buildTerminalBox(
+      AppStrings.settings.warAlarmConfigTitle,
+      _themeColor,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // KHỐI 1: BÁO TRƯỚC KHI KẾT THÚC (NHẬP TAY ĐỊNH DẠNG HH:MM, TỐI ĐA 6 TIẾNG)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(AppStrings.settings.warPreAlarmLabel, style: TextStyle(color: preColor, fontSize: 14)),
+              InkWell(
+                onTap: () async {
+                  setState(() {
+                    RuleManager.warPreAlarmEnabled = !RuleManager.warPreAlarmEnabled;
+                    RuleManager.save();
+                  });
+                  await _syncAllWarSchedules(); // GỌI ĐỒNG BỘ LẠI LỊCH KHI BẬT/TẮT
+                },
+                child: _buildTerminalSwitch(isPreEnabled, preColor),
+              ),
+            ],
+          ),
+          if (isPreEnabled) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(
+                  width: 90,
+                  child: TextField(
+                    controller: _warPreAlarmController,
+                    style: TextStyle(color: preColor, fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    textAlign: TextAlign.center,
+                    keyboardType: TextInputType.datetime,
+                    decoration: InputDecoration(
+                      hintText: "00:00",
+                      hintStyle: const TextStyle(color: Color(0xFF444444)),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: preColor, width: 1)),
+                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: preColor, width: 1.5)),
+                      filled: true,
+                      fillColor: const Color(0xFF141615),
+                    ),
+                    onChanged: (val) async {
+                      String clean = val.replaceAll(':', '');
+                      if (clean.length > 4) clean = clean.substring(0, 4);
+
+                      if (clean.length >= 3) {
+                        clean = "${clean.substring(0, clean.length - 2)}:${clean.substring(clean.length - 2)}";
+                      }
+
+                      if (_warPreAlarmController.text != clean && clean.length <= 5) {
+                        _warPreAlarmController.value = TextEditingValue(
+                          text: clean,
+                          selection: TextSelection.collapsed(offset: clean.length),
+                        );
+                      }
+
+                      final parts = clean.split(':');
+                      if (parts.length == 2) {
+                        int h = int.tryParse(parts[0]) ?? 0;
+                        int m = int.tryParse(parts[1]) ?? 0;
+                        int totalMins = h * 60 + m;
+
+                        if (totalMins > 360) {
+                          totalMins = 360;
+                          _warPreAlarmController.text = "06:00";
+                          _warPreAlarmController.selection = const TextSelection.collapsed(offset: 5);
+                          _showError("Tối đa chỉ được nhập 6 giờ (06:00)!");
+                        } else if (m > 59) {
+                          m = 59;
+                          totalMins = h * 60 + 59;
+                          _warPreAlarmController.text = "${h.toString().padLeft(2, '0')}:59";
+                          _warPreAlarmController.selection = const TextSelection.collapsed(offset: 5);
+                        }
+
+                        RuleManager.warPreAlarmMinutes = totalMins;
+                        RuleManager.save();
+                        await _syncAllWarSchedules(); // GỌI ĐỒNG BỘ LẠI LỊCH KHI ĐỔI SỐ PHÚT
+                      }
+                    },
+                  ),
+                ),
+                buildTypeBtn(RuleManager.warPreAlarmType, preColor, () async {
+                  setState(() {
+                    RuleManager.warPreAlarmType = RuleManager.warPreAlarmType == AlarmType.system
+                        ? AlarmType.fullscreen
+                        : AlarmType.system;
+                    RuleManager.save();
+                  });
+                  await _syncAllWarSchedules(); // GỌI ĐỒNG BỘ LẠI LỊCH KHI ĐỔI KIỂU BÁO ĐỘNG
+                }),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
+          const SizedBox(height: 16),
+
+          // KHỐI 2: BÁO ĐÚNG LÚC KẾT THÚC
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(AppStrings.settings.warEndAlarmLabel, style: TextStyle(color: endColor, fontSize: 14)),
+              InkWell(
+                onTap: () async {
+                  setState(() {
+                    RuleManager.warEndAlarmEnabled = !RuleManager.warEndAlarmEnabled;
+                    RuleManager.save();
+                  });
+                  await _syncAllWarSchedules();
+                },
+                child: _buildTerminalSwitch(isEndEnabled, endColor),
+              ),
+            ],
+          ),
+          if (isEndEnabled) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: buildTypeBtn(RuleManager.warEndAlarmType, endColor, () async {
+                setState(() {
+                  RuleManager.warEndAlarmType = RuleManager.warEndAlarmType == AlarmType.system
+                      ? AlarmType.fullscreen
+                      : AlarmType.system;
+                  RuleManager.save();
+                });
+                await _syncAllWarSchedules();
+              }),
+            ),
+          ],
+
+          const SizedBox(height: 16),
+          const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
+          const SizedBox(height: 16),
+
+          // KHỐI 3: TỰ ĐỘNG CHẠY NGẦM
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(AppStrings.settings.warAutoSyncLabel, style: TextStyle(color: autoColor, fontSize: 14)),
+              InkWell(
+                onTap: _handleToggleWarAutoSync,
+                child: _buildTerminalSwitch(isAuto, autoColor),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAppInfo() {
-    // Logic đổi màu thông minh cho Auto Update
     bool isAutoUpdate = RuleManager.autoCheckUpdate;
     Color autoUpdateColor = isAutoUpdate ? _themeColor : const Color(0xFF666666);
 
@@ -562,7 +829,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             child: Text(
               _isCheckingUpdate
                   ? "[ . . . ]"
-                  : (_updateUrl != null ? AppStrings.settings.statusUpdateAvailable.replaceAll('{newVersion}', 'v$_appVersion') : AppStrings.settings.btnCheckUpdateNow),
+                  : (_updateUrl != null ? AppStrings.format(AppStrings.settings.statusUpdateAvailable, {'newVersion': "v$_appVersion"}) : AppStrings.settings.btnCheckUpdateNow),
               style: TextStyle(color: _themeColor, fontSize: 14),
             ),
           ),

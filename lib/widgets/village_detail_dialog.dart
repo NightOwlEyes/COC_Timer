@@ -84,6 +84,34 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     );
   }
 
+  // THÊM HÀM NÀY ĐỂ XỬ LÝ OPTIMISTIC UPDATE CHO NHÓM (GROUP)
+  void _handleCycleGroupOptimistic(String groupName, List<UpgradeItem> items) {
+    if (items.isEmpty) return;
+    bool hasSystem = false;
+    bool hasFullscreen = false;
+
+    // Phân tích trạng thái hiện tại của UI
+    for (var item in items) {
+      if (item.alarmType == AlarmType.system) hasSystem = true;
+      if (item.alarmType == AlarmType.fullscreen) hasFullscreen = true;
+    }
+
+    // Xác định trạng thái tiếp theo
+    AlarmType targetType = hasSystem
+        ? AlarmType.fullscreen
+        : (hasFullscreen ? AlarmType.none : AlarmType.system);
+
+    // 1. CẬP NHẬT UI TRƯỚC NGAY LẬP TỨC
+    setState(() {
+      for (var item in items) {
+        item.alarmType = targetType;
+      }
+    });
+
+    // 2. GỌI PARENT CHẠY BACKGROUND SAU (Lưu DB, set OS Alarm...)
+    widget.onCycleGroup(groupName, items);
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeB = widget.isBuilderBase ? widget.village.activeBuilders2 : widget.village.activeBuilders;
@@ -166,13 +194,15 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                     widget.isBuilderBase ? AppStrings.dialog.groupBuilderNight : AppStrings.dialog.groupBuilder,
                     "${activeB.length}/$totalB ${AppStrings.dialog.statusWorkingSuffix}",
                     isTracked: currentTracked,
-                    onTap: () => widget.onCycleGroup(widget.isBuilderBase ? "THỢ XÂY ĐÊM" : "THỢ XÂY", activeB)
+                    // SỬA GỌI HÀM Ở ĐÂY
+                    onTap: () => _handleCycleGroupOptimistic(widget.isBuilderBase ? AppStrings.dialog.logGroupNameBuilderNight : AppStrings.dialog.logGroupNameBuilder, activeB)
                 ),
                 _buildDetailList(activeB, isTracked: currentTracked),
                 const SizedBox(height: 12),
 
                 if (!widget.isBuilderBase) ...[
-                  _buildLogLine(AppStrings.dialog.groupPet, "${activeP.length} ${AppStrings.dialog.statusUpgradingSuffix}", isTracked: _trackHome, onTap: () => widget.onCycleGroup("LINH THÚ", activeP)),
+                  // SỬA GỌI HÀM Ở ĐÂY
+                  _buildLogLine(AppStrings.dialog.groupPet, "${activeP.length} ${AppStrings.dialog.statusUpgradingSuffix}", isTracked: _trackHome, onTap: () => _handleCycleGroupOptimistic(AppStrings.dialog.logGroupNamePet, activeP)),
                   _buildDetailList(activeP, isTracked: _trackHome),
                   const SizedBox(height: 12),
                 ],
@@ -181,7 +211,8 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                     widget.isBuilderBase ? AppStrings.dialog.groupLabNight : AppStrings.dialog.groupLabMain,
                     "${activeL.length} ${AppStrings.dialog.statusUpgradingSuffix}",
                     isTracked: currentTracked,
-                    onTap: () => widget.onCycleGroup(widget.isBuilderBase ? "THÍ NGHIỆM ĐÊM" : "PHÒNG THÍ NGHIỆM", activeL)
+                    // SỬA GỌI HÀM Ở ĐÂY
+                    onTap: () => _handleCycleGroupOptimistic(widget.isBuilderBase ? AppStrings.dialog.logGroupNameLabNight : AppStrings.dialog.logGroupNameLabMain, activeL)
                 ),
                 _buildDetailList(activeL, isTracked: currentTracked),
               ],
@@ -262,6 +293,22 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
 
           return InkWell(
             onTap: isTracked ? () {
+              // THÊM OPTIMISTIC UPDATE CHO TỪNG ITEM
+              AlarmType nextType;
+              if (item.alarmType == AlarmType.system) {
+                nextType = AlarmType.fullscreen;
+              } else if (item.alarmType == AlarmType.fullscreen) {
+                nextType = AlarmType.none;
+              } else {
+                nextType = AlarmType.system;
+              }
+
+              // 1. Ép UI đổi màu ngay lập tức
+              setState(() {
+                item.alarmType = nextType;
+              });
+
+              // 2. Gọi logic xử lý ngầm
               widget.onCycleItem(item);
             } : null,
             splashColor: widget.themeColor.withValues(alpha: 0.3),

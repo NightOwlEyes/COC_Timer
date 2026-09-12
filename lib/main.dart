@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/terminal_screen.dart';
 import 'services/schedule_service.dart';
+import 'services/war_sync_service.dart';
+import 'utils/rule_manager.dart';
 import '../utils/app_strings.dart';
 
 void main() async {
@@ -14,7 +16,14 @@ void main() async {
 
   // Khởi tạo các dịch vụ ngầm ở Background
   try {
+    await RuleManager.init(); // Bắt buộc phải init RuleManager trước để đọc cấu hình
     await ScheduleService.init();
+
+    // KHỞI TẠO WAR SYNC
+    await WarSyncService.init();
+    if (RuleManager.warAutoSync) {
+      WarSyncService.registerPeriodicTask();
+    }
   } catch (e) {
     debugPrint(AppStrings.format(AppStrings.mainApp.debugInitBackgroundSystemError, {'e': e.toString()}));
   }
@@ -43,15 +52,21 @@ class CocTimerApp extends StatelessWidget {
         // Độ rộng trên thiết bị test.
         const double baseWidth = 411.0;
 
-        // 1. Chặn hệu điều hành phóng to font chữ hệ thống
+// ... existing code ...
+        // 1. Chặn hệ điều hành phóng to font chữ hệ thống
         MediaQueryData customData = mediaQuery.copyWith(
           textScaler: const TextScaler.linear(1.0),
+        );
+
+        // Ép toàn bộ widget con (kể cả Text, Route mới, Dialog) kế thừa font monospace
+        final Widget appWithFont = DefaultTextStyle(
+          style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0)),
+          child: child ?? const SizedBox.shrink(),
         );
 
         // 2. Nếu màn hình vật lý hẹp hơn baseWidth -> Bật chế độ thu nhỏ (Scale Down)
         if (screenWidth < baseWidth) {
           final double scale = screenWidth / baseWidth;
-          // Tính toán lại chiều cao ảo để không bị méo tỷ lệ
           final double virtualHeight = mediaQuery.size.height / scale;
 
           customData = customData.copyWith(
@@ -64,12 +79,12 @@ class CocTimerApp extends StatelessWidget {
           return MediaQuery(
             data: customData,
             child: FittedBox(
-              fit: BoxFit.contain, // Thu nhỏ toàn bộ khung vẽ
+              fit: BoxFit.contain,
               alignment: Alignment.topCenter,
               child: SizedBox(
                 width: baseWidth,
                 height: virtualHeight,
-                child: child!, // Con bên trong (App của bạn) vẫn luôn nghĩ nó có 390px để bung xõa!
+                child: appWithFont,
               ),
             ),
           );
@@ -78,7 +93,7 @@ class CocTimerApp extends StatelessWidget {
         // 3. Nếu màn hình to (Tablet, Pro Max), giữ nguyên không can thiệp
         return MediaQuery(
           data: customData,
-          child: child!,
+          child: appWithFont,
         );
       },
       // ==========================================
@@ -88,6 +103,9 @@ class CocTimerApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF121212),
         primaryColor: const Color(0xFFE0E0E0),
         fontFamily: 'monospace',
+        textTheme: ThemeData.dark().textTheme.apply(
+          fontFamily: 'monospace',
+        ),
       ),
       home: const TerminalScreen(),
     );
