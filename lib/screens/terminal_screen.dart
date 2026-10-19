@@ -408,6 +408,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   void _confirmDeleteVillage(String tag) {
+    String cancelLabel = AppStrings.terminal.btnCancel.trim();
+    if (!cancelLabel.startsWith('[')) cancelLabel = "[ $cancelLabel ]";
+
+    String deleteLabel = AppStrings.terminal.btnDeleteNow.trim();
+    if (!deleteLabel.startsWith('[')) deleteLabel = "[ $deleteLabel ]";
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -426,21 +432,33 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF444444))),
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(AppStrings.terminal.btnCancel, style: const TextStyle(color: Color(0xFF888888))),
+                    child: InkWell(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          cancelLabel,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Color(0xFF888888), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFB54545)),
-                      onPressed: () {
+                    child: InkWell(
+                      onTap: () {
                         Navigator.pop(ctx);
                         _deleteVillage(tag);
                       },
-                      child: Text(AppStrings.terminal.btnDeleteNow, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          deleteLabel,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -528,7 +546,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       final String tag = parsed.tag;
       final bool isNewVillage = !_villageNames.containsKey(tag);
 
-      // 1. XỬ LÝ JSON VÀ ÁP DỤNG BÁO THỨC NGAY LẬP TỨC (Không chờ 5s API)
+      // 1. XỬ LÝ DỮ LIỆU JSON
       if (_villages.containsKey(tag)) {
         ScheduleService.cancelAllForVillage(_villages[tag]!);
         _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
@@ -543,8 +561,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       _villages[tag] = parsed;
       _savedRawJsons[tag] = inputData;
 
-      // Kích hoạt báo thức chốt thời gian với cấu hình mặc định (Bật tất cả)
-      await _applySavedAlarmState(parsed, syncWithOS: true, forceApplyRules: true);
+      // CHỈ ĐỒNG BỘ BÁO THỨC VỚI HỆ ĐIỀU HÀNH NGAY NẾU ĐÃ CÓ TÊN LÀNG TỪ TRƯỚC.
+      // Nếu là làng mới (chưa hoàn tất bước lấy/nhập tên), chỉ tính toán trạng thái hiển thị (syncWithOS: false).
+      await _applySavedAlarmState(parsed, syncWithOS: !isNewVillage, forceApplyRules: true);
 
       if (mounted) {
         setState(() {
@@ -555,6 +574,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         });
       }
       _saveDataToPrefs();
+      if (!isNewVillage) _saveAlarmStatesToPrefs();
 
       // 2. RẼ NHÁNH TÌM TÊN CHO LÀNG MỚI VÀ LUÔN LUÔN BẬT POPUP
       if (isNewVillage) {
@@ -598,7 +618,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     // BƯỚC 3: LUÔN LUÔN BẬT POPUP (Truyền tên vừa tìm được vào nếu có)
     Map<String, dynamic>? result = await _promptForVillageName(tag, prefilledName: fetchedName);
 
-    if (mounted) {
+    if (mounted && _villages.containsKey(tag)) {
       if (result != null) {
         setState(() {
           _villageNames[tag] = (result['name'] as String).trim().isNotEmpty ? result['name'] : AppStrings.terminal.defaultVillageNameFallback;
@@ -615,8 +635,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       }
       _saveDataToPrefs();
 
-      // ÁP DỤNG LẠI BÁO THỨC SAU KHI CÓ KẾT QUẢ TỪ CHECKBOX
+      // ĐỒNG BỘ BÁO THỨC VỚI HỆ ĐIỀU HÀNH SAU KHI ĐÃ HOÀN TẤT BƯỚC LẤY/NHẬP TÊN LÀNG
       await _applySavedAlarmState(_villages[tag]!, syncWithOS: true, forceApplyRules: true);
+      _saveAlarmStatesToPrefs();
 
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {

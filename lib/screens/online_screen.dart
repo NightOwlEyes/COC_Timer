@@ -144,6 +144,75 @@ class _OnlineScreenState extends State<OnlineScreen> {
     }
   }
 
+  void _confirmDeleteClan(String tag) {
+    String cancelLabel = AppStrings.terminal.btnCancel.trim();
+    if (!cancelLabel.startsWith('[')) cancelLabel = "[ $cancelLabel ]";
+
+    String deleteLabel = AppStrings.terminal.btnDeleteNow.trim();
+    if (!deleteLabel.startsWith('[')) deleteLabel = "[ $deleteLabel ]";
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF0A0C0B),
+        shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1)),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                AppStrings.terminal.deleteDialogTitle,
+                style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                AppStrings.format(AppStrings.terminal.deleteDialogMessage, {'tag': tag}),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontFamily: 'monospace'),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          cancelLabel,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Color(0xFF888888), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _deleteClan(tag);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          deleteLabel,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _deleteClan(String tag) {
     ScheduleService.cancelWarSchedule(tag);
     setState(() {
@@ -245,21 +314,43 @@ class _OnlineScreenState extends State<OnlineScreen> {
             children: [
               const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545)),
               const SizedBox(width: 8),
-              Text(AppStrings.onlineScreen.dialogWarningTitle, style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+              Expanded(
+                child: Text(
+                  AppStrings.onlineScreen.dialogWarningTitle,
+                  style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                ),
+              ),
             ],
           ),
           content: Text(
-            AppStrings.onlineScreen.dialogWarningContent,
+            AppStrings.settings.dialogWarningContent,
             style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5, fontFamily: 'monospace'),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(AppStrings.onlineScreen.btnCancelDialog, style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold, fontFamily: 'monospace')),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(AppStrings.onlineScreen.btnForceDisable, style: const TextStyle(color: Color(0xFFB54545), fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(
+                      AppStrings.onlineScreen.btnCancelDialog,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(
+                      AppStrings.onlineScreen.btnForceDisable,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFFB54545), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -377,7 +468,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                                 ),
                                               ),
                                               InkWell(
-                                                onTap: _isLoading ? null : () => _deleteClan(clan['tag']),
+                                                onTap: _isLoading ? null : () => _confirmDeleteClan(clan['tag']),
                                                 child: Text(
                                                     AppStrings.onlineScreen.btnDeleteClan,
                                                     style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)

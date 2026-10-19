@@ -371,7 +371,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                     )
                   else
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 300),
+                      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7), // Tăng chiều cao tối đa lên 60% màn hình
                       child: ListView.builder(
                         shrinkWrap: true,
                         itemCount: missed.length,

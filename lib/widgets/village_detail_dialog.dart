@@ -194,27 +194,26 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                     widget.isBuilderBase ? AppStrings.dialog.groupBuilderNight : AppStrings.dialog.groupBuilder,
                     "${activeB.length}/$totalB ${AppStrings.dialog.statusWorkingSuffix}",
                     isTracked: currentTracked,
-                    // SỬA GỌI HÀM Ở ĐÂY
                     onTap: () => _handleCycleGroupOptimistic(widget.isBuilderBase ? AppStrings.dialog.logGroupNameBuilderNight : AppStrings.dialog.logGroupNameBuilder, activeB)
                 ),
                 _buildDetailList(activeB, isTracked: currentTracked),
                 const SizedBox(height: 12),
 
-                if (!widget.isBuilderBase) ...[
-                  // SỬA GỌI HÀM Ở ĐÂY
-                  _buildLogLine(AppStrings.dialog.groupPet, "${activeP.length} ${AppStrings.dialog.statusUpgradingSuffix}", isTracked: _trackHome, onTap: () => _handleCycleGroupOptimistic(AppStrings.dialog.logGroupNamePet, activeP)),
-                  _buildDetailList(activeP, isTracked: _trackHome),
-                  const SizedBox(height: 12),
-                ],
-
+                // Reordered: LabMain before Pet
                 _buildLogLine(
                     widget.isBuilderBase ? AppStrings.dialog.groupLabNight : AppStrings.dialog.groupLabMain,
                     "${activeL.length} ${AppStrings.dialog.statusUpgradingSuffix}",
                     isTracked: currentTracked,
-                    // SỬA GỌI HÀM Ở ĐÂY
                     onTap: () => _handleCycleGroupOptimistic(widget.isBuilderBase ? AppStrings.dialog.logGroupNameLabNight : AppStrings.dialog.logGroupNameLabMain, activeL)
                 ),
                 _buildDetailList(activeL, isTracked: currentTracked),
+                const SizedBox(height: 12),
+
+                if (!widget.isBuilderBase) ...[
+                  _buildLogLine(AppStrings.dialog.groupPet, "${activeP.length} ${AppStrings.dialog.statusUpgradingSuffix}", isTracked: _trackHome, onTap: () => _handleCycleGroupOptimistic(AppStrings.dialog.logGroupNamePet, activeP)),
+                  _buildDetailList(activeP, isTracked: _trackHome),
+                  const SizedBox(height: 12),
+                ],
               ],
             ),
           ),

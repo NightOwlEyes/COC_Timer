@@ -8,8 +8,8 @@ import '../utils/app_strings.dart';
 import '../utils/rule_manager.dart';
 import '../services/war_sync_service.dart';
 import '../services/schedule_service.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // THÊM DÒNG NÀY
-import '../services/coc_api_service.dart'; // THÊM DÒNG NÀY
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/coc_api_service.dart';
 
 class SettingsDialog extends StatefulWidget {
   final Color themeColor;
@@ -57,7 +57,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
     super.dispose();
   }
 
-  // THÊM HÀM ĐỒNG BỘ LẠI LỊCH CHIẾN TRANH KHI THAY ĐỔI CẤU HÌNH
   Future<void> _syncAllWarSchedules() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -118,21 +117,43 @@ class _SettingsDialogState extends State<SettingsDialog> {
             children: [
               const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545)),
               const SizedBox(width: 8),
-              Text(AppStrings.onlineScreen.dialogWarningTitle, style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+              Expanded(
+                child: Text(
+                  AppStrings.onlineScreen.dialogWarningTitle,
+                  style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                ),
+              ),
             ],
           ),
           content: Text(
-            AppStrings.onlineScreen.dialogWarningContent,
+            AppStrings.settings.dialogWarningContent,
             style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5, fontFamily: 'monospace'),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(AppStrings.onlineScreen.btnCancelDialog, style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold, fontFamily: 'monospace')),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(AppStrings.onlineScreen.btnForceDisable, style: const TextStyle(color: Color(0xFFB54545), fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(
+                      AppStrings.onlineScreen.btnCancelDialog,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(
+                      AppStrings.onlineScreen.btnForceDisable,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFFB54545), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -652,7 +673,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     RuleManager.warPreAlarmEnabled = !RuleManager.warPreAlarmEnabled;
                     RuleManager.save();
                   });
-                  await _syncAllWarSchedules(); // GỌI ĐỒNG BỘ LẠI LỊCH KHI BẬT/TẮT
+                  await _syncAllWarSchedules();
                 },
                 child: _buildTerminalSwitch(isPreEnabled, preColor),
               ),
@@ -714,7 +735,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
                         RuleManager.warPreAlarmMinutes = totalMins;
                         RuleManager.save();
-                        await _syncAllWarSchedules(); // GỌI ĐỒNG BỘ LẠI LỊCH KHI ĐỔI SỐ PHÚT
+                        await _syncAllWarSchedules();
                       }
                     },
                   ),
@@ -726,7 +747,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         : AlarmType.system;
                     RuleManager.save();
                   });
-                  await _syncAllWarSchedules(); // GỌI ĐỒNG BỘ LẠI LỊCH KHI ĐỔI KIỂU BÁO ĐỘNG
+                  await _syncAllWarSchedules();
                 }),
               ],
             ),

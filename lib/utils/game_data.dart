@@ -4,7 +4,7 @@ class GameDataVi extends GameData {
   const GameDataVi();
 
   final Map<int, String> names = const {
-    12000005: "Bom khinh kh",
+    12000005: "Bom khinh khí",
     1000054: "Bom phòng không",
     1000012: "Tháp phòng không",
     1000028: "Tháp thổi khí",

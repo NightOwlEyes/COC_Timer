@@ -41,7 +41,6 @@ class AppStrings {
     return result;
   }
 
-  // SỬ DỤNG GETTER ĐỂ TỰ ĐỘNG CHUYỂN NGÔN NGỮ MÀ KHÔNG LÀM LỖI CODE CŨ CỦA BẠN
   static TerminalScreenStrings get terminal => languageCode == 'vi' ? const TerminalScreenStringsVi() : const TerminalScreenStringsEn();
   static ScheduleServiceStrings get schedule => languageCode == 'vi' ? const ScheduleServiceStringsVi() : const ScheduleServiceStringsEn();
   static AlarmPopupStrings get alarm => languageCode == 'vi' ? const AlarmPopupStringsVi() : const AlarmPopupStringsEn();
@@ -61,6 +60,10 @@ class AppStrings {
 abstract class TerminalScreenStrings {
   const TerminalScreenStrings();
   String get headerSmallTitle;
+  String get headerSupportProject;
+  String get textSupportProject;
+  String get textSupportProjectQRScanner;
+  String get debugQRImageNotFound;
   String get labelRealTime;
   String get toggleOn;
   String get toggleOff;
@@ -256,7 +259,6 @@ abstract class OnlineScreenStrings {
   String get statusMaintenance; // BỔ SUNG TRẠNG THÁI BẢO TRÌ
   String get labelSync;
   String get dialogWarningTitle;
-  String get dialogWarningContent;
   String get btnCancelDialog;
   String get btnForceDisable;
   String get labelClanName;
@@ -310,7 +312,11 @@ abstract class WarDashboardWidgetStrings {
 // ==========================================
 class TerminalScreenStringsVi extends TerminalScreenStrings {
   const TerminalScreenStringsVi();
-  @override String get headerSmallTitle => "GPL-3.0";
+  @override String get headerSmallTitle => "[ ỦNG HỘ ]";
+  @override String get headerSupportProject => "ỦNG HỘ DỰ ÁN";
+  @override String get textSupportProject => "Nếu bạn thấy ứng dụng này hữu ích, hãy cân nhắc ủng hộ để duy trì và phát triển dự án!";
+  @override String get textSupportProjectQRScanner => "— HOẶC QUÉT MÃ QR —";
+  @override String get debugQRImageNotFound => "Chưa tìm thấy ảnh\nassets/donate-qr.png";
   @override String get labelRealTime => "NGÀY HOÀN TẤT";
   @override String get toggleOn => "[ BẬT ]";
   @override String get toggleOff => "[ TẮT ]";
@@ -447,41 +453,41 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
 class SettingsStringsVi extends SettingsStrings {
   const SettingsStringsVi();
   @override String get settingsTitle => "■ CÀI ĐẶT";
-  @override String get settingsSchedulePrefix => "LỊCH ";
-  @override String get settingsAutoSwitchPrefix => "Tự động chuyển thành ";
+  @override String get settingsSchedulePrefix => "KHUNG GIỜ ";
+  @override String get settingsAutoSwitchPrefix => "Đổi báo thức thành ";
   @override String get settingsFrom => "từ";
   @override String get settingsTo => "đến";
   @override String get settingsAnd => "và";
-  @override String get settingsBtnAdd => "[ THÊM ]";
+  @override String get settingsBtnAdd => "[ THÊM KHUNG GIỜ ]";
   @override String get settingsActionNone => "im lặng";
   @override String get settingsActionSystem => "thông báo";
   @override String get settingsActionFullscreen => "báo thức";
   @override String get labelPickStart => "Giờ Bắt Đầu";
   @override String get labelPickEnd => "Giờ Kết Thúc";
-  @override String get errorOverlap => "LỖI: Khung giờ trùng lặp!";
+  @override String get errorOverlap => "LỖI: Trùng khung giờ với lịch khác!";
   @override String get btnDeleteRule => "[ XOÁ ]";
-  @override String get settingsPreAlarmTitle => "TÙY CHỌN NHẮC NÂNG CẤP";
-  @override String get labelPreAlarm => "Báo trước (phút):";
+  @override String get settingsPreAlarmTitle => "NHẮC TRƯỚC KHI NÂNG CẤP XONG";
+  @override String get labelPreAlarm => "Báo sớm trước (phút):";
   @override String get labelAppInfo => "THÔNG TIN ỨNG DỤNG";
-  @override String get settingsAutoCheckUpdate => "TỰ ĐỘNG KIỂM TRA CẬP NHẬT";
-  @override String get btnCheckUpdateNow => "[ KIỂM TRA NGAY ]";
-  @override String get statusUpToDate => "> Đang ở bản mới nhất";
+  @override String get settingsAutoCheckUpdate => "TỰ ĐỘNG KIỂM TRA BẢN CẬP NHẬT";
+  @override String get btnCheckUpdateNow => "[ KIỂM TRA CẬP NHẬT ]";
+  @override String get statusUpToDate => "> Đang ở phiên bản mới nhất";
   @override String get statusUpdateAvailable => "> CÓ BẢN MỚI: {newVersion}";
-  @override String get statusUpdateError => "> Lỗi mạng!";
-  @override String get labelVersion => "Phiên bản: {version}";
+  @override String get statusUpdateError => "> Không thể kiểm tra (Lỗi mạng)!";
+  @override String get labelVersion => "Phiên bản hiện tại: {version}";
   @override String get btnPrivacyPolicy => "[ BẢO MẬT ]";
-  @override String get btnLicenses => "[GIẤY PHÉP]";
+  @override String get btnLicenses => "[ GIẤY PHÉP ]";
   @override String get privacyDialogTitle => "■ BẢO MẬT DỮ LIỆU";
-  @override String get privacyDialogContent => "- BẢO MẬT CỤC BỘ: Toàn bộ dữ liệu làng (JSON), mã Clan và cấu hình báo thức chỉ được lưu trữ cục bộ trên thiết bị của bạn.\n\n- KẾT NỐI API: Chế độ Online chỉ gửi yêu cầu đọc dữ liệu công khai từ máy chủ Supercell để đồng bộ lịch War.\n\n- KHÔNG THU THẬP: Chúng tôi tuyệt đối KHÔNG theo dõi, KHÔNG lưu trữ đám mây và KHÔNG chia sẻ bất kỳ dữ liệu cá nhân nào.";
-  @override String get dialogWarningTitle => "CẢNH BÁO HỆ THỐNG";
-  @override String get dialogWarningContent => "> BẠN ĐANG TẮT ĐỒNG BỘ NGẦM!\n\nNếu tắt tính năng này, ứng dụng sẽ KHÔNG THỂ tự động gọi API để cập nhật thời gian War.\n\nHẬU QUẢ:\nBạn sẽ KHÔNG nhận được thông báo hay báo thức khi War kết thúc, trừ khi bạn tự mở ứng dụng lên để làm mới thủ công.\n\nXác nhận tắt?";
-  @override String get btnCancelDialog => "[ HỦY ]";
+  @override String get privacyDialogContent => "- LƯU TRỮ CỤC BỘ: Toàn bộ dữ liệu làng (JSON), mã Clan và cài đặt báo thức chỉ được lưu trực tiếp trên thiết bị của bạn.\n\n- KẾT NỐI API: Chế độ Online chỉ đọc dữ liệu công khai từ máy chủ Supercell để lấy thời gian War.\n\n- KHÔNG THU THẬP: Ứng dụng tuyệt đối KHÔNG theo dõi, KHÔNG lưu trữ đám mây và KHÔNG chia sẻ dữ liệu cá nhân.";
+  @override String get dialogWarningTitle => "CẢNH BÁO TẮT ĐỒNG BỘ NGẦM";
+  @override String get dialogWarningContent => "Khi tắt tính năng này, ứng dụng sẽ ngừng tự động cập nhật dữ liệu War dưới nền.\n\nBạn sẽ KHÔNG nhận được thông báo hay báo thức cho các trận War mới, trừ khi tự mở ứng dụng để cập nhật thủ công.";
+  @override String get btnCancelDialog => "[ GIỮ LẠI ]";
   @override String get btnForceDisable => "[ VẪN TẮT ]";
-  @override String get errorCannotOpenLink => "Không thể mở link";
-  @override String get warAlarmConfigTitle => "CẤU HÌNH BÁO THỨC WAR";
-  @override String get warPreAlarmLabel => "BÁO TRƯỚC (PHÚT)";
-  @override String get warEndAlarmLabel => "BÁO LÚC KẾT THÚC";
-  @override String get warAutoSyncLabel => "TỰ LÀM MỚI NGẦM (12H/LẦN)";
+  @override String get errorCannotOpenLink => "Không thể mở đường dẫn";
+  @override String get warAlarmConfigTitle => "BÁO THỨC CLAN WAR";
+  @override String get warPreAlarmLabel => "Báo trước khi War kết thúc";
+  @override String get warEndAlarmLabel => "Báo ngay khi War kết thúc";
+  @override String get warAutoSyncLabel => "Tự động cập nhật lịch War ngầm";
   @override String get btnTypeNotification => "[ THÔNG BÁO ]";
   @override String get btnTypeAlarm => "[ BÁO THỨC ]";
 }
@@ -503,7 +509,6 @@ class OnlineScreenStringsVi extends OnlineScreenStrings {
 
   @override String get labelSync => "ĐỒNG BỘ: ";
   @override String get dialogWarningTitle => "CẢNH BÁO HỆ THỐNG";
-  @override String get dialogWarningContent => "> BẠN ĐANG TẮT ĐỒNG BỘ NGẦM!\n\nNếu tắt tính năng này, ứng dụng sẽ KHÔNG THỂ tự động gọi API để cập nhật thời gian War.\n\nHẬU QUẢ:\nBạn sẽ KHÔNG nhận được thông báo hay báo thức khi War kết thúc, trừ khi bạn tự mở ứng dụng lên để làm mới thủ công.\n\nXác nhận tắt?";
   @override String get btnCancelDialog => "[ HỦY ]";
   @override String get btnForceDisable => "[ VẪN TẮT ]";
 
@@ -514,7 +519,7 @@ class OnlineScreenStringsVi extends OnlineScreenStrings {
   @override String get labelLevel => "CẤP ĐỘ";
 
   @override String get labelAddClan => "T H Ê M   C L A N   T H E O   D Õ I";
-  @override String get hintPasteTag => "DÁN MÃ TAG VÀO ĐÂY";
+  @override String get hintPasteTag => "DÁN MÃ HỘI VÀO ĐÂY";
   @override String get btnConfirmAdd => "X Á C   N H Ậ N   ►";
 
   @override String get overlayFetchingData => "TRUY XUẤT DỮ LIỆU TỪ SERVER";
@@ -561,7 +566,11 @@ class WarDashboardWidgetStringsVi extends WarDashboardWidgetStrings {
 // ==========================================
 class TerminalScreenStringsEn extends TerminalScreenStrings {
   const TerminalScreenStringsEn();
-  @override String get headerSmallTitle => "GPL-3.0";
+  @override String get headerSmallTitle => "[ DONATE ]";
+  @override String get headerSupportProject => "DONATE PROJECT";
+  @override String get textSupportProject => "If you find this app useful, consider supporting its development!";
+  @override String get textSupportProjectQRScanner => "— OR SCAN QR CODE —";
+  @override String get debugQRImageNotFound => "Image not found:\nassets/donate-qr.png";
   @override String get labelRealTime => "DATE OF COMPLETION";
   @override String get toggleOn => "[ ON ]";
   @override String get toggleOff => "[ OFF ]";
@@ -682,7 +691,7 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
   @override String get groupBuilderNight => "> BUILDER";
   @override String get groupBuilder => "> BUILDER's HUT";
   @override String get statusWorkingSuffix => "UPGRADING";
-  @override String get groupPet => "PET HOUSE";
+  @override String get groupPet => "> PET HOUSE";
   @override String get statusUpgradingSuffix => "UPGRADING";
   @override String get groupLabNight => "> STAR LABORATORY";
   @override String get groupLabMain => "> LABORATORY";
@@ -698,40 +707,40 @@ class SettingsStringsEn extends SettingsStrings {
   const SettingsStringsEn();
   @override String get settingsTitle => "■ SETTINGS";
   @override String get settingsSchedulePrefix => "SCHEDULE: ";
-  @override String get settingsAutoSwitchPrefix => "Auto switch to ";
+  @override String get settingsAutoSwitchPrefix => "Change alarm to ";
   @override String get settingsFrom => "from";
   @override String get settingsTo => "to";
   @override String get settingsAnd => "and";
-  @override String get settingsBtnAdd => "[ ADD ]";
+  @override String get settingsBtnAdd => "[ ADD TIME SLOT ]";
   @override String get settingsActionNone => "silent";
-  @override String get settingsActionSystem => "notify";
-  @override String get settingsActionFullscreen => "alarm";
+  @override String get settingsActionSystem => "notification";
+  @override String get settingsActionFullscreen => "full alarm";
   @override String get labelPickStart => "Start Time";
   @override String get labelPickEnd => "End Time";
-  @override String get errorOverlap => "ERROR: Time overlaps!";
+  @override String get errorOverlap => "ERROR: Time slot overlaps!";
   @override String get btnDeleteRule => "[ DEL ]";
-  @override String get settingsPreAlarmTitle => "UPGRADE REMINDER OPTION";
-  @override String get labelPreAlarm => "Pre-alarm (min):";
-  @override String get labelAppInfo => "APP INFO";
-  @override String get settingsAutoCheckUpdate => "AUTO CHECK UPDATE";
-  @override String get btnCheckUpdateNow => "[ CHECK NOW ]";
-  @override String get statusUpToDate => "> Up to date";
-  @override String get statusUpdateAvailable => "> UPDATE: {newVersion}";
-  @override String get statusUpdateError => "> Network Error!";
-  @override String get labelVersion => "Version: {version}";
+  @override String get settingsPreAlarmTitle => "EARLY UPGRADE REMINDER";
+  @override String get labelPreAlarm => "Remind early by (min):";
+  @override String get labelAppInfo => "APP INFORMATION";
+  @override String get settingsAutoCheckUpdate => "AUTO-CHECK FOR UPDATES";
+  @override String get btnCheckUpdateNow => "[ CHECK FOR UPDATES ]";
+  @override String get statusUpToDate => "> App is up to date";
+  @override String get statusUpdateAvailable => "> NEW UPDATE: {newVersion}";
+  @override String get statusUpdateError => "> Update check failed (Network error)!";
+  @override String get labelVersion => "Current version: {version}";
   @override String get btnPrivacyPolicy => "[ PRIVACY ]";
-  @override String get btnLicenses => "[LICENSES]";
+  @override String get btnLicenses => "[ LICENSES ]";
   @override String get privacyDialogTitle => "■ DATA PRIVACY";
-  @override String get privacyDialogContent => "- LOCAL STORAGE: All village data (JSON), Clan tags, and alarm settings are stored strictly locally on your device.\n\n- API CONNECTIONS: Online Mode only requests public data from Supercell servers to sync War schedules.\n\n- NO TRACKING: We absolutely DO NOT track, cloud-save, or share any of your personal data.";
-  @override String get dialogWarningTitle => "SYSTEM WARNING";
-  @override String get dialogWarningContent => "> YOU ARE DISABLING BACKGROUND SYNC!\n\nIf disabled, the app CANNOT automatically call the API to update War times.\n\nCONSEQUENCES:\nYou will NOT receive notifications or alarms when War ends unless you manually open the app to refresh.\n\nConfirm disable?";
-  @override String get btnCancelDialog => "[ CANCEL ]";
+  @override String get privacyDialogContent => "- LOCAL STORAGE: All village data (JSON), Clan tags, and alarm settings are stored strictly on your device.\n\n- API CONNECTIONS: Online Mode only reads public data from Supercell servers to fetch War schedules.\n\n- NO TRACKING: We DO NOT track, cloud-save, or share any of your personal information.";
+  @override String get dialogWarningTitle => "BACKGROUND SYNC WARNING";
+  @override String get dialogWarningContent => "If disabled, the app will stop syncing War data in the background.\n\nYou will NOT receive notifications or alarms for upcoming Wars unless you open the app to refresh Clan data manually.";
+  @override String get btnCancelDialog => "[ KEEP ON ]";
   @override String get btnForceDisable => "[ DISABLE ANYWAY ]";
   @override String get errorCannotOpenLink => "Cannot open link";
-  @override String get warAlarmConfigTitle => "WAR ALARM CONFIG";
-  @override String get warPreAlarmLabel => "PRE-ALARM (MIN)";
-  @override String get warEndAlarmLabel => "ALARM ON END";
-  @override String get warAutoSyncLabel => "BACKGROUND SYNC (12H/TIME)";
+  @override String get warAlarmConfigTitle => "CLAN WAR ALERTS";
+  @override String get warPreAlarmLabel => "Alert before War ends";
+  @override String get warEndAlarmLabel => "Alert when War ends";
+  @override String get warAutoSyncLabel => "Auto-sync War data";
   @override String get btnTypeNotification => "[ NOTIFICATION ]";
   @override String get btnTypeAlarm => "[ ALARM ]";
 }
@@ -749,11 +758,10 @@ class OnlineScreenStringsEn extends OnlineScreenStrings {
   @override String get statusWarDataSuccess => "> WAR DATA LOADED SUCCESSFULLY!";
   @override String get statusNoWar => "> CLAN [ {name} ] HAS NO ACTIVE WAR.";
   @override String get statusWarDataError => "> ERROR LOADING WAR DATA: {error}";
-  @override String get statusMaintenance => "> CLASH OF CLANS SERVERS ARE UNDER MAINTENANCE!"; // ĐÃ THÊM DÒNG NÀY
+  @override String get statusMaintenance => "> CLASH OF CLANS SERVERS ARE UNDER MAINTENANCE!";
 
   @override String get labelSync => "SYNC: ";
   @override String get dialogWarningTitle => "SYSTEM WARNING";
-  @override String get dialogWarningContent => "> YOU ARE DISABLING BACKGROUND SYNC!\n\nIf disabled, the app CANNOT automatically call the API to update War times.\n\nCONSEQUENCES:\nYou will NOT receive notifications or alarms when War ends unless you manually open the app to refresh.\n\nConfirm disable?";
   @override String get btnCancelDialog => "[ CANCEL ]";
   @override String get btnForceDisable => "[ DISABLE ANYWAY ]";
 
@@ -764,7 +772,7 @@ class OnlineScreenStringsEn extends OnlineScreenStrings {
   @override String get labelLevel => "LEVEL";
 
   @override String get labelAddClan => "A D D   C L A N   T O   T R A C K";
-  @override String get hintPasteTag => "PASTE TAG HERE";
+  @override String get hintPasteTag => "PASTE CLAN TAG HERE";
   @override String get btnConfirmAdd => "C O N F I R M   ►";
 
   @override String get overlayFetchingData => "FETCHING DATA FROM SERVER";

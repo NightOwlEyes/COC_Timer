@@ -78,16 +78,12 @@ The app has a toggle for how time is displayed:
 
 ---
 
-## Getting Started
+## Support the project
 
-This project is a starting point for a Flutter application.
+If you find COC_Timer useful, consider supporting its development!
 
-A few resources to get you started if this is your first Flutter project:
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/NightOwlEyes)
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+### Donate via QR Code
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![Donation QR Code](assets/donate-qr.png)
