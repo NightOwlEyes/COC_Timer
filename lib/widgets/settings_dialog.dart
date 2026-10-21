@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:convert';
+import 'dart:async'; // BỔ SUNG THƯ VIỆN ĐỂ DÙNG TIMER DEBOUNCE
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../models/village_models.dart';
@@ -21,10 +22,7 @@ class SettingsDialog extends StatefulWidget {
 }
 
 class _SettingsDialogState extends State<SettingsDialog> {
-  // MÀU CHỦ ĐẠO MỚI (Green Terminal) - Ghi đè màu mặc định
   final Color _themeColor = const Color(0xFF97a87c);
-
-  // Màu xám sáng cho các liên từ
   final Color _textColor = const Color(0xFFAAAAAA);
 
   final Set<TimeRule> _errorRules = {};
@@ -36,13 +34,13 @@ class _SettingsDialogState extends State<SettingsDialog> {
   String? _updateUrl;
 
   late TextEditingController _warPreAlarmController;
+  Timer? _debounceTimer; // THÊM TIMER CHO VẤN ĐỀ 1.3
 
   @override
   void initState() {
     super.initState();
     _loadAppVersion();
 
-    // Khởi tạo controller cho định dạng hh:mm từ RuleManager.warPreAlarmMinutes
     int totalMins = RuleManager.warPreAlarmMinutes;
     int hh = totalMins ~/ 60;
     int mm = totalMins % 60;
@@ -53,6 +51,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel(); // HỦY TIMER KHI ĐÓNG HỘP THOẠI
     _warPreAlarmController.dispose();
     super.dispose();
   }
@@ -106,7 +105,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
   }
 
   Future<void> _handleToggleWarAutoSync() async {
-    // NẾU ĐANG BẬT VÀ MUỐN TẮT -> HIỆN CẢNH BÁO
     if (RuleManager.warAutoSync) {
       bool? confirm = await showDialog<bool>(
         context: context,
@@ -725,7 +723,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           totalMins = 360;
                           _warPreAlarmController.text = "06:00";
                           _warPreAlarmController.selection = const TextSelection.collapsed(offset: 5);
-                          _showError("Tối đa chỉ được nhập 6 giờ (06:00)!");
+                          _showError(AppStrings.settings.errorInvalidTime);
                         } else if (m > 59) {
                           m = 59;
                           totalMins = h * 60 + 59;
@@ -733,9 +731,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           _warPreAlarmController.selection = const TextSelection.collapsed(offset: 5);
                         }
 
+                        // LƯU STATE NGAY LẬP TỨC
                         RuleManager.warPreAlarmMinutes = totalMins;
                         RuleManager.save();
-                        await _syncAllWarSchedules();
+
+                        // SỬ DỤNG DEBOUNCE ĐỂ GỌI API (VẤN ĐỀ 1.3)
+                        _debounceTimer?.cancel();
+                        _debounceTimer = Timer(const Duration(milliseconds: 800), () {
+                          _syncAllWarSchedules();
+                        });
                       }
                     },
                   ),

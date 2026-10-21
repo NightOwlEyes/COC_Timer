@@ -87,20 +87,56 @@ class TerminalInputArea extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSubmit;
   final VoidCallback onPaste;
+  final bool isQuickPasteActive;
+  final VoidCallback? onToggleQuickPaste;
 
   const TerminalInputArea({
     super.key,
     required this.controller,
     required this.onSubmit,
     required this.onPaste,
+    this.isQuickPasteActive = false,
+    this.onToggleQuickPaste,
   });
 
   @override
   Widget build(BuildContext context) {
+    final String quickPasteLabel = isQuickPasteActive
+        ? AppStrings.terminal.btnQuickPasteOn
+        : AppStrings.terminal.btnPinQuickPaste;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(AppStrings.terminal.inputSectionLabel, style: const TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                AppStrings.terminal.inputSectionLabel,
+                style: const TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (onToggleQuickPaste != null)
+              InkWell(
+                onTap: onToggleQuickPaste,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
+                  child: Text(
+                    quickPasteLabel,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      color: isQuickPasteActive ? const Color(0xFF4CAF50) : const Color(0xFF888888),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 8),
         Stack(
           children: [
@@ -155,13 +191,13 @@ class TerminalInputArea extends StatelessWidget {
 class TerminalFooter extends StatelessWidget {
   final bool xiaomiAcknowledged;
   final VoidCallback onXiaomiTap;
-  final bool showHowTo; // THÊM BIẾN NÀY ĐỂ BẬT/TẮT HƯỚNG DẪN
+  final bool showHowTo;
 
   const TerminalFooter({
     super.key,
     required this.xiaomiAcknowledged,
     required this.onXiaomiTap,
-    this.showHowTo = true, // Mặc định là true để không ảnh hưởng TerminalScreen
+    this.showHowTo = true,
   });
 
   @override

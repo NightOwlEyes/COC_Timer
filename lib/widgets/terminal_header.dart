@@ -42,115 +42,118 @@ class TerminalHeader extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(width: 8, height: 8, color: accentColor),
-                      const SizedBox(width: 8),
-                      Text(
-                        AppStrings.terminal.headerSupportProject,
+          // BỌC SINGLECHILDSCRLLVIEW ĐỂ CHỐNG TRÀN MÀN HÌNH (VẤN ĐỀ 1.2)
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(width: 8, height: 8, color: accentColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppStrings.terminal.headerSupportProject,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            color: accentColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Text(
+                        AppStrings.dialog.btnClose,
                         style: const TextStyle(
                           fontFamily: 'monospace',
-                          color: accentColor,
-                          fontSize: 15,
+                          color: Color(0xFF888888),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  AppStrings.terminal.textSupportProject,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    color: Color(0xFFE0E0E0),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () async {
+                    final uri = Uri.parse('https://github.com/sponsors/NightOwlEyes');
+                    try {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      debugPrint("Không thể mở link tài trợ: $e");
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0x22EA4AAA),
+                      border: Border.all(color: const Color(0xFFEA4AAA), width: 1),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "[ ♥ GITHUB SPONSORS ]",
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          color: Color(0xFFEA4AAA),
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.0,
                         ),
                       ),
-                    ],
-                  ),
-                  InkWell(
-                    onTap: () => Navigator.pop(ctx),
-                    child: Text(
-                      AppStrings.dialog.btnClose,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        color: Color(0xFF888888),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                AppStrings.terminal.textSupportProject,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  color: Color(0xFFE0E0E0),
-                  fontSize: 12,
-                  height: 1.4,
                 ),
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: () async {
-                  final uri = Uri.parse('https://github.com/sponsors/NightOwlEyes');
-                  try {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } catch (e) {
-                    debugPrint("Không thể mở link tài trợ: $e");
-                  }
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0x22EA4AAA),
-                    border: Border.all(color: const Color(0xFFEA4AAA), width: 1),
+                const SizedBox(height: 16),
+                Text(
+                  AppStrings.terminal.textSupportProjectQRScanner,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    color: Color(0xFF888888),
+                    fontSize: 11,
                   ),
-                  child: const Center(
-                    child: Text(
-                      "[ ♥ GITHUB SPONSORS ]",
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        color: Color(0xFFEA4AAA),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.0,
+                ),
+                const SizedBox(height: 12),
+                Image.asset(
+                  'assets/donate-qr.png',
+                  width: 220,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => SizedBox(
+                    width: 180,
+                    height: 100,
+                    child: Center(
+                      child: Text(
+                        AppStrings.terminal.debugQRImageNotFound,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          color: Color(0xFF888888),
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                AppStrings.terminal.textSupportProjectQRScanner,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  color: Color(0xFF888888),
-                  fontSize: 11,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Image.asset(
-                'assets/donate-qr.png',
-                width: 220,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => SizedBox(
-                  width: 180,
-                  height: 100,
-                  child: Center(
-                    child: Text(
-                      AppStrings.terminal.debugQRImageNotFound,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        color: Color(0xFF888888),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

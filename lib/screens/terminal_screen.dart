@@ -58,6 +58,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   bool _showRealEta = true;
   bool _isBuilderBase = false;
   bool _xiaomiAcknowledged = false;
+  bool _isQuickPasteActive = false;
+  bool _pendingQuickPaste = false;
 
   String? _updateVersion;
   String? _updateUrl;
@@ -71,6 +73,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _isQuickPasteActive = ScheduleService.isQuickPasteActive;
+    ScheduleService.quickPasteTrigger.addListener(_onQuickPasteTriggered);
 
     RuleManager.init().then((_) {
       if (RuleManager.autoCheckUpdate) _checkGithubUpdate();
@@ -87,6 +92,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Nếu app vừa được gọi dậy từ thông báo Dán Nhanh lúc đang tắt
+      if (ScheduleService.quickPasteTrigger.value > 0) {
+        _onQuickPasteTriggered();
+      }
+
       Future.delayed(const Duration(milliseconds: 2500), () {
         if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
           ScheduleService.disableAlarmMode();
@@ -121,6 +131,112 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         debugPrint(AppStrings.format(AppStrings.terminal.debugLoadGeneralError, {'e': "Alarm Stream: $e"}));
       }
     });
+  }
+
+  // Hàm này chỉ nhận tín hiệu từ thông báo và bật cờ hiệu
+  void _onQuickPasteTriggered() {
+    _pendingQuickPaste = true;
+    _attemptQuickPaste();
+  }
+
+  // Hàm này sẽ đảm nhận việc thực thi dán an toàn
+  Future<void> _attemptQuickPaste() async {
+    if (!_pendingQuickPaste || !mounted) return;
+
+    // QUAN TRỌNG: Chỉ đọc bộ nhớ khi app đã nổi hoàn toàn lên màn hình (Resumed)
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return; // Nếu chưa nổi lên, kệ nó, didChangeAppLifecycleState sẽ xử lý sau
+    }
+
+    // Delay 300ms để Android hoàn tất chuyển giao quyền Window Focus
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final clipboardText = data?.text;
+
+    if (clipboardText != null && clipboardText.trim().isNotEmpty) {
+      _pendingQuickPaste = false;
+      setState(() => _jsonController.text = clipboardText);
+      await _processJson(fromQuickPaste: true);
+    } else {
+      // Fallback: Nếu lần đầu vẫn fail do máy bị khựng (lag), thử lại 1 lần nữa sau 500ms
+      await Future.delayed(const Duration(milliseconds: 500));
+      final retryData = await Clipboard.getData(Clipboard.kTextPlain);
+      final retryText = retryData?.text;
+
+      if (retryText != null && retryText.trim().isNotEmpty) {
+        _pendingQuickPaste = false;
+        setState(() => _jsonController.text = retryText);
+        await _processJson(fromQuickPaste: true);
+      } else {
+        _pendingQuickPaste = false;
+        final String emptyMsg = AppStrings.terminal.quickPasteEmpty;
+        setState(() => _parseStatus = emptyMsg);
+        _showQuickPasteFeedbackOverlay(emptyMsg, isSuccess: false);
+      }
+    }
+  }
+
+  Future<void> _toggleQuickPaste() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    if (_isQuickPasteActive) {
+      await ScheduleService.cancelQuickPasteNotification();
+      if (mounted) {
+        setState(() {
+          _isQuickPasteActive = false;
+          _parseStatus = AppStrings.terminal.quickPasteDisabled;
+        });
+      }
+    } else {
+      await ScheduleService.showQuickPasteNotification();
+      if (mounted) {
+        setState(() {
+          _isQuickPasteActive = true;
+          _parseStatus = AppStrings.terminal.quickPastePinned;
+        });
+      }
+    }
+  }
+
+  void _showQuickPasteFeedbackOverlay(String message, {required bool isSuccess}) {
+    if (!mounted) return;
+    final Color borderColor = isSuccess ? const Color(0xFF4CAF50) : const Color(0xFFB54545);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF0A0C0B),
+        shape: RoundedRectangleBorder(side: BorderSide(color: borderColor, width: 1.5)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                color: borderColor,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    color: borderColor,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _checkGithubUpdate() async {
@@ -162,6 +278,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
+    ScheduleService.quickPasteTrigger.removeListener(_onQuickPasteTriggered);
     WidgetsBinding.instance.removeObserver(this);
     _alarmSubscription?.cancel();
     _cursorTimer?.cancel();
@@ -174,6 +291,13 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+
+      // --- THÊM ĐOẠN NÀY ĐỂ ĐÓN LÕNG SỰ KIỆN TỪ BACKGROUND ---
+      if (_pendingQuickPaste) {
+        _attemptQuickPaste();
+      }
+      // -------------------------------------------------------
+
       if (_isAlarmPopupShowing || _alarmQueue.isNotEmpty) {
         ScheduleService.enableAlarmMode();
       } else {
@@ -311,6 +435,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
     if (prefs.getBool('show_real_eta') != null) _showRealEta = prefs.getBool('show_real_eta')!;
     _xiaomiAcknowledged = prefs.getBool('xiaomi_acknowledged') ?? false;
+    _isQuickPasteActive = prefs.getBool('quick_paste_enabled') ?? false;
 
     if (savedTrackHome != null) {
       try { jsonDecode(savedTrackHome).forEach((key, value) => _trackHome[key] = value as bool); } catch (e) { debugPrint("Lỗi tải TrackHome: $e"); }
@@ -424,10 +549,16 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(AppStrings.terminal.deleteDialogTitle, style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                AppStrings.terminal.deleteDialogTitle,
+                style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+              ),
               const SizedBox(height: 16),
-              Text(AppStrings.format(AppStrings.terminal.deleteDialogMessage, {'tag': tag}),
-                  textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
+              Text(
+                AppStrings.format(AppStrings.terminal.deleteDialogMessage, {'tag': tag}),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontFamily: 'monospace'),
+              ),
               const SizedBox(height: 24),
               Row(
                 children: [
@@ -477,7 +608,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     setState(() {
       _villages.remove(tag);
       _savedRawJsons.remove(tag);
-      _villageNames.remove(tag); // THÊM DÒNG NÀY ĐỂ XÓA TÊN KHỎI BỘ NHỚ
+      _villageNames.remove(tag);
       _trackHome.remove(tag);
       _trackBuilder.remove(tag);
       _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
@@ -536,7 +667,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
   }
 
-  void _processJson() async {
+  Future<void> _processJson({bool fromQuickPaste = false}) async {
     final inputData = _jsonController.text.trim();
     if (inputData.isEmpty) return;
     FocusScope.of(context).unfocus();
@@ -546,40 +677,60 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       final String tag = parsed.tag;
       final bool isNewVillage = !_villageNames.containsKey(tag);
 
-      // 1. XỬ LÝ DỮ LIỆU JSON
+      // 1. XỬ LÝ JSON
       if (_villages.containsKey(tag)) {
         ScheduleService.cancelAllForVillage(_villages[tag]!);
         _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
       } else {
-        // Gán cờ mặc định cho làng mới để hệ thống đếm ngược hoạt động bình thường
         _trackHome[tag] = true;
         _trackBuilder[tag] = true;
-        _villageNames[tag] = "ĐANG TÌM TÊN LÀNG..."; // Tên hiển thị tạm
+        _villageNames[tag] = AppStrings.terminal.defaultVillageNameSearching;
       }
 
-      // Đưa dữ liệu vào RAM ngay lập tức
       _villages[tag] = parsed;
       _savedRawJsons[tag] = inputData;
 
-      // CHỈ ĐỒNG BỘ BÁO THỨC VỚI HỆ ĐIỀU HÀNH NGAY NẾU ĐÃ CÓ TÊN LÀNG TỪ TRƯỚC.
-      // Nếu là làng mới (chưa hoàn tất bước lấy/nhập tên), chỉ tính toán trạng thái hiển thị (syncWithOS: false).
       await _applySavedAlarmState(parsed, syncWithOS: !isNewVillage, forceApplyRules: true);
+
+      final String updatedMsg = AppStrings.format(
+        AppStrings.terminal.statusUpdated,
+        {'villageName': _villageNames[tag]!, 'tag': tag},
+      );
 
       if (mounted) {
         setState(() {
           _parseStatus = isNewVillage
-              ? "> ĐANG TRUY XUẤT TÊN LÀNG [ $tag ]..."
-              : AppStrings.format(AppStrings.terminal.statusUpdated, {'villageName': _villageNames[tag]!, 'tag': tag});
+              ? AppStrings.format(AppStrings.terminal.statusFetchingVillageName, {'tag': tag})
+              : updatedMsg;
           _jsonController.clear();
         });
       }
       _saveDataToPrefs();
       if (!isNewVillage) _saveAlarmStatesToPrefs();
 
-      // 2. RẼ NHÁNH TÌM TÊN CHO LÀNG MỚI VÀ LUÔN LUÔN BẬT POPUP
+      // 2. TÌM TÊN VÀ HIỆN POPUP CHO LÀNG MỚI HOẶC TỰ ĐỘNG QUAY LẠI GAME
       if (isNewVillage) {
-        _fetchNameAndShowPopup(tag);
+        await _fetchNameAndShowPopup(tag, fromQuickPaste: fromQuickPaste);
       } else {
+        if (_isQuickPasteActive) {
+          ScheduleService.showQuickPasteNotification(
+            customStatus: AppStrings.format(AppStrings.terminal.quickPasteUpdated, {
+              'name': _villageNames[tag]!,
+              'tag': tag,
+            }),
+          );
+        }
+
+        if (fromQuickPaste && mounted) {
+          _showQuickPasteFeedbackOverlay(updatedMsg, isSuccess: true);
+          await Future.delayed(const Duration(milliseconds: 900));
+          if (mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+            SystemNavigator.pop();
+          }
+          return;
+        }
+
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
           ScheduleService.disableAlarmMode();
@@ -587,35 +738,58 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       }
 
     } catch (e) {
-      if (mounted) setState(() => _parseStatus = AppStrings.terminal.statusErrorInvalidJson);
+      if (mounted) {
+        setState(() => _parseStatus = AppStrings.terminal.statusErrorInvalidJson);
+        if (fromQuickPaste) {
+          _showQuickPasteFeedbackOverlay(AppStrings.terminal.statusErrorInvalidJson, isSuccess: false);
+          await Future.delayed(const Duration(milliseconds: 1200));
+          if (mounted) {
+            Navigator.of(context, rootNavigator: true).pop();
+            SystemNavigator.pop();
+          }
+        }
+      }
     }
   }
 
-  Future<void> _fetchNameAndShowPopup(String tag) async {
+  Future<void> _fetchNameAndShowPopup(String tag, {bool fromQuickPaste = false}) async {
     String? fetchedName;
 
-    try {
-      // GỌI API LẤY TÊN PLAYER (ÉP TIMEOUT TỐI ĐA 5 GIÂY)
-      fetchedName = await CocApiService.fetchPlayerName(tag).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => null, // Hết 5s tự động trả về null
-      );
-    } catch (e) {
-      debugPrint("Lỗi lấy tên làng qua API: $e");
+    // Thử gọi API tối đa 3 lần, đề phòng mạng chưa kịp kết nối khi app vừa thức dậy
+    for (int i = 0; i < 3; i++) {
+      try {
+        fetchedName = await CocApiService.fetchPlayerName(tag).timeout(
+          const Duration(seconds: 4), // Cho mỗi lần thử tối đa 4 giây
+          onTimeout: () => null,
+        );
+
+        // Nếu lấy được tên thành công thì thoát vòng lặp ngay
+        if (fetchedName != null && fetchedName.isNotEmpty) {
+          break;
+        }
+      } catch (e) {
+        debugPrint("Lỗi API lần ${i + 1}: $e");
+      }
+
+      // Nếu thất bại (null hoặc lỗi mạng), nghỉ 1.5 giây rồi thử lại
+      if (i < 2) {
+        await Future.delayed(const Duration(milliseconds: 1500));
+      }
     }
 
     if (!mounted) return;
 
-    // Cập nhật trạng thái trước khi bật Popup
     setState(() {
       if (fetchedName != null && fetchedName.isNotEmpty) {
-        _parseStatus = "> ĐÃ TÌM THẤY TÊN: $fetchedName. ĐANG CHỜ XÁC NHẬN...";
+        _parseStatus = AppStrings.format(
+          AppStrings.terminal.statusFoundNameWaitingConfirm,
+          {'name': fetchedName},
+        );
       } else {
-        _parseStatus = "> LỖI API / QUÁ GIỜ: VUI LÒNG NHẬP TÊN THỦ CÔNG";
+        _parseStatus = AppStrings.terminal.statusApiTimeoutManualInput;
       }
     });
 
-    // BƯỚC 3: LUÔN LUÔN BẬT POPUP (Truyền tên vừa tìm được vào nếu có)
     Map<String, dynamic>? result = await _promptForVillageName(tag, prefilledName: fetchedName);
 
     if (mounted && _villages.containsKey(tag)) {
@@ -624,20 +798,39 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           _villageNames[tag] = (result['name'] as String).trim().isNotEmpty ? result['name'] : AppStrings.terminal.defaultVillageNameFallback;
           _trackHome[tag] = result['home'] as bool;
           _trackBuilder[tag] = result['builder'] as bool;
-          _parseStatus = "> ĐÃ LƯU THIẾT LẬP: ${_villageNames[tag]}";
+          _parseStatus = AppStrings.format(
+            AppStrings.terminal.statusSavedSettings,
+            {'name': _villageNames[tag]!},
+          );
         });
       } else {
-        // Trường hợp người dùng bấm ra ngoài tắt Popup mà không lưu
         setState(() {
           _villageNames[tag] = (fetchedName != null && fetchedName.isNotEmpty) ? fetchedName : AppStrings.terminal.defaultVillageNameFallback;
-          _parseStatus = "> ĐÃ LƯU MẶC ĐỊNH: ${_villageNames[tag]}";
+          _parseStatus = AppStrings.format(
+            AppStrings.terminal.statusSavedDefault,
+            {'name': _villageNames[tag]!},
+          );
         });
       }
       _saveDataToPrefs();
 
-      // ĐỒNG BỘ BÁO THỨC VỚI HỆ ĐIỀU HÀNH SAU KHI ĐÃ HOÀN TẤT BƯỚC LẤY/NHẬP TÊN LÀNG
       await _applySavedAlarmState(_villages[tag]!, syncWithOS: true, forceApplyRules: true);
       _saveAlarmStatesToPrefs();
+
+      if (_isQuickPasteActive) {
+        ScheduleService.showQuickPasteNotification(
+          customStatus: AppStrings.format(AppStrings.terminal.quickPasteAdded, {
+            'name': _villageNames[tag]!,
+            'tag': tag,
+          }),
+        );
+      }
+
+      if (fromQuickPaste) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        SystemNavigator.pop();
+        return;
+      }
 
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
@@ -647,7 +840,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   Future<Map<String, dynamic>?> _promptForVillageName(String tag, {String? prefilledName}) {
-    // ĐIỀN SẴN TÊN VÀO CONTROLLER NẾU API TÌM ĐƯỢC
     TextEditingController tempController = TextEditingController(text: prefilledName ?? "");
     bool trackHome = true, trackBuilder = true;
 
@@ -769,12 +961,14 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                       updateUrl: _updateUrl,
                       updateVersion: _updateVersion,
                       onToggleServer: () {
-                        // CHUYỂN HƯỚNG SANG MÀN HÌNH ONLINE
                         FocusManager.instance.primaryFocus?.unfocus();
                         Navigator.push(
                           context,
                           PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => const OnlineScreen(),
+                            pageBuilder: (context, animation, secondaryAnimation) => OnlineScreen(
+                              updateUrl: _updateUrl,
+                              updateVersion: _updateVersion,
+                            ),
                             transitionsBuilder: (context, animation, secondaryAnimation, child) {
                               return FadeTransition(opacity: animation, child: child);
                             },
@@ -789,6 +983,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                       onLanguageChange: () async {
                         FocusManager.instance.primaryFocus?.unfocus();
                         await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
+                        if (_isQuickPasteActive) {
+                          await ScheduleService.showQuickPasteNotification();
+                        }
                         for (var v in _villages.values) {
                           await _applySavedAlarmState(v, syncWithOS: true);
                         }
@@ -844,7 +1041,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                 }
                             ),
                             const SizedBox(height: 30),
-                            // XÓA CHỮ const Ở ĐÂY ĐỂ CHO PHÉP RENDER LẠI THEO NGÔN NGỮ
                             TerminalLogo(),
                             const SizedBox(height: 30),
                             if (_villages.isNotEmpty)
@@ -882,6 +1078,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                               controller: _jsonController,
                               onPaste: _pasteFromClipboard,
                               onSubmit: _processJson,
+                              isQuickPasteActive: _isQuickPasteActive,
+                              onToggleQuickPaste: _toggleQuickPaste,
                             ),
                             const SizedBox(height: 20),
                             TerminalFooter(

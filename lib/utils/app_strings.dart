@@ -119,6 +119,13 @@ abstract class TerminalScreenStrings {
   String get statusSavedDefault;
   String get labelLanguage;
   String get labelServerOnline;
+  String get quickPasteEmpty;
+  String get quickPasteDisabled;
+  String get quickPastePinned;
+  String get quickPasteUpdated;
+  String get quickPasteAdded;
+  String get btnQuickPasteOn;
+  String get btnPinQuickPaste;
 }
 
 abstract class ScheduleServiceStrings {
@@ -148,6 +155,10 @@ abstract class ScheduleServiceStrings {
   String get warPreAlarmTitle;
   String get warEndAlarmTitle;
   String get debugCancelledWarAlarms;
+  String get quickPasteNotificationTitle;
+  String get quickPasteNotificationBody;
+  String get quickPasteChannelName;
+  String get channelQuickPasteDesc;
 }
 
 abstract class AlarmPopupStrings {
@@ -241,6 +252,7 @@ abstract class SettingsStrings {
   String get warAutoSyncLabel;
   String get btnTypeNotification;
   String get btnTypeAlarm;
+  String get errorInvalidTime;
 }
 
 abstract class OnlineScreenStrings {
@@ -372,14 +384,21 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get statusSavedDefault => "> ĐÃ LƯU MẶC ĐỊNH: {name}";
   @override String get labelLanguage => "NGÔN NGỮ: ";
   @override String get labelServerOnline => "SERVER: ONLINE";
+  @override String get quickPasteEmpty => "> BỘ NHỚ TẠM TRỐNG!";
+  @override String get quickPasteDisabled => "> ĐÃ TẮT THÔNG BÁO DÁN NHANH";
+  @override String get quickPastePinned => "> ĐÃ GHIM DÁN NHANH LÊN THANH THÔNG BÁO";
+  @override String get quickPasteUpdated => "✓ Đã lưu: {name} ({tag}) — Chạm để dán tiếp";
+  @override String get quickPasteAdded => "✓ Đã thêm: {name} ({tag}) — Chạm để dán tiếp";
+  @override String get btnQuickPasteOn => "[ DÁN NHANH: BẬT ]";
+  @override String get btnPinQuickPaste => "[ GHIM DÁN NHANH ]";
 }
 
 class ScheduleServiceStringsVi extends ScheduleServiceStrings {
   const ScheduleServiceStringsVi();
   @override String get notificationTitle => "■ HOÀN TẤT ■";
-  @override String get notificationBody => "{itemName} tại {villageName} ({tag}) đã hoàn thành.";
+  @override String get notificationBody => "{villageName} > {itemName} ({tag}).";
   @override String get alarmNotificationTitle => "■ HOÀN TẤT ■";
-  @override String get alarmNotificationBody => "Hạng mục: {itemName}\nLàng: {villageName}\n(Mã: {tag})";
+  @override String get alarmNotificationBody => "Làng: {villageName}\nHoàn tất: {itemName}\n(Mã: {tag})";
   @override String get alarmStopButton => "ĐÓNG CẢNH BÁO";
   @override String get debugOldChannelDeleted => "Đã xóa dọn dẹp channel cũ: {channelId}";
   @override String get debugOldChannelDeleteFailed => "Không thể xóa channel {channelId}: {e}";
@@ -401,7 +420,10 @@ class ScheduleServiceStringsVi extends ScheduleServiceStrings {
   @override String get warPreAlarmTitle => "SẮP KẾT THÚC WAR";
   @override String get warEndAlarmTitle => "WAR ĐÃ KẾT THÚC";
   @override String get debugCancelledWarAlarms => "> ĐÃ HỦY TOÀN BỘ BÁO THỨC WAR CỦA CLAN: {clanTag}";
-
+  @override String get quickPasteNotificationTitle => "■ CHẾ ĐỘ DÁN NHANH ĐANG BẬT";
+  @override String get quickPasteNotificationBody => "Chạm vào đây sau khi Copy JSON trong game để lưu ngay";
+  @override String get quickPasteChannelName => "Chế Độ Dán Nhanh";
+  @override String get channelQuickPasteDesc => "Thanh công cụ dán nhanh JSON khi đang trong game";
 }
 
 class AlarmPopupStringsVi extends AlarmPopupStrings {
@@ -442,7 +464,7 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
   @override String get statusUpgradingSuffix => "ĐANG NÂNG";
   @override String get groupLabNight => "> PHÒNG THÍ NGHIỆM SAO";
   @override String get groupLabMain => "> PHÒNG THÍ NGHIỆM";
-  @override String get separatorDots => " ......................................";
+  @override String get separatorDots => " ............................................................................";
   @override String get logGroupNameBuilderNight => "THỢ XÂY ĐÊM";
   @override String get logGroupNameBuilder => "THỢ XÂY";
   @override String get logGroupNamePet => "LINH THÚ";
@@ -490,6 +512,7 @@ class SettingsStringsVi extends SettingsStrings {
   @override String get warAutoSyncLabel => "Tự động cập nhật lịch War ngầm";
   @override String get btnTypeNotification => "[ THÔNG BÁO ]";
   @override String get btnTypeAlarm => "[ BÁO THỨC ]";
+  @override String get errorInvalidTime => "Tối đa chỉ được nhập 06:00!";
 }
 
 class OnlineScreenStringsVi extends OnlineScreenStrings {
@@ -626,14 +649,21 @@ class TerminalScreenStringsEn extends TerminalScreenStrings {
   @override String get statusSavedDefault => "> SAVED DEFAULT: {name}";
   @override String get labelLanguage => "LANGUAGE: ";
   @override String get labelServerOnline => "SERVER: ONLINE";
+  @override String get quickPasteEmpty => "> CLIPBOARD IS EMPTY!";
+  @override String get quickPasteDisabled => "> QUICK-PASTE NOTIFICATION DISABLED";
+  @override String get quickPastePinned => "> QUICK-PASTE PINNED TO NOTIFICATION BAR";
+  @override String get quickPasteUpdated => "✓ Updated: {name} ({tag}) — Tap to paste next";
+  @override String get quickPasteAdded => "✓ Added: {name} ({tag}) — Tap to paste next";
+  @override String get btnQuickPasteOn => "[ QUICK PASTE: ON ]";
+  @override String get btnPinQuickPaste => "[ PIN QUICK PASTE ]";
 }
 
 class ScheduleServiceStringsEn extends ScheduleServiceStrings {
   const ScheduleServiceStringsEn();
   @override String get notificationTitle => "■ COMPLETED ■";
-  @override String get notificationBody => "{itemName} at {villageName} ({tag}) has been completed.";
+  @override String get notificationBody => "{villageName} > {itemName} ({tag}).";
   @override String get alarmNotificationTitle => "■ COMPLETED ■";
-  @override String get alarmNotificationBody => "Category: {itemName}\nVillage: {villageName}\n(Code: {tag})";
+  @override String get alarmNotificationBody => "Village: {villageName}\nDone: {itemName}\n(Tag: {tag})";
   @override String get alarmStopButton => "CLOSE WARNING";
   @override String get debugOldChannelDeleted => "Cleaned up old channel: {channelId}";
   @override String get debugOldChannelDeleteFailed => "Cannot delete channel {channelId}: {e}";
@@ -655,6 +685,10 @@ class ScheduleServiceStringsEn extends ScheduleServiceStrings {
   @override String get warPreAlarmTitle => "WAR ENDING SOON";
   @override String get warEndAlarmTitle => "WAR HAS ENDED";
   @override String get debugCancelledWarAlarms => "> CANCELLED ALL WAR ALARMS FOR CLAN: {clanTag}";
+  @override String get quickPasteNotificationTitle => "■ QUICK-PASTE READY";
+  @override String get quickPasteNotificationBody => "Tap here after copying JSON in-game to import instantly";
+  @override String get quickPasteChannelName => "Quick Paste";
+  @override String get channelQuickPasteDesc => "Quick-paste tool notification while in-game";
 }
 
 class AlarmPopupStringsEn extends AlarmPopupStrings {
@@ -695,7 +729,7 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
   @override String get statusUpgradingSuffix => "UPGRADING";
   @override String get groupLabNight => "> STAR LABORATORY";
   @override String get groupLabMain => "> LABORATORY";
-  @override String get separatorDots => " ......................................";
+  @override String get separatorDots => " ............................................................................";
   @override String get logGroupNameBuilderNight => "MASTER BUILDER";
   @override String get logGroupNameBuilder => "BUILDER";
   @override String get logGroupNamePet => "PET";
@@ -743,6 +777,7 @@ class SettingsStringsEn extends SettingsStrings {
   @override String get warAutoSyncLabel => "Auto-sync War data";
   @override String get btnTypeNotification => "[ NOTIFICATION ]";
   @override String get btnTypeAlarm => "[ ALARM ]";
+  @override String get errorInvalidTime => "You can enter a maximum of 06:00!";
 }
 
 class OnlineScreenStringsEn extends OnlineScreenStrings {

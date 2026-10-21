@@ -18,7 +18,14 @@ import '../utils/rule_manager.dart';
 import '../utils/app_strings.dart';
 
 class OnlineScreen extends StatefulWidget {
-  const OnlineScreen({super.key});
+  final String? updateUrl;
+  final String? updateVersion;
+
+  const OnlineScreen({
+    super.key,
+    this.updateUrl,
+    this.updateVersion,
+  });
 
   @override
   State<OnlineScreen> createState() => _OnlineScreenState();
@@ -134,7 +141,6 @@ class _OnlineScreenState extends State<OnlineScreen> {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        // Bắt luôn cả tiếng Anh và tiếng Việt từ Service quăng lên
         if (e.toString().contains("BẢO TRÌ") || e.toString().contains("MAINTENANCE")) {
           _statusText = AppStrings.onlineScreen.statusMaintenance;
         } else {
@@ -390,6 +396,8 @@ class _OnlineScreenState extends State<OnlineScreen> {
                       showRealEta: RuleManager.warAutoSync,
                       onToggleEta: _handleToggleAutoSync,
                       currentTime: _currentTime,
+                      updateUrl: widget.updateUrl,         // TRUYỀN BIẾN UPDATE TỪ CONSTRUCTOR
+                      updateVersion: widget.updateVersion, // TRUYỀN BIẾN UPDATE TỪ CONSTRUCTOR
                       onLanguageChange: () async {
                         FocusManager.instance.primaryFocus?.unfocus();
                         await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
@@ -412,7 +420,6 @@ class _OnlineScreenState extends State<OnlineScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // === THÊM BANNER TIÊU ĐỀ Ở ĐÂY ===
                             Container(
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               margin: const EdgeInsets.only(top: 10, bottom: 30),
@@ -597,7 +604,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                 const SizedBox(height: 20),
 
                                 Material(
-                                  color: const Color(0xFF4CAF50),
+                                  color: const Color(0xFFB0B3A6),
                                   child: InkWell(
                                     onTap: _isLoading ? null : _addNewClan,
                                     child: Container(

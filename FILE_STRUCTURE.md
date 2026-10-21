@@ -23,16 +23,16 @@ This document describes in detail the function of each component in the **CocTim
   *Contains core data classes such as `VillageData`, `UpgradeItem`, `BoostData`, and the `AlarmType` enum (None, System, Fullscreen).*
 
 ### 📁 services/ (Dịch vụ hệ thống) / services/ (System Services)
-- **schedule_service.dart**: Xử lý logic báo thức và thông báo, tích hợp gói `alarm` và `flutter_local_notifications`. Quản lý các quyền hạn đặc biệt trên Android (FSI, Exact Alarms, Battery Optimization).
-  *Handles alarm and notification logic, integrating the `alarm` and `flutter_local_notifications` packages. Manages special Android permissions (FSI, Exact Alarms, Battery Optimization).*
+- **schedule_service.dart**: Xử lý logic báo thức và thông báo, quản lý tính năng "Dán Nhanh" (Quick Paste), tích hợp gói `alarm` và `flutter_local_notifications`. Điều khiển các quyền Android (FSI, Exact Alarms, Battery Optimization).
+  *Handles alarm and notification logic, manages "Quick Paste" feature, integrating `alarm` and `flutter_local_notifications`. Controls Android permissions (FSI, Exact Alarms, Battery Optimization).*
 - **coc_api_service.dart**: Giao tiếp với Clash of Clans API (thông qua Cloudflare Worker). Hỗ trợ lấy thông tin Clan, dữ liệu War/CWL và tên người chơi từ Player Tag.
   *Communicates with the Clash of Clans API (via Cloudflare Worker). Supports fetching Clan info, War/CWL data, and player names from Player Tags.*
 - **war_sync_service.dart**: Dịch vụ đồng bộ hóa dữ liệu War chạy ngầm. Tự động cập nhật thời gian kết thúc trận đấu và đặt báo thức/thông báo tương ứng.
   *Background War data synchronization service. Automatically updates match end times and schedules corresponding alarms/notifications.*
 
 ### 📁 screens/ (Màn hình chính) / screens/ (Main Screens)
-- **terminal_screen.dart**: Giao diện người dùng chính (Local Server). Xử lý nhập JSON, quản lý danh sách các làng và chuyển đổi hiển thị giữa các làng.
-  *Main user interface (Local Server). Handles JSON input, manages the village list, and switches display between villages.*
+- **terminal_screen.dart**: Giao diện người dùng chính (Local Server). Xử lý nhập JSON, quản lý danh sách các làng, tích hợp tính năng "Dán Nhanh" và kiểm tra cập nhật ứng dụng.
+  *Main user interface (Local Server). Handles JSON input, manages village list, integrates "Quick Paste" feature and app update checks.*
 - **online_screen.dart**: Giao diện quản lý Clan và theo dõi War (Online Server). Cho phép thêm Clan bằng Tag, hiển thị danh sách Clan và trạng thái đồng bộ API.
   *UI for managing Clans and tracking Wars (Online Server). Allows adding Clans by Tag, displays Clan lists, and API sync status.*
 - **war_detail_screen.dart**: Hiển thị chi tiết trận War hiện tại hoặc 7 ngày CWL. Bao gồm tỉ số, phần trăm phá hủy, lượt tấn công của thành viên và đếm ngược thời gian.
@@ -63,8 +63,8 @@ This document describes in detail the function of each component in the **CocTim
   *CustomPainter that renders the retro digital border-frame effect.*
 - **terminal_header.dart**: Hộp chứa tiêu đề, đồng hồ, nút chuyển đổi Server và Ngôn ngữ.
   *Header container displaying title, clock, Server and Language toggles.*
-- **terminal_components.dart**: Các thành phần UI nhỏ như Logo, Input và Footer phong cách Terminal.
-  *Small UI components like Logo, Input, and Footer in Terminal style.*
+- **terminal_components.dart**: Các thành phần UI phong cách Terminal gồm Logo, Thẻ chuyển đổi server, Khu vực nhập liệu (hỗ trợ Dán Nhanh) và Footer thông tin hệ thống.
+  *Terminal-style UI components including Logo, Server toggle tag, Input area (supports Quick Paste), and system info Footer.*
 
 ## 📁 assets/ (Tài nguyên) / assets/ (Assets)
 - **LogoMain.png**: Logo chính hiển thị trong giao diện Terminal.
