@@ -24,6 +24,9 @@ void main() async {
     if (RuleManager.warAutoSync) {
       WarSyncService.registerPeriodicTask();
     }
+    if (ScheduleService.isQuickPasteActive) {
+      WarSyncService.registerQuickPasteWatchdog();
+    }
   } catch (e) {
     debugPrint(AppStrings.format(AppStrings.mainApp.debugInitBackgroundSystemError, {'e': e.toString()}));
   }

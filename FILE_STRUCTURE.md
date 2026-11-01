@@ -15,24 +15,24 @@ This document describes in detail the function of each component in the **CocTim
   *Configures source code linting rules.*
 
 ## 📁 lib/ (Mã nguồn chính) / lib/ (Main Source Code)
-- **main.dart**: Điểm khởi đầu của ứng dụng. Khởi tạo các dịch vụ nền (`ScheduleService`, `RuleManager`), thiết lập giao diện Terminal và quản lý các quyền cơ bản khi khởi động.
-  *App entry point. Initializes background services (`ScheduleService`, `RuleManager`), sets up the Terminal UI, and manages basic permissions on startup.*
+- **main.dart**: Điểm khởi đầu của ứng dụng. Khởi tạo các dịch vụ nền (`ScheduleService`, `RuleManager`), đăng ký chạy ngầm Workmanager, thiết lập giao diện Terminal và quản lý các quyền cơ bản khi khởi động.
+  *App entry point. Initializes background services (`ScheduleService`, `RuleManager`), registers Workmanager tasks, sets up the Terminal UI, and manages basic permissions on startup.*
 
 ### 📁 models/ (Định nghĩa dữ liệu) / models/ (Data Definitions)
-- **village_models.dart**: Chứa các lớp dữ liệu cốt lõi như `VillageData`, `UpgradeItem`, `BoostData` và enum `AlarmType` (None, System, Fullscreen).
-  *Contains core data classes such as `VillageData`, `UpgradeItem`, `BoostData`, and the `AlarmType` enum (None, System, Fullscreen).*
+- **village_models.dart**: Chứa các lớp dữ liệu cốt lõi như `VillageData`, `UpgradeItem`, `BoostData` (quản lý thời gian các loại Thuốc, Lương khô, Súp, Tháp đồng hồ, Học việc) và enum `AlarmType` (None, System, Fullscreen).
+  *Contains core data classes such as `VillageData`, `UpgradeItem`, `BoostData` (manages durations for Potions, Consumables, Clock Tower, Apprentices), and the `AlarmType` enum (None, System, Fullscreen).*
 
 ### 📁 services/ (Dịch vụ hệ thống) / services/ (System Services)
-- **schedule_service.dart**: Xử lý logic báo thức và thông báo, quản lý tính năng "Dán Nhanh" (Quick Paste), tích hợp gói `alarm` và `flutter_local_notifications`. Điều khiển các quyền Android (FSI, Exact Alarms, Battery Optimization).
-  *Handles alarm and notification logic, manages "Quick Paste" feature, integrating `alarm` and `flutter_local_notifications`. Controls Android permissions (FSI, Exact Alarms, Battery Optimization).*
+- **schedule_service.dart**: Xử lý logic báo thức và thông báo, quản lý tính năng "Dán Nhanh" (Quick Paste) kèm cơ chế tự động watchdog kiểm tra định kỳ và đẩy lại thông báo nếu bị gạt mất trên Android cao, tích hợp gói `alarm` và `flutter_local_notifications`. Điều khiển các quyền Android (FSI, Exact Alarms, Battery Optimization).
+  *Handles alarm and notification logic, manages "Quick Paste" feature with watchdog auto-reposting on newer Android versions, integrating `alarm` and `flutter_local_notifications`. Controls Android permissions (FSI, Exact Alarms, Battery Optimization).*
 - **coc_api_service.dart**: Giao tiếp với Clash of Clans API (thông qua Cloudflare Worker). Hỗ trợ lấy thông tin Clan, dữ liệu War/CWL và tên người chơi từ Player Tag.
   *Communicates with the Clash of Clans API (via Cloudflare Worker). Supports fetching Clan info, War/CWL data, and player names from Player Tags.*
-- **war_sync_service.dart**: Dịch vụ đồng bộ hóa dữ liệu War chạy ngầm. Tự động cập nhật thời gian kết thúc trận đấu và đặt báo thức/thông báo tương ứng.
-  *Background War data synchronization service. Automatically updates match end times and schedules corresponding alarms/notifications.*
+- **war_sync_service.dart**: Dịch vụ chạy ngầm định kỳ bằng `Workmanager`. Tự động cập nhật lịch War/CWL và duy trì trạng thái thông báo Dán Nhanh (Quick Paste watchdog) khi app đóng.
+  *Periodic background service using `Workmanager`. Automatically syncs War/CWL schedules and maintains Quick Paste notification status (watchdog) when the app is closed.*
 
 ### 📁 screens/ (Màn hình chính) / screens/ (Main Screens)
-- **terminal_screen.dart**: Giao diện người dùng chính (Local Server). Xử lý nhập JSON, quản lý danh sách các làng, tích hợp tính năng "Dán Nhanh" và kiểm tra cập nhật ứng dụng.
-  *Main user interface (Local Server). Handles JSON input, manages village list, integrates "Quick Paste" feature and app update checks.*
+- **terminal_screen.dart**: Giao diện người dùng chính (Local Server). Xử lý nhập JSON, quản lý danh sách các làng, tích hợp tính năng "Dán Nhanh" (kèm popup hướng dẫn khi bật), hộp thoại nhắc nhở tái nhập JSON khi nâng cấp/dùng thuốc khi mở app, và kiểm tra cập nhật ứng dụng.
+  *Main user interface (Local Server). Handles JSON input, manages village list, integrates "Quick Paste" feature (with onboarding popup), app-open reimport reminder dialog, and app update checks.*
 - **online_screen.dart**: Giao diện quản lý Clan và theo dõi War (Online Server). Cho phép thêm Clan bằng Tag, hiển thị danh sách Clan và trạng thái đồng bộ API.
   *UI for managing Clans and tracking Wars (Online Server). Allows adding Clans by Tag, displays Clan lists, and API sync status.*
 - **war_detail_screen.dart**: Hiển thị chi tiết trận War hiện tại hoặc 7 ngày CWL. Bao gồm tỉ số, phần trăm phá hủy, lượt tấn công của thành viên và đếm ngược thời gian.
@@ -45,16 +45,16 @@ This document describes in detail the function of each component in the **CocTim
   *Contains raw data dictionary mapping building and troop IDs from the game.*
 - **rule_manager.dart**: Quản lý logic các quy tắc báo thức tự động, kiểm tra đụng độ thời gian và lưu trữ cấu hình người dùng (bao gồm cấu hình War Auto-Sync).
   *Manages automatic alarm rule logic, checks for time conflicts, and stores user configuration (including War Auto-Sync config).*
-- **village_parser.dart**: Thuật toán phân tích JSON trích xuất từ game, tính toán thời gian hoàn thành thực tế (`realEta`) sau khi áp dụng các loại Buff.
-  *Algorithm that parses JSON extracted from the game and calculates the actual completion time (`realEta`) after applying Buffs.*
+- **village_parser.dart**: Thuật toán phân tích JSON trích xuất từ game, tính toán thời gian hoàn thành thực tế (`realEta`) sau khi áp dụng các loại Buff và hiệu ứng Trợ lý/Học việc, đồng thời trích xuất thời lượng các loại buff vào `BoostData`.
+  *Algorithm that parses JSON extracted from the game, calculates the actual completion time (`realEta`) after applying Buffs and Apprentices, and extracts boost durations into `BoostData`.*
 
 ### 📁 widgets/ (Thành phần giao diện) / widgets/ (UI Components)
 - **alarm_popup.dart**: Giao diện báo thức toàn màn hình (Full-screen Overlay) khi có công trình hoàn tất.
   *Full-screen alarm overlay UI shown when a building is completed.*
 - **settings_dialog.dart**: Hộp thoại cấu hình hệ thống quy tắc báo thức, cài đặt War và cập nhật ứng dụng.
   *Dialog for configuring the alarm rule system, War settings, and app updates.*
-- **village_detail_dialog.dart**: Hộp thoại chi tiết xem và chỉnh sửa nâng cấp cho Local Server.
-  *Detail dialog for viewing/editing upgrades for the Local Server.*
+- **village_detail_dialog.dart**: Hộp thoại chi tiết xem và chỉnh sửa nâng cấp cho Local Server; hiển thị đếm ngược thời gian tác dụng của các loại thuốc/vật phẩm hỗ trợ/học việc và gắn dấu chấm than (`!`) cảnh báo các công trình hoàn tất trước khi thuốc hết hạn.
+  *Detail dialog for viewing/editing upgrades for Local Server; displays countdowns for active boosts/apprentices and marks upgrades finishing before boost expiry with an exclamation mark (`!`).*
 - **village_card.dart**: Thành phần hiển thị tóm tắt trạng thái làng trên màn hình Local.
   *Component that displays a summary of village status on the Local screen.*
 - **war_dashboard_widget.dart**: Bảng điều khiển phân tích CWL, hiển thị ma trận Town Hall của 8 Clan trong bảng đấu.
@@ -63,13 +63,14 @@ This document describes in detail the function of each component in the **CocTim
   *CustomPainter that renders the retro digital border-frame effect.*
 - **terminal_header.dart**: Hộp chứa tiêu đề, đồng hồ, nút chuyển đổi Server và Ngôn ngữ.
   *Header container displaying title, clock, Server and Language toggles.*
-- **terminal_components.dart**: Các thành phần UI phong cách Terminal gồm Logo, Thẻ chuyển đổi server, Khu vực nhập liệu (hỗ trợ Dán Nhanh) và Footer thông tin hệ thống.
-  *Terminal-style UI components including Logo, Server toggle tag, Input area (supports Quick Paste), and system info Footer.*
+- **terminal_components.dart**: Các thành phần UI phong cách Terminal gồm Logo, Thẻ chuyển đổi server, Khu vực nhập liệu (hỗ trợ bật/tắt Dán Nhanh) và Footer thông tin hệ thống.
+  *Terminal-style UI components including Logo, Server toggle tag, Input area (supports toggling Quick Paste), and system info Footer.*
 
 ## 📁 assets/ (Tài nguyên) / assets/ (Assets)
 - **LogoMain.png**: Logo chính hiển thị trong giao diện Terminal.
 - **ring.mp3**: Âm thanh báo thức tùy chỉnh cho chế độ Full-screen.
 - **icon.png**: Biểu tượng ứng dụng.
+- **donate-qr.png**: Mã QR ủng hộ dự án.
 
 ## 📁 Dictionary/ (Dữ liệu hỗ trợ) / Dictionary/ (Supporting Data)
 - **Mapping.txt**: Bảng ánh xạ ID công trình và tên hiển thị dùng để cập nhật dữ liệu cho `game_data.dart`.

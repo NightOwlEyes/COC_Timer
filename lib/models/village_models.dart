@@ -11,6 +11,8 @@ class BoostData {
   final int builderConsumable;
   final int labConsumable;
   final int clocktowerBoost; // MỚI: Tháp đồng hồ Làng Đêm
+  final int builderHelperTimer;
+  final int labHelperTimer;
 
   BoostData({
     this.builderBoost = 0,
@@ -19,10 +21,21 @@ class BoostData {
     this.builderConsumable = 0,
     this.labConsumable = 0,
     this.clocktowerBoost = 0,
+    this.builderHelperTimer = 0,
+    this.labHelperTimer = 0,
   });
 
-  factory BoostData.fromJson(Map<String, dynamic>? json) {
-    if (json == null) return BoostData();
+  factory BoostData.fromJson(
+    Map<String, dynamic>? json, {
+    int builderHelperTimer = 0,
+    int labHelperTimer = 0,
+  }) {
+    if (json == null) {
+      return BoostData(
+        builderHelperTimer: builderHelperTimer,
+        labHelperTimer: labHelperTimer,
+      );
+    }
     return BoostData(
       builderBoost: json['builder_boost'] ?? 0,
       labBoost: json['lab_boost'] ?? 0,
@@ -30,6 +43,8 @@ class BoostData {
       builderConsumable: json['builder_consumable'] ?? 0,
       labConsumable: json['lab_consumable'] ?? 0,
       clocktowerBoost: json['clocktower_boost'] ?? 0,
+      builderHelperTimer: builderHelperTimer,
+      labHelperTimer: labHelperTimer,
     );
   }
 }

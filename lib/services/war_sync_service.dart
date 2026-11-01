@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'coc_api_service.dart';
+import '../utils/app_strings.dart';
 import '../utils/rule_manager.dart';
 import 'schedule_service.dart';
 
@@ -14,8 +15,16 @@ void callbackDispatcher() {
       debugPrint("Native Workmanager: Đang chạy task $task");
 
       // Khởi tạo các service cần thiết khi chạy ngầm
+      await AppStrings.initLanguage();
       await RuleManager.init();
       await ScheduleService.init();
+
+      await ScheduleService.ensureQuickPasteNotification();
+
+      if (task == WarSyncService.quickPasteTaskName) {
+        return Future.value(true);
+      }
+
 
       if (!RuleManager.warAutoSync) return Future.value(true);
 
@@ -67,6 +76,7 @@ DateTime _parseCocDate(String input) {
 
 class WarSyncService {
   static const String taskName = "syncWarDataTask";
+  static const String quickPasteTaskName = "quickPasteWatchdogTask";
 
   static Future<void> init() async {
     await Workmanager().initialize(
@@ -87,5 +97,25 @@ class WarSyncService {
 
   static void cancelTask() {
     Workmanager().cancelByUniqueName("war_sync_unique_id");
+  }
+
+  static void registerQuickPasteWatchdog() {
+    try {
+      Workmanager().registerPeriodicTask(
+        "quick_paste_watchdog_unique_id",
+        quickPasteTaskName,
+        frequency: const Duration(minutes: 15),
+      );
+    } catch (e) {
+      debugPrint("Lỗi đăng ký QuickPaste Watchdog: $e");
+    }
+  }
+
+  static void cancelQuickPasteWatchdog() {
+    try {
+      Workmanager().cancelByUniqueName("quick_paste_watchdog_unique_id");
+    } catch (e) {
+      debugPrint("Lỗi hủy QuickPaste Watchdog: $e");
+    }
   }
 }

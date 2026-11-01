@@ -6,7 +6,9 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'dart:io';
+import 'war_sync_service.dart';
 
 import '../models/village_models.dart';
 import '../utils/app_strings.dart';
@@ -22,6 +24,9 @@ class ScheduleService {
   static const String _quickPastePayload = 'QUICK_PASTE_ACTION';
   static final ValueNotifier<int> quickPasteTrigger = ValueNotifier<int>(0);
   static bool isQuickPasteActive = false;
+  static Timer? _quickPasteWatchdogTimer;
+  static bool _isCheckingQuickPaste = false;
+  static String? _lastQuickPasteStatus;
 
   static Future<void> init() async {
     await Alarm.init();
@@ -82,7 +87,8 @@ class ScheduleService {
     final prefs = await SharedPreferences.getInstance();
     isQuickPasteActive = prefs.getBool('quick_paste_enabled') ?? false;
     if (isQuickPasteActive) {
-      await showQuickPasteNotification();
+      await ensureQuickPasteNotification();
+      startQuickPasteWatchdog();
     }
   }
 
@@ -91,6 +97,14 @@ class ScheduleService {
     isQuickPasteActive = true;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('quick_paste_enabled', true);
+    _lastQuickPasteStatus = customStatus;
+    if (customStatus != null) {
+      await prefs.setString('quick_paste_last_status', customStatus);
+    } else {
+      await prefs.remove('quick_paste_last_status');
+    }
+    startQuickPasteWatchdog();
+    WarSyncService.registerQuickPasteWatchdog();
 
     final String title = AppStrings.schedule.quickPasteNotificationTitle;
     final String body = customStatus ?? AppStrings.schedule.quickPasteNotificationBody;
@@ -125,7 +139,57 @@ class ScheduleService {
     isQuickPasteActive = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('quick_paste_enabled', false);
+    _lastQuickPasteStatus = null;
+    stopQuickPasteWatchdog();
+    WarSyncService.cancelQuickPasteWatchdog();
+    await prefs.remove('quick_paste_last_status');
     await _notificationsPlugin.cancel(id: _quickPasteNotificationId);
+  }
+
+  // ĐỊNH KỲ KIỂM TRA & TỰ ĐẨY LẠI THÔNG BÁO DÁN NHANH NẾU BỊ GẠT MẤT TRÊN ANDROID CAO
+  static void startQuickPasteWatchdog() {
+    _quickPasteWatchdogTimer?.cancel();
+    _quickPasteWatchdogTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      ensureQuickPasteNotification();
+    });
+  }
+
+  static void stopQuickPasteWatchdog() {
+    _quickPasteWatchdogTimer?.cancel();
+    _quickPasteWatchdogTimer = null;
+  }
+
+  static Future<void> ensureQuickPasteNotification() async {
+    if (_isCheckingQuickPaste) return;
+    _isCheckingQuickPaste = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      isQuickPasteActive = prefs.getBool('quick_paste_enabled') ?? false;
+      if (!isQuickPasteActive) {
+        stopQuickPasteWatchdog();
+        return;
+      }
+
+      if (Platform.isAndroid) {
+        final androidImpl = _notificationsPlugin
+            .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+        if (androidImpl != null) {
+          final List<ActiveNotification> activeNotifications =
+              await androidImpl.getActiveNotifications();
+          final bool exists =
+              activeNotifications.any((n) => n.id == _quickPasteNotificationId);
+          if (!exists) {
+            final String? savedStatus =
+                prefs.getString('quick_paste_last_status') ?? _lastQuickPasteStatus;
+            await showQuickPasteNotification(customStatus: savedStatus);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Lỗi kiểm tra thông báo Dán Nhanh: $e");
+    } finally {
+      _isCheckingQuickPaste = false;
+    }
   }
 
   static Future<void> checkAndRequestPermissions() async {

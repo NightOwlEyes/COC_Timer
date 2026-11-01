@@ -126,6 +126,12 @@ abstract class TerminalScreenStrings {
   String get quickPasteAdded;
   String get btnQuickPasteOn;
   String get btnPinQuickPaste;
+  String get quickPasteInfoTitle;
+  String get quickPasteInfoDesc;
+  String get btnUnderstood;
+  String get reimportReminderTitle;
+  String get reimportReminderDesc;
+  String get reimportDontShowAgain;
 }
 
 abstract class ScheduleServiceStrings {
@@ -205,6 +211,14 @@ abstract class VillageDetailDialogStrings {
   String get logGroupNamePet;
   String get logGroupNameLabNight;
   String get logGroupNameLabMain;
+  String get boostBuilderPotion;
+  String get boostLabPotion;
+  String get boostPetPotion;
+  String get boostBuilderConsumable;
+  String get boostLabConsumable;
+  String get boostBuilderHelper;
+  String get boostLabHelper;
+  String get boostClockTower;
 }
 
 abstract class GameData {
@@ -391,6 +405,12 @@ class TerminalScreenStringsVi extends TerminalScreenStrings {
   @override String get quickPasteAdded => "✓ Đã thêm: {name} ({tag}) — Chạm để dán tiếp";
   @override String get btnQuickPasteOn => "[ DÁN NHANH: BẬT ]";
   @override String get btnPinQuickPaste => "[ GHIM DÁN NHANH ]";
+  @override String get quickPasteInfoTitle => "■ CHẾ ĐỘ DÁN NHANH";
+  @override String get quickPasteInfoDesc => "Tính năng này sẽ tạo một thông báo trên thanh trạng thái để bạn nhấn vào và dán nhanh dữ liệu JSON ngay sau khi sao chép trong game mà không cần mở ứng dụng.\n\nLưu ý: Trên các phiên bản Android cao, việc gạt thông báo đi sẽ khiến thông báo bị mất. Hệ thống sẽ định kỳ kiểm tra và tự động đẩy lại thông báo nếu tính năng này đang được bật.";
+  @override String get btnUnderstood => "[ ĐÃ HIỂU ]";
+  @override String get reimportReminderTitle => "■ LƯU Ý CẬP NHẬT DỮ LIỆU";
+  @override String get reimportReminderDesc => "Khi bạn thực hiện một trong các thao tác sau trong game:\n\n• Nâng công trình, lính, tướng hoặc linh thú mới\n• Dùng Thuốc Thợ Xây, Nghiên Cứu, Linh Thú\n• Dùng Lương Khô Thợ Xây, Súp Nghiên Cứu\n• Dùng Thợ Xây Học Việc, Nghiên Cứu Học Việc\n\nBạn phải xuất và nhập lại JSON vào ứng dụng để cập nhật lại thời gian hoàn tất chính xác!";
+  @override String get reimportDontShowAgain => "Không hiển thị lại";
 }
 
 class ScheduleServiceStringsVi extends ScheduleServiceStrings {
@@ -470,6 +490,14 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
   @override String get logGroupNamePet => "LINH THÚ";
   @override String get logGroupNameLabNight => "THÍ NGHIỆM ĐÊM";
   @override String get logGroupNameLabMain => "PHÒNG THÍ NGHIỆM";
+  @override String get boostBuilderPotion => "Thuốc Thợ Xây";
+  @override String get boostLabPotion => "Thuốc Nghiên Cứu";
+  @override String get boostPetPotion => "Thuốc Linh Thú";
+  @override String get boostBuilderConsumable => "Lương Khô Thợ Xây";
+  @override String get boostLabConsumable => "Súp Nghiên Cứu";
+  @override String get boostBuilderHelper => "Thợ Xây Học Việc";
+  @override String get boostLabHelper => "Nghiên Cứu Học Việc";
+  @override String get boostClockTower => "Tháp Đồng Hồ";
 }
 
 class SettingsStringsVi extends SettingsStrings {
@@ -656,6 +684,12 @@ class TerminalScreenStringsEn extends TerminalScreenStrings {
   @override String get quickPasteAdded => "✓ Added: {name} ({tag}) — Tap to paste next";
   @override String get btnQuickPasteOn => "[ QUICK PASTE: ON ]";
   @override String get btnPinQuickPaste => "[ PIN QUICK PASTE ]";
+  @override String get quickPasteInfoTitle => "■ QUICK PASTE MODE";
+  @override String get quickPasteInfoDesc => "This feature creates a notification on your status bar so you can tap it to quickly paste JSON data right after copying in-game without opening the app.\n\nNote: On newer Android versions, swiping the notification away will dismiss it. The system periodically checks and automatically re-posts the notification if this feature is enabled.";
+  @override String get btnUnderstood => "[ GOT IT ]";
+  @override String get reimportReminderTitle => "■ DATA UPDATE REMINDER";
+  @override String get reimportReminderDesc => "Whenever you perform any of the following actions in-game:\n\n• Start a new building, troop, hero, or pet upgrade\n• Use Builder, Research, or Pet Potions\n• Use Builder Bite or Study Soup\n• Assign Builder's Apprentice or Lab Assistant\n\nYou must export and re-import your JSON so completion times and alarms are updated accurately!";
+  @override String get reimportDontShowAgain => "Don't show again";
 }
 
 class ScheduleServiceStringsEn extends ScheduleServiceStrings {
@@ -735,6 +769,14 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
   @override String get logGroupNamePet => "PET";
   @override String get logGroupNameLabNight => "STAR LABORATORY";
   @override String get logGroupNameLabMain => "LABORATORY";
+  @override String get boostBuilderPotion => "Builder Potion";
+  @override String get boostLabPotion => "Research Potion";
+  @override String get boostPetPotion => "Pet Potion";
+  @override String get boostBuilderConsumable => "Builder Bite";
+  @override String get boostLabConsumable => "Study Soup";
+  @override String get boostBuilderHelper => "Builder's Apprentice";
+  @override String get boostLabHelper => "Lab Assistant";
+  @override String get boostClockTower => "Clock Tower";
 }
 
 class SettingsStringsEn extends SettingsStrings {

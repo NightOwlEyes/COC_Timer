@@ -95,6 +95,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       // Nếu app vừa được gọi dậy từ thông báo Dán Nhanh lúc đang tắt
       if (ScheduleService.quickPasteTrigger.value > 0) {
         _onQuickPasteTriggered();
+      } else {
+        _checkAndShowReimportReminder();
+      }
+      if (ScheduleService.quickPasteTrigger.value < 0) {
+        _onQuickPasteTriggered();
       }
 
       Future.delayed(const Duration(milliseconds: 2500), () {
@@ -196,8 +201,178 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           _isQuickPasteActive = true;
           _parseStatus = AppStrings.terminal.quickPastePinned;
         });
+        _showQuickPasteInfoDialog();
+        setState(() {
+        });
       }
     }
+  }
+
+  Future<void> _checkAndShowReimportReminder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool hideReminder = prefs.getBool('hide_reimport_reminder') ?? false;
+    if (hideReminder || !mounted || _pendingQuickPaste) return;
+
+    bool dontShowAgain = false;
+    const Color accentColor = Color(0xFFE2B714);
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateSB) => Dialog(
+          backgroundColor: const Color(0xFF0A0C0B),
+          shape: const RoundedRectangleBorder(
+            side: BorderSide(color: accentColor, width: 1.5),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppStrings.terminal.reimportReminderTitle,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    color: accentColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  AppStrings.terminal.reimportReminderDesc,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    color: Color(0xFFE0E0E0),
+                    fontSize: 12,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () => setStateSB(() => dontShowAgain = !dontShowAgain),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          dontShowAgain ? Icons.check_box : Icons.check_box_outline_blank,
+                          color: dontShowAgain ? accentColor : const Color(0xFF666666),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            AppStrings.terminal.reimportDontShowAgain,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              color: dontShowAgain ? const Color(0xFFE0E0E0) : const Color(0xFF888888),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: InkWell(
+                    onTap: () async {
+                      if (dontShowAgain) {
+                        await prefs.setBool('hide_reimport_reminder', true);
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                      child: Text(
+                        AppStrings.terminal.btnUnderstood,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          color: accentColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showQuickPasteInfoDialog() {
+    if (!mounted) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    const Color accentColor = Color(0xFF4CAF50);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF0A0C0B),
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: accentColor, width: 1.5),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppStrings.terminal.quickPasteInfoTitle,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  color: accentColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                AppStrings.terminal.quickPasteInfoDesc,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  color: Color(0xFFE0E0E0),
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerRight,
+                child: InkWell(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                    child: Text(
+                      AppStrings.terminal.btnUnderstood,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        color: accentColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showQuickPasteFeedbackOverlay(String message, {required bool isSuccess}) {
@@ -293,6 +468,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     if (state == AppLifecycleState.resumed) {
 
       // --- THÊM ĐOẠN NÀY ĐỂ ĐÓN LÕNG SỰ KIỆN TỪ BACKGROUND ---
+      ScheduleService.ensureQuickPasteNotification();
       if (_pendingQuickPaste) {
         _attemptQuickPaste();
       }

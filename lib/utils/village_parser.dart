@@ -8,7 +8,7 @@ class VillageParser {
 
     final tag = data['tag'] as String;
     final timestamp = data['timestamp'] as int;
-    final boosts = BoostData.fromJson(data['boosts'] as Map<String, dynamic>?);
+    final rawBoosts = BoostData.fromJson(data['boosts'] as Map<String, dynamic>?);
 
     List<UpgradeItem> buildersItems = [];
     List<UpgradeItem> petItems = [];
@@ -39,6 +39,9 @@ class VillageParser {
     int labHelperLevel = 0;
     int builderHelperCooldown = 0;
     int labHelperCooldown = 0;
+    int activeBuilderHelperTimer = 0;
+    int activeLabHelperTimer = 0;
+
     if (data['helpers'] != null) {
       for (var h in data['helpers']) {
         if (h['data'] == 93000000) {
@@ -117,12 +120,19 @@ class VillageParser {
       return DateTime.fromMillisecondsSinceEpoch(timestamp * 1000).add(Duration(seconds: timeElapsed.round()));
     }
 
-    void parseCategory(String key, List<UpgradeItem> targetList, int boostDuration, int boostSpeedAdd, int consumableDuration, int consumableSpeedAdd, int globalHelperLevel, int globalHelperCooldown) {
+    void parseCategory(String key, List<UpgradeItem> targetList, int boostDuration, int boostSpeedAdd, int consumableDuration, int consumableSpeedAdd, int globalHelperLevel, int globalHelperCooldown, {bool isBuilderHelper = false, bool isLabHelper = false}) {
       if (data.containsKey(key)) {
         int index = 0;
         for (var item in data[key]) {
           int timer = item['timer'] ?? 0;
           if (timer > 0) {
+            int hTimer = item['helper_timer'] ?? 0;
+            if (isBuilderHelper && hTimer > activeBuilderHelperTimer) {
+              activeBuilderHelperTimer = hTimer;
+            }
+            if (isLabHelper && hTimer > activeLabHelperTimer) {
+              activeLabHelperTimer = hTimer;
+            }
             targetList.add(UpgradeItem(
               instanceId: "${tag}_${key}_${item['data']}_${index++}",
               dataId: item['data'] ?? 0, level: item['lvl'] ?? 0, originalTimer: timer,
@@ -131,7 +141,7 @@ class VillageParser {
                 timer: timer,
                 boostDuration: boostDuration, boostSpeedAdd: boostSpeedAdd,
                 consumableDuration: consumableDuration, consumableSpeedAdd: consumableSpeedAdd,
-                helperTimer: item['helper_timer'] ?? 0, helperLevel: globalHelperLevel,
+                helperTimer: hTimer, helperLevel: globalHelperLevel,
                 helperCooldown: globalHelperCooldown, helperRecurrent: item['helper_recurrent'] ?? false,
                 timestamp: timestamp,
               ),
@@ -144,6 +154,13 @@ class VillageParser {
                 for (var modObj in typeObj['modules']) {
                   int modTimer = modObj['timer'] ?? 0;
                   if (modTimer > 0) {
+                    int hTimer = modObj['helper_timer'] ?? item['helper_timer'] ?? 0;
+                    if (isBuilderHelper && hTimer > activeBuilderHelperTimer) {
+                      activeBuilderHelperTimer = hTimer;
+                    }
+                    if (isLabHelper && hTimer > activeLabHelperTimer) {
+                      activeLabHelperTimer = hTimer;
+                    }
                     targetList.add(UpgradeItem(
                       instanceId: "${tag}_${key}_${item['data']}_${modObj['data']}_${index++}",
                       dataId: modObj['data'] ?? 0,
@@ -154,7 +171,7 @@ class VillageParser {
                         timer: modTimer,
                         boostDuration: boostDuration, boostSpeedAdd: boostSpeedAdd,
                         consumableDuration: consumableDuration, consumableSpeedAdd: consumableSpeedAdd,
-                        helperTimer: modObj['helper_timer'] ?? item['helper_timer'] ?? 0,
+                        helperTimer: hTimer,
                         helperLevel: globalHelperLevel,
                         helperCooldown: globalHelperCooldown,
                         helperRecurrent: modObj['helper_recurrent'] ?? item['helper_recurrent'] ?? false,
@@ -170,19 +187,25 @@ class VillageParser {
       }
     }
 
-    parseCategory('buildings', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown);
-    parseCategory('traps', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown);
-    parseCategory('guardians', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown);
-    parseCategory('heroes', buildersItems, boosts.builderBoost, 9, boosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown);
-    parseCategory('pets', petItems, boosts.petBoost, 23, boosts.labConsumable, 3, 0, 0);
-    parseCategory('spells', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown);
-    parseCategory('units', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown);
-    parseCategory('siege_machines', labItems, boosts.labBoost, 23, boosts.labConsumable, 3, labHelperLevel, labHelperCooldown);
+    parseCategory('buildings', buildersItems, rawBoosts.builderBoost, 9, rawBoosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown, isBuilderHelper: true);
+    parseCategory('traps', buildersItems, rawBoosts.builderBoost, 9, rawBoosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown, isBuilderHelper: true);
+    parseCategory('guardians', buildersItems, rawBoosts.builderBoost, 9, rawBoosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown, isBuilderHelper: true);
+    parseCategory('heroes', buildersItems, rawBoosts.builderBoost, 9, rawBoosts.builderConsumable, 1, builderHelperLevel, builderHelperCooldown, isBuilderHelper: true);
+    parseCategory('pets', petItems, rawBoosts.petBoost, 23, rawBoosts.labConsumable, 3, 0, 0);
+    parseCategory('spells', labItems, rawBoosts.labBoost, 23, rawBoosts.labConsumable, 3, labHelperLevel, labHelperCooldown, isLabHelper: true);
+    parseCategory('units', labItems, rawBoosts.labBoost, 23, rawBoosts.labConsumable, 3, labHelperLevel, labHelperCooldown, isLabHelper: true);
+    parseCategory('siege_machines', labItems, rawBoosts.labBoost, 23, rawBoosts.labConsumable, 3, labHelperLevel, labHelperCooldown, isLabHelper: true);
 
-    parseCategory('buildings2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0);
-    parseCategory('traps2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0);
-    parseCategory('heroes2', builders2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0);
-    parseCategory('units2', lab2Items, boosts.clocktowerBoost, 9, 0, 0, 0, 0);
+    parseCategory('buildings2', builders2Items, rawBoosts.clocktowerBoost, 9, 0, 0, 0, 0);
+    parseCategory('traps2', builders2Items, rawBoosts.clocktowerBoost, 9, 0, 0, 0, 0);
+    parseCategory('heroes2', builders2Items, rawBoosts.clocktowerBoost, 9, 0, 0, 0, 0);
+    parseCategory('units2', lab2Items, rawBoosts.clocktowerBoost, 9, 0, 0, 0, 0);
+
+    final boosts = BoostData.fromJson(
+      data['boosts'] as Map<String, dynamic>?,
+      builderHelperTimer: activeBuilderHelperTimer,
+      labHelperTimer: activeLabHelperTimer,
+    );
 
     int finalTotalBuilders = buildersItems.length > baseBuilders ? buildersItems.length : baseBuilders;
     int finalTotalBuilders2 = builders2Items.length > baseBuilders2 ? builders2Items.length : baseBuilders2;
@@ -196,5 +219,3 @@ class VillageParser {
     );
   }
 }
-
-

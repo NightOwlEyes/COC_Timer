@@ -61,6 +61,93 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     super.dispose();
   }
 
+  DateTime? _getBoostEndTime(int durationSeconds) {
+    if (durationSeconds <= 0) return null;
+    final endTime = DateTime.fromMillisecondsSinceEpoch(
+      (widget.village.timestamp + durationSeconds) * 1000,
+    );
+    if (endTime.isBefore(DateTime.now())) return null;
+    return endTime;
+  }
+
+  DateTime? _maxDateTime(List<DateTime?> dates) {
+    DateTime? result;
+    for (final d in dates) {
+      if (d != null) {
+        if (result == null || d.isAfter(result)) {
+          result = d;
+        }
+      }
+    }
+    return result;
+  }
+
+  String _formatCountdown(Duration diff) {
+    if (diff.isNegative) return "0s";
+    if (diff.inDays > 0) {
+      return "${diff.inDays}d ${diff.inHours % 24}h ${diff.inMinutes % 60}m";
+    } else if (diff.inHours > 0) {
+      return "${diff.inHours}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s";
+    } else if (diff.inMinutes > 0) {
+      return "${diff.inMinutes}m ${diff.inSeconds % 60}s";
+    } else {
+      return "${diff.inSeconds}s";
+    }
+  }
+
+  Widget _buildActiveBoostsList(List<MapEntry<String, DateTime?>> boosts) {
+    final now = DateTime.now();
+    final activeList = boosts
+        .where((e) => e.value != null && e.value!.isAfter(now))
+        .toList();
+    if (activeList.isEmpty) return const SizedBox.shrink();
+
+    const Color boostColor = Color(0xFFE2B714);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 12.0, top: 2.0, bottom: 2.0),
+      child: Column(
+        children: activeList.map((entry) {
+          final diff = entry.value!.difference(now);
+          final timeStr = _formatCountdown(diff);
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: Row(
+              children: [
+                const Icon(Icons.bolt, size: 14, color: boostColor),
+                const SizedBox(width: 6),
+                Text(
+                  entry.key,
+                  style: const TextStyle(
+                    color: boostColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    AppStrings.dialog.separatorDots,
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                    style: const TextStyle(color: Color(0xFF333333), fontSize: 12),
+                  ),
+                ),
+                Text(
+                  timeStr,
+                  style: const TextStyle(
+                    color: boostColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildTrackingToggle(String label, bool value, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
@@ -120,6 +207,47 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     final activeP = widget.isBuilderBase ? <UpgradeItem>[] : widget.village.activePets;
 
     bool currentTracked = widget.isBuilderBase ? _trackBuilder : _trackHome;
+
+    final bBoostEnd = _getBoostEndTime(widget.village.boosts.builderBoost);
+    final bConsEnd = _getBoostEndTime(widget.village.boosts.builderConsumable);
+    final bHelperEnd = _getBoostEndTime(widget.village.boosts.builderHelperTimer);
+
+    final lBoostEnd = _getBoostEndTime(widget.village.boosts.labBoost);
+    final lConsEnd = _getBoostEndTime(widget.village.boosts.labConsumable);
+    final lHelperEnd = _getBoostEndTime(widget.village.boosts.labHelperTimer);
+
+    final pBoostEnd = _getBoostEndTime(widget.village.boosts.petBoost);
+    final clockEnd = _getBoostEndTime(widget.village.boosts.clocktowerBoost);
+
+    // Thời điểm kết thúc thuốc/vật phẩm hỗ trợ của từng nhóm (dùng để đánh dấu ! công trình xong trước khi hết thuốc)
+    final DateTime? builderGroupBoostEnd = widget.isBuilderBase
+        ? clockEnd
+        : _maxDateTime([bBoostEnd, bConsEnd]);
+    final DateTime? labGroupBoostEnd = widget.isBuilderBase
+        ? clockEnd
+        : _maxDateTime([lBoostEnd, lConsEnd]);
+    final DateTime? petGroupBoostEnd = _maxDateTime([pBoostEnd, lConsEnd]);
+
+    final List<MapEntry<String, DateTime?>> builderBoostEntries = widget.isBuilderBase
+        ? [MapEntry(AppStrings.dialog.boostClockTower, clockEnd)]
+        : [
+            MapEntry(AppStrings.dialog.boostBuilderPotion, bBoostEnd),
+            MapEntry(AppStrings.dialog.boostBuilderConsumable, bConsEnd),
+            MapEntry(AppStrings.dialog.boostBuilderHelper, bHelperEnd),
+          ];
+
+    final List<MapEntry<String, DateTime?>> labBoostEntries = widget.isBuilderBase
+        ? [MapEntry(AppStrings.dialog.boostClockTower, clockEnd)]
+        : [
+            MapEntry(AppStrings.dialog.boostLabPotion, lBoostEnd),
+            MapEntry(AppStrings.dialog.boostLabConsumable, lConsEnd),
+            MapEntry(AppStrings.dialog.boostLabHelper, lHelperEnd),
+          ];
+
+    final List<MapEntry<String, DateTime?>> petBoostEntries = [
+      MapEntry(AppStrings.dialog.boostPetPotion, pBoostEnd),
+      MapEntry(AppStrings.dialog.boostLabConsumable, lConsEnd),
+    ];
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -196,7 +324,8 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                     isTracked: currentTracked,
                     onTap: () => _handleCycleGroupOptimistic(widget.isBuilderBase ? AppStrings.dialog.logGroupNameBuilderNight : AppStrings.dialog.logGroupNameBuilder, activeB)
                 ),
-                _buildDetailList(activeB, isTracked: currentTracked),
+                _buildActiveBoostsList(builderBoostEntries),
+                _buildDetailList(activeB, isTracked: currentTracked, boostEndTime: builderGroupBoostEnd),
                 const SizedBox(height: 12),
 
                 // Reordered: LabMain before Pet
@@ -206,12 +335,14 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                     isTracked: currentTracked,
                     onTap: () => _handleCycleGroupOptimistic(widget.isBuilderBase ? AppStrings.dialog.logGroupNameLabNight : AppStrings.dialog.logGroupNameLabMain, activeL)
                 ),
-                _buildDetailList(activeL, isTracked: currentTracked),
+                _buildActiveBoostsList(labBoostEntries),
+                _buildDetailList(activeL, isTracked: currentTracked, boostEndTime: labGroupBoostEnd),
                 const SizedBox(height: 12),
 
                 if (!widget.isBuilderBase) ...[
                   _buildLogLine(AppStrings.dialog.groupPet, "${activeP.length} ${AppStrings.dialog.statusUpgradingSuffix}", isTracked: _trackHome, onTap: () => _handleCycleGroupOptimistic(AppStrings.dialog.logGroupNamePet, activeP)),
-                  _buildDetailList(activeP, isTracked: _trackHome),
+                  _buildActiveBoostsList(petBoostEntries),
+                  _buildDetailList(activeP, isTracked: _trackHome, boostEndTime: petGroupBoostEnd),
                   const SizedBox(height: 12),
                 ],
               ],
@@ -250,20 +381,22 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     );
   }
 
-  Widget _buildDetailList(List<UpgradeItem> items, {required bool isTracked}) {
+  Widget _buildDetailList(List<UpgradeItem> items, {required bool isTracked, DateTime? boostEndTime}) {
     if (items.isEmpty) return const SizedBox.shrink();
+
+    final now = DateTime.now();
 
     return Padding(
       padding: const EdgeInsets.only(left: 12.0, top: 4.0, bottom: 8.0),
       child: Column(
         children: items.map((item) {
-          final diff = item.realEta.difference(DateTime.now());
+          final diff = item.realEta.difference(now);
           String timeStr = "0s";
 
           if (!diff.isNegative) {
             if (widget.showRealEta) {
               timeStr = "${item.realEta.hour.toString().padLeft(2, '0')}:${item.realEta.minute.toString().padLeft(2, '0')}";
-              if (item.realEta.day != DateTime.now().day) {
+              if (item.realEta.day != now.day) {
                 timeStr = "${item.realEta.day}/${item.realEta.month} $timeStr";
               }
             } else {
@@ -289,6 +422,10 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
             iconData = Icons.alarm;
             stateColor = widget.themeColor;
           }
+
+          final bool finishesBeforeBoostEnds = boostEndTime != null &&
+              boostEndTime.isAfter(now) &&
+              item.realEta.isBefore(boostEndTime);
 
           return InkWell(
             onTap: isTracked ? () {
@@ -320,6 +457,15 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                   children: [
                     Icon(iconData, size: 14, color: stateColor),
                     const SizedBox(width: 6),
+                    if (finishesBeforeBoostEnds)
+                      const Text(
+                        "! ",
+                        style: TextStyle(
+                          color: Color(0xFFE2B714),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     Text("${AppStrings.gameData.getName(item.dataId)} (Lv.${item.level})", style: TextStyle(color: stateColor, fontSize: 12)),
                     Expanded(
                       child: Text(
