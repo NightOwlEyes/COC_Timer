@@ -248,6 +248,10 @@ class TerminalHeader extends StatelessWidget {
                 ],
               ),
             ),
+            if (!useWideCenterLayout && updateWidget != null) ...[
+              const SizedBox(height: 6),
+              updateWidget,
+            ],
           ],
         ),
         if (useWideCenterLayout)
@@ -284,10 +288,6 @@ class TerminalHeader extends StatelessWidget {
             if (!useWideCenterLayout) ...[
               const SizedBox(height: 6),
               clockWidget,
-              if (updateWidget != null) ...[
-                const SizedBox(height: 6),
-                updateWidget,
-              ],
             ],
             const SizedBox(height: 6),
             InkWell(

@@ -33,7 +33,7 @@ class TimeRule {
 
 class RuleManager {
   static List<TimeRule> activeRules = [];
-  static int preAlarmMinutes = 0;
+  static int preAlarmMinutes = 2;
   static bool autoCheckUpdate = true;
 
   // 1. KHAI BÁO CÁC BIẾN STATIC Ở ĐÂY
@@ -68,7 +68,7 @@ class RuleManager {
         AlarmType.system: true,
         AlarmType.none: false, // Tắt mặc định
       };
-      preAlarmMinutes = 0;
+      preAlarmMinutes = 2;
       autoCheckUpdate = true;
       quickPasteAutoReturn = true;
       await save();
@@ -96,7 +96,7 @@ class RuleManager {
         }
       }
 
-      preAlarmMinutes = prefs.getInt('pre_alarm_minutes') ?? 0;
+      preAlarmMinutes = prefs.getInt('pre_alarm_minutes') ?? 2;
       autoCheckUpdate = prefs.getBool('auto_check_update') ?? true; // ĐỌC TỪ BỘ NHỚ
 
       // 2. ĐỌC DỮ LIỆU TỪ PREFS TRONG HÀM INIT
@@ -109,6 +109,19 @@ class RuleManager {
 
       warAutoSync = prefs.getBool('war_auto_sync') ?? true;
       quickPasteAutoReturn = prefs.getBool('quick_paste_auto_return') ?? true;
+    }
+
+    bool hasSavedClans = false;
+    final String? clansJson = prefs.getString('saved_online_clans');
+    if (clansJson != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(clansJson);
+        hasSavedClans = decoded.isNotEmpty;
+      } catch (_) {}
+    }
+    if (!hasSavedClans || (!warPreAlarmEnabled && !warEndAlarmEnabled)) {
+      warAutoSync = false;
+      await prefs.setBool('war_auto_sync', false);
     }
   }
 

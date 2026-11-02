@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'war_sync_service.dart';
 
@@ -44,10 +45,6 @@ class ScheduleService {
       settings: initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
         if (response.payload == _quickPastePayload) {
-          SystemChrome.setPreferredOrientations([
-            DeviceOrientation.landscapeLeft,
-            DeviceOrientation.landscapeRight,
-          ]);
           quickPasteTrigger.value++;
         }
       },
@@ -57,13 +54,21 @@ class ScheduleService {
     final NotificationAppLaunchDetails? launchDetails = await _notificationsPlugin.getNotificationAppLaunchDetails();
     if (launchDetails?.didNotificationLaunchApp == true &&
         launchDetails?.notificationResponse?.payload == _quickPastePayload) {
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
       quickPasteTrigger.value++;
     }
 
+    await createOrUpdateNotificationChannels();
+
+    // Khôi phục trạng thái Dán Nhanh nếu lần trước người dùng đang bật
+    final prefs = await SharedPreferences.getInstance();
+    isQuickPasteActive = prefs.getBool('quick_paste_enabled') ?? false;
+    if (isQuickPasteActive) {
+      await ensureQuickPasteNotification();
+      startQuickPasteWatchdog();
+    }
+  }
+
+  static Future<void> createOrUpdateNotificationChannels() async {
     if (Platform.isAndroid) {
       final androidImpl = _notificationsPlugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
@@ -74,7 +79,7 @@ class ScheduleService {
         description: AppStrings.schedule.channelDescription,
         importance: Importance.max,
         playSound: true,
-        sound: RawResourceAndroidNotificationSound('ring1'),
+        sound: const RawResourceAndroidNotificationSound('ring1'),
       );
       await androidImpl?.createNotificationChannel(channel);
 
@@ -90,32 +95,58 @@ class ScheduleService {
       );
       await androidImpl?.createNotificationChannel(quickPasteChannel);
     }
-
-    // Khôi phục trạng thái Dán Nhanh nếu lần trước người dùng đang bật
-    final prefs = await SharedPreferences.getInstance();
-    isQuickPasteActive = prefs.getBool('quick_paste_enabled') ?? false;
-    if (isQuickPasteActive) {
-      await ensureQuickPasteNotification();
-      startQuickPasteWatchdog();
-    }
   }
 
   // BẬT/CẬP NHẬT THÔNG BÁO DÁN NHANH
-  static Future<void> showQuickPasteNotification({String? customStatus}) async {
+  static Future<void> showQuickPasteNotification({
+    String? customStatus,
+    String? actionType,
+    String? villageName,
+    String? villageTag,
+  }) async {
     isQuickPasteActive = true;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('quick_paste_enabled', true);
-    _lastQuickPasteStatus = customStatus;
-    if (customStatus != null) {
-      await prefs.setString('quick_paste_last_status', customStatus);
+
+    if (actionType != null && villageName != null && villageTag != null) {
+      await prefs.setString('quick_paste_last_meta', jsonEncode({
+        'type': actionType,
+        'name': villageName,
+        'tag': villageTag,
+      }));
+    } else if (customStatus == null) {
+      await prefs.remove('quick_paste_last_meta');
+    }
+
+    String? resolvedStatus = customStatus;
+    if (resolvedStatus == null) {
+      final String? metaStr = prefs.getString('quick_paste_last_meta');
+      if (metaStr != null) {
+        try {
+          final Map<String, dynamic> meta = jsonDecode(metaStr);
+          final String template = meta['type'] == 'added'
+              ? AppStrings.terminal.quickPasteAdded
+              : AppStrings.terminal.quickPasteUpdated;
+          resolvedStatus = AppStrings.format(template, {
+            'name': meta['name']?.toString() ?? '',
+            'tag': meta['tag']?.toString() ?? '',
+          });
+        } catch (_) {}
+      }
+    }
+
+    _lastQuickPasteStatus = resolvedStatus;
+    if (resolvedStatus != null) {
+      await prefs.setString('quick_paste_last_status', resolvedStatus);
     } else {
       await prefs.remove('quick_paste_last_status');
     }
+
     startQuickPasteWatchdog();
     WarSyncService.registerQuickPasteWatchdog();
 
     final String title = AppStrings.schedule.quickPasteNotificationTitle;
-    final String body = customStatus ?? AppStrings.schedule.quickPasteNotificationBody;
+    final String body = resolvedStatus ?? AppStrings.schedule.quickPasteNotificationBody;
 
     final androidDetails = AndroidNotificationDetails(
       'coc_timer_quick_paste_channel',
@@ -151,6 +182,7 @@ class ScheduleService {
     stopQuickPasteWatchdog();
     WarSyncService.cancelQuickPasteWatchdog();
     await prefs.remove('quick_paste_last_status');
+    await prefs.remove('quick_paste_last_meta');
     await _notificationsPlugin.cancel(id: _quickPasteNotificationId);
   }
 
@@ -264,12 +296,16 @@ class ScheduleService {
     await _cancelSystemNotification(id);
     await _cancelFullScreenAlarm(id);
 
-    if (item.realEta.isBefore(DateTime.now())) return;
+    final now = DateTime.now();
+    if (item.realEta.isBefore(now)) return;
 
     DateTime triggerTime = item.realEta.subtract(Duration(minutes: RuleManager.preAlarmMinutes));
-    if (triggerTime.isBefore(DateTime.now())) {
-      triggerTime = DateTime.now().add(const Duration(seconds: 2));
+    if (triggerTime.isBefore(now)) {
+      triggerTime = item.realEta;
+      if (triggerTime.isBefore(now)) return;
     }
+
+    final String localizedItemName = "${AppStrings.gameData.getName(item.dataId)} (Lv.${item.level})";
 
     switch (item.alarmType) {
       case AlarmType.none:
@@ -278,13 +314,13 @@ class ScheduleService {
         break;
       case AlarmType.system:
         await _scheduleSystemNotification(
-            id, triggerTime, "${item.typeString} (Lv.${item.level})", villageTag, villageName);
+            id, triggerTime, localizedItemName, villageTag, villageName);
         debugPrint(AppStrings.format(AppStrings.schedule.debugSystemNotificationScheduledLog,
             {'id': id.toString(), 'realEta': triggerTime.toString()}));
         break;
       case AlarmType.fullscreen:
         await _scheduleFullScreenAlarm(
-            id, triggerTime, "${item.typeString} (Lv.${item.level})", villageTag, villageName);
+            id, triggerTime, localizedItemName, villageTag, villageName);
         debugPrint(AppStrings.format(AppStrings.schedule.debugFullscreenAlarmScheduledLog,
             {'id': id.toString(), 'realEta': triggerTime.toString()}));
         break;
@@ -449,20 +485,30 @@ class ScheduleService {
     await _cancelSystemNotification(endId);
     await _cancelFullScreenAlarm(endId);
 
+    // Lưu mốc thời gian kết thúc war vào bộ nhớ để có thể đồng bộ lại ngay khi đổi ngôn ngữ
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? rawMap = prefs.getString('saved_war_end_times');
+      final Map<String, dynamic> warMap = rawMap != null ? jsonDecode(rawMap) : {};
+      warMap[clanTag] = {
+        'name': clanName,
+        'endTimeMs': endTime.millisecondsSinceEpoch,
+      };
+      await prefs.setString('saved_war_end_times', jsonEncode(warMap));
+    } catch (_) {}
+
     if (endTime.isBefore(DateTime.now())) return;
 
     if (RuleManager.warPreAlarmEnabled) {
       DateTime preTime = endTime.subtract(Duration(minutes: RuleManager.warPreAlarmMinutes));
-      if (preTime.isBefore(DateTime.now())) {
-        preTime = DateTime.now().add(const Duration(seconds: 5));
-      }
-
-      if (RuleManager.warPreAlarmType == AlarmType.system) {
-        await _scheduleSystemNotification(
-            preId, preTime, AppStrings.schedule.warPreAlarmTitle, clanTag, clanName);
-      } else if (RuleManager.warPreAlarmType == AlarmType.fullscreen) {
-        await _scheduleFullScreenAlarm(
-            preId, preTime, AppStrings.schedule.warPreAlarmTitle, clanTag, clanName);
+      if (preTime.isAfter(DateTime.now())) {
+        if (RuleManager.warPreAlarmType == AlarmType.system) {
+          await _scheduleSystemNotification(
+              preId, preTime, AppStrings.schedule.warPreAlarmTitle, clanTag, clanName);
+        } else if (RuleManager.warPreAlarmType == AlarmType.fullscreen) {
+          await _scheduleFullScreenAlarm(
+              preId, preTime, AppStrings.schedule.warPreAlarmTitle, clanTag, clanName);
+        }
       }
     }
 
@@ -479,6 +525,31 @@ class ScheduleService {
     }
   }
 
+  static Future<void> resyncSavedWarSchedules() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? rawMap = prefs.getString('saved_war_end_times');
+      if (rawMap == null) return;
+      final Map<String, dynamic> warMap = jsonDecode(rawMap);
+      for (final entry in warMap.entries) {
+        final String clanTag = entry.key;
+        final dynamic val = entry.value;
+        if (val is Map<String, dynamic>) {
+          final String clanName = val['name']?.toString() ?? '';
+          final int? endTimeMs = val['endTimeMs'] as int?;
+          if (endTimeMs != null) {
+            final DateTime endTime = DateTime.fromMillisecondsSinceEpoch(endTimeMs);
+            if (endTime.isAfter(DateTime.now())) {
+              await syncWarSchedule(clanTag, clanName, endTime);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Lỗi đồng bộ lại lịch War khi đổi ngôn ngữ: $e");
+    }
+  }
+
   static Future<void> cancelWarSchedule(String clanTag) async {
     final int preId = _generateUniqueId("WAR_PRE_$clanTag");
     final int endId = _generateUniqueId("WAR_END_$clanTag");
@@ -487,6 +558,16 @@ class ScheduleService {
     await _cancelFullScreenAlarm(preId);
     await _cancelSystemNotification(endId);
     await _cancelFullScreenAlarm(endId);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? rawMap = prefs.getString('saved_war_end_times');
+      if (rawMap != null) {
+        final Map<String, dynamic> warMap = jsonDecode(rawMap);
+        warMap.remove(clanTag);
+        await prefs.setString('saved_war_end_times', jsonEncode(warMap));
+      }
+    } catch (_) {}
 
     debugPrint(AppStrings.format(AppStrings.schedule.debugCancelledWarAlarms, {'clanTag': clanTag}));
   }

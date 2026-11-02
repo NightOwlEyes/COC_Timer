@@ -92,6 +92,13 @@ class _OnlineScreenState extends State<OnlineScreen> {
         debugPrint("Lỗi Parse Clans: $e");
       }
     }
+    if (_savedClans.isEmpty && RuleManager.warAutoSync) {
+      setState(() {
+        RuleManager.warAutoSync = false;
+        RuleManager.save();
+        WarSyncService.cancelTask();
+      });
+    }
   }
 
   Future<void> _saveClansToPrefs() async {
@@ -132,6 +139,13 @@ class _OnlineScreenState extends State<OnlineScreen> {
           _isLoading = false;
         });
         _saveClansToPrefs();
+    if (_savedClans.isEmpty && RuleManager.warAutoSync) {
+      setState(() {
+        RuleManager.warAutoSync = false;
+        RuleManager.save();
+        WarSyncService.cancelTask();
+      });
+    }
       } else {
         setState(() {
           _isLoading = false;
@@ -227,6 +241,13 @@ class _OnlineScreenState extends State<OnlineScreen> {
       _statusText = AppStrings.onlineScreen.statusDeletedClan;
     });
     _saveClansToPrefs();
+    if (_savedClans.isEmpty && RuleManager.warAutoSync) {
+      setState(() {
+        RuleManager.warAutoSync = false;
+        RuleManager.save();
+        WarSyncService.cancelTask();
+      });
+    }
   }
 
   Future<void> _openWarDashboard(String clanTag, String clanName) async {
@@ -303,14 +324,25 @@ class _OnlineScreenState extends State<OnlineScreen> {
     }
   }
 
-  void _showSettingsDialog() {
-    showDialog(
+  void _showSettingsDialog() async {
+    await showDialog(
       context: context,
       builder: (ctx) => const SettingsDialog(themeColor: Color(0xFF4CAF50)),
     );
+    if (mounted) setState(() {});
   }
 
   Future<void> _handleToggleAutoSync() async {
+    if (!RuleManager.warAutoSync) {
+      if (_savedClans.isEmpty) {
+        setState(() => _statusText = "> ${AppStrings.settings.errorNoClanForWar.toUpperCase()}");
+        return;
+      }
+      if (!RuleManager.warPreAlarmEnabled && !RuleManager.warEndAlarmEnabled) {
+        setState(() => _statusText = "> ${AppStrings.settings.errorBothWarAlarmsOff.toUpperCase()}");
+        return;
+      }
+    }
     if (RuleManager.warAutoSync) {
       bool? confirm = await showDialog<bool>(
         context: context,
@@ -413,6 +445,12 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                   onLanguageChange: () async {
                                     FocusManager.instance.primaryFocus?.unfocus();
                                     await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
+                                    _statusText = AppStrings.onlineScreen.statusReadyApi;
+                                    await ScheduleService.createOrUpdateNotificationChannels();
+                                    if (ScheduleService.isQuickPasteActive) {
+                                      await ScheduleService.showQuickPasteNotification();
+                                    }
+                                    await ScheduleService.resyncSavedWarSchedules();
                                     if (mounted) {
                                       setState(() {});
                                     }

@@ -19,22 +19,16 @@ class _AlarmPopupState extends State<AlarmPopup> {
   void initState() {
     super.initState();
 
-    // TÔI ĐÃ XÓA ĐOẠN CODE "Future.delayed(4 giây)" Ở ĐÂY.
-    // Giờ đây khi báo thức kêu, màn hình sẽ LUÔN SÁNG và KHÔNG BAO GIỜ TẮT
-    // cho đến khi bạn tự tay bấm nút "Xác nhận & Đóng".
-
-    // Vòng lặp 1 giây: Kiểm tra xem chuông có bị người dùng tắt ngầm từ thanh thông báo OS không
-    _checkTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+    // Vòng lặp 500ms: Kiểm tra đồng bộ xem chuông có bị người dùng tắt từ thanh thông báo / màn hình khoá không
+    _checkTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
       final activeAlarms = await Alarm.getAlarms();
       final stillActive = activeAlarms.any((a) => a.id == widget.settings.id);
 
       if (!stillActive && !_isClosing) {
-        _isClosing = true; // Đóng chốt an toàn
-        timer.cancel();    // Hủy vòng lặp ngay lập tức để không kích hoạt lần 2
+        _isClosing = true;
+        timer.cancel();
 
-        // FIX: Gọi Alarm.stop để dọn dẹp triệt để trạng thái "đang kêu" trên Native và Flutter.
-        // Tránh lỗi popup nhá lên khi thao tác khác (do stream ringing bị kích hoạt lại).
-        Alarm.stop(widget.settings.id);
+        await Alarm.stop(widget.settings.id);
 
         if (mounted) {
           Navigator.pop(context);
@@ -51,51 +45,64 @@ class _AlarmPopupState extends State<AlarmPopup> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0D0F0E),
-          border: Border.all(color: const Color(0xFFB54545), width: 2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.alarm_on, color: Color(0xFFB54545), size: 48),
-            const SizedBox(height: 16),
-            Text(
-              AppStrings.alarm.title,
-              style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.settings.notificationSettings.body,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFFB54545)),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  foregroundColor: const Color(0xFFE0E0E0),
+    return PopScope(
+      canPop: false,
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D0F0E),
+            border: Border.all(color: const Color(0xFFB54545), width: 2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.alarm_on, color: Color(0xFFB54545), size: 48),
+              const SizedBox(height: 16),
+              Text(
+                AppStrings.alarm.title,
+                style: const TextStyle(
+                  color: Color(0xFFB54545),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2.0,
                 ),
-                onPressed: () {
-                  if (_isClosing) return; // Nếu vòng lặp Timer đã ra lệnh đóng, vô hiệu hóa nút
-                  _isClosing = true;
-                  _checkTimer?.cancel(); // Dừng ngay vòng lặp kiểm tra
-
-                  Alarm.stop(widget.settings.id); // Dừng chuông
-                  Navigator.pop(context); // Đóng popup
-                },
-                child: Text(AppStrings.alarm.btnConfirmAndClose, style: const TextStyle(fontWeight: FontWeight.bold)),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                widget.settings.notificationSettings.body,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFB54545)),
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    foregroundColor: const Color(0xFFE0E0E0),
+                  ),
+                  onPressed: () async {
+                    if (_isClosing) return;
+                    _isClosing = true;
+                    _checkTimer?.cancel();
+
+                    await Alarm.stop(widget.settings.id);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: Text(
+                    AppStrings.alarm.btnConfirmAndClose,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

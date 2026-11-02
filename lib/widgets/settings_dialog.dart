@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:convert';
-import 'dart:async'; // BỔ SUNG THƯ VIỆN ĐỂ DÙNG TIMER DEBOUNCE
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../models/village_models.dart';
@@ -33,13 +33,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
   String _updateStatusMsg = "";
   String? _updateUrl;
 
+  bool _hasSavedClans = false;
+
   late TextEditingController _warPreAlarmController;
-  Timer? _debounceTimer; // THÊM TIMER CHO VẤN ĐỀ 1.3
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
     _loadAppVersion();
+    _checkSavedClansState();
 
     int totalMins = RuleManager.warPreAlarmMinutes;
     int hh = totalMins ~/ 60;
@@ -51,9 +54,33 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   @override
   void dispose() {
-    _debounceTimer?.cancel(); // HỦY TIMER KHI ĐÓNG HỘP THOẠI
+    _debounceTimer?.cancel();
     _warPreAlarmController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkSavedClansState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? clansJson = prefs.getString('saved_online_clans');
+      bool hasClans = false;
+      if (clansJson != null) {
+        final List<dynamic> savedClans = jsonDecode(clansJson);
+        hasClans = savedClans.isNotEmpty;
+      }
+      if (mounted) {
+        setState(() {
+          _hasSavedClans = hasClans;
+          if (!_hasSavedClans || (!RuleManager.warPreAlarmEnabled && !RuleManager.warEndAlarmEnabled)) {
+            if (RuleManager.warAutoSync) {
+              RuleManager.warAutoSync = false;
+              RuleManager.save();
+              WarSyncService.cancelTask();
+            }
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _syncAllWarSchedules() async {
@@ -105,6 +132,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
   }
 
   Future<void> _handleToggleWarAutoSync() async {
+    if (!_hasSavedClans) {
+      _showError(AppStrings.settings.errorNoClanForWar);
+      return;
+    }
+
+    if (!RuleManager.warAutoSync && !RuleManager.warPreAlarmEnabled && !RuleManager.warEndAlarmEnabled) {
+      _showError(AppStrings.settings.errorBothWarAlarmsOff);
+      return;
+    }
+
     if (RuleManager.warAutoSync) {
       bool? confirm = await showDialog<bool>(
         context: context,
@@ -203,8 +240,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
         if (mounted) {
           setState(() {
             if (hasUpdate) {
-              _updateUrl = data['html_url'] as String;
-              _updateStatusMsg = AppStrings.format(AppStrings.settings.statusUpdateAvailable, {'newVersion': "v$latestVersion"});
+              _updateUrl = 'https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md';
+              _updateStatusMsg = AppStrings.format(
+                AppStrings.settings.statusUpdateAvailable,
+                {'newVersion': "v$latestVersion"},
+              );
             } else {
               _updateStatusMsg = AppStrings.settings.statusUpToDate;
             }
@@ -261,59 +301,49 @@ class _SettingsDialogState extends State<SettingsDialog> {
     });
   }
 
-  Future<void> _openRuleBuilder(AlarmType targetAction) async {
-    final BuildContext currentContext = context;
+  Future<void> _addNewRuleSlot(AlarmType targetAction) async {
+    // Tìm khung giờ trống đầu tiên để khởi tạo ô nhập trực tiếp
+    final List<(int, int)> candidates = [
+      (360, 720),   // 06:00 -> 12:00
+      (720, 1080),  // 12:00 -> 18:00
+      (1080, 1319), // 18:00 -> 21:59
+      (0, 359),     // 00:00 -> 05:59
+    ];
 
-    final TimeOfDay? startPicked = await showTimePicker(
-      context: currentContext,
-      initialTime: const TimeOfDay(hour: 6, minute: 0),
-      helpText: AppStrings.settings.labelPickStart,
-      builder: _buildTimePickerTheme,
-      initialEntryMode: TimePickerEntryMode.input,
-    );
-
-    if (startPicked == null || !currentContext.mounted) return;
-
-    final TimeOfDay? endPicked = await showTimePicker(
-      context: currentContext,
-      initialTime: startPicked,
-      helpText: AppStrings.settings.labelPickEnd,
-      builder: _buildTimePickerTheme,
-      initialEntryMode: TimePickerEntryMode.input,
-    );
-
-    if (endPicked == null || !currentContext.mounted) return;
-
-    int startMins = startPicked.hour * 60 + startPicked.minute;
-    int endMins = endPicked.hour * 60 + endPicked.minute;
-
-    if (startMins == 0 && endMins == 0) endMins = 1439;
-
-    bool success = await RuleManager.addRule(startMins, endMins, targetAction);
-    if (!success) {
-      _showError(AppStrings.settings.errorOverlap);
-    } else {
-      if (mounted) setState(() {});
+    for (final slot in candidates) {
+      if (!RuleManager.hasOverlap(slot.$1, slot.$2, targetAction)) {
+        await RuleManager.addRule(slot.$1, slot.$2, targetAction);
+        if (mounted) setState(() {});
+        return;
+      }
     }
+
+    // Nếu 4 khung giờ mẫu bị vướng, quét từng phút tìm khoảng trống >= 15 phút
+    int? freeStart;
+    for (int m = 0; m < 1440; m++) {
+      if (!RuleManager.hasOverlap(m, m, targetAction)) {
+        freeStart ??= m;
+        int endCandidate = m + 59 <= 1439 ? m + 59 : 1439;
+        if (!RuleManager.hasOverlap(freeStart, endCandidate, targetAction)) {
+          await RuleManager.addRule(freeStart, endCandidate, targetAction);
+          if (mounted) setState(() {});
+          return;
+        }
+      } else {
+        freeStart = null;
+      }
+    }
+
+    if (freeStart != null) {
+      await RuleManager.addRule(freeStart, freeStart, targetAction);
+      if (mounted) setState(() {});
+      return;
+    }
+
+    _showError(AppStrings.settings.errorOverlap);
   }
 
-  Future<void> _editRuleTime(TimeRule rule, {required bool isStart}) async {
-    final currentContext = context;
-
-    int initialMins = isStart ? rule.startMins : rule.endMins;
-    TimeOfDay initialTime = TimeOfDay(hour: initialMins ~/ 60, minute: initialMins % 60);
-
-    final TimeOfDay? picked = await showTimePicker(
-      context: currentContext,
-      initialTime: initialTime,
-      helpText: isStart ? AppStrings.settings.labelPickStart : AppStrings.settings.labelPickEnd,
-      builder: _buildTimePickerTheme,
-      initialEntryMode: TimePickerEntryMode.input,
-    );
-
-    if (picked == null || !currentContext.mounted) return;
-
-    int pickedMins = picked.hour * 60 + picked.minute;
+  Future<bool> _updateRuleTimeInline(TimeRule rule, int pickedMins, {required bool isStart}) async {
     int newStart = isStart ? pickedMins : rule.startMins;
     int newEnd = isStart ? rule.endMins : pickedMins;
 
@@ -321,31 +351,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
     if (RuleManager.hasOverlap(newStart, newEnd, rule.action, excludeRule: rule)) {
       _showError(AppStrings.settings.errorOverlap);
-      return;
+      return false;
     }
 
     await RuleManager.updateRule(rule, newStart, newEnd);
     if (mounted) setState(() {});
-  }
-
-  Widget _buildTimePickerTheme(BuildContext context, Widget? child) {
-    return Theme(
-      data: ThemeData.dark().copyWith(
-        colorScheme: ColorScheme.dark(
-          primary: _themeColor,
-          onPrimary: Colors.black,
-          surface: const Color(0xFF141615),
-          onSurface: const Color(0xFFE0E0E0),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: _themeColor),
-        ),
-      ),
-      child: MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child!,
-      ),
-    );
+    return true;
   }
 
   Widget _buildTerminalBox(String title, Color borderColor, Widget content) {
@@ -459,7 +470,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 _buildPreAlarmSetting(),
                 _buildQuickPasteSetting(),
                 _buildWarSettings(),
-                _buildWarSettings(),
                 _buildAppInfo(),
               ],
             ),
@@ -518,6 +528,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
               Color itemColor = isError ? const Color(0xFFB54545) : groupColor;
 
               return Column(
+                key: ObjectKey(rule),
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
@@ -527,12 +538,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
                       children: [
                         Text(AppStrings.settings.settingsFrom, style: TextStyle(color: _textColor, fontSize: 14)),
                         const SizedBox(width: 12),
-                        _buildTimeBox(rule.getTimeString(rule.startMins), itemColor, () => _editRuleTime(rule, isStart: true)),
+                        _InlineRuleTimeBox(
+                          minutes: rule.startMins,
+                          color: itemColor,
+                          onTimeChanged: (mins) => _updateRuleTimeInline(rule, mins, isStart: true),
+                        ),
 
                         const SizedBox(width: 16),
                         Text(AppStrings.settings.settingsTo, style: TextStyle(color: _textColor, fontSize: 14)),
                         const SizedBox(width: 12),
-                        _buildTimeBox(rule.getTimeString(rule.endMins), itemColor, () => _editRuleTime(rule, isStart: false)),
+                        _InlineRuleTimeBox(
+                          minutes: rule.endMins,
+                          color: itemColor,
+                          onTimeChanged: (mins) => _updateRuleTimeInline(rule, mins, isStart: false),
+                        ),
 
                         const Spacer(),
                         InkWell(
@@ -562,23 +581,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
           Center(
             child: InkWell(
-              onTap: () => _openRuleBuilder(type),
+              onTap: () => _addNewRuleSlot(type),
               child: Text(AppStrings.settings.settingsBtnAdd, style: TextStyle(color: groupColor, fontSize: 14)),
             ),
           )
         ],
-      ),
-    );
-  }
-
-  Widget _buildTimeBox(String time, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(border: Border.all(color: color, width: 1.2)),
-        child: Text(time, style: TextStyle(color: color, fontSize: 15)),
       ),
     );
   }
@@ -671,10 +678,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
   }
 
   Widget _buildWarSettings() {
-    bool isPreEnabled = RuleManager.warPreAlarmEnabled;
-    bool isEndEnabled = RuleManager.warEndAlarmEnabled;
-    bool isAuto = RuleManager.warAutoSync;
+    bool isPreEnabled = _hasSavedClans && RuleManager.warPreAlarmEnabled;
+    bool isEndEnabled = _hasSavedClans && RuleManager.warEndAlarmEnabled;
+    bool isAuto = _hasSavedClans && RuleManager.warAutoSync;
 
+    Color boxBorderColor = _hasSavedClans ? _themeColor : const Color(0xFF444444);
     Color preColor = isPreEnabled ? _themeColor : const Color(0xFF444444);
     Color endColor = isEndEnabled ? _themeColor : const Color(0xFF444444);
     Color autoColor = isAuto ? _themeColor : const Color(0xFF444444);
@@ -689,7 +697,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
     return _buildTerminalBox(
       AppStrings.settings.warAlarmConfigTitle,
-      _themeColor,
+      boxBorderColor,
       Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -700,8 +708,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
               Text(AppStrings.settings.warPreAlarmLabel, style: TextStyle(color: preColor, fontSize: 14)),
               InkWell(
                 onTap: () async {
+                  if (!_hasSavedClans) {
+                    _showError(AppStrings.settings.errorNoClanForWar);
+                    return;
+                  }
                   setState(() {
                     RuleManager.warPreAlarmEnabled = !RuleManager.warPreAlarmEnabled;
+                    if (!RuleManager.warPreAlarmEnabled && !RuleManager.warEndAlarmEnabled) {
+                      RuleManager.warAutoSync = false;
+                      WarSyncService.cancelTask();
+                    }
                     RuleManager.save();
                   });
                   await _syncAllWarSchedules();
@@ -726,8 +742,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
                       hintText: "00:00",
                       hintStyle: const TextStyle(color: Color(0xFF444444)),
                       contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: preColor, width: 1)),
-                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: preColor, width: 1.5)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide(color: preColor, width: 1.2),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.zero,
+                        borderSide: BorderSide(color: preColor, width: 1.5),
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF141615),
                     ),
@@ -764,11 +786,9 @@ class _SettingsDialogState extends State<SettingsDialog> {
                           _warPreAlarmController.selection = const TextSelection.collapsed(offset: 5);
                         }
 
-                        // LƯU STATE NGAY LẬP TỨC
                         RuleManager.warPreAlarmMinutes = totalMins;
                         RuleManager.save();
 
-                        // SỬ DỤNG DEBOUNCE ĐỂ GỌI API (VẤN ĐỀ 1.3)
                         _debounceTimer?.cancel();
                         _debounceTimer = Timer(const Duration(milliseconds: 800), () {
                           _syncAllWarSchedules();
@@ -800,8 +820,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
               Text(AppStrings.settings.warEndAlarmLabel, style: TextStyle(color: endColor, fontSize: 14)),
               InkWell(
                 onTap: () async {
+                  if (!_hasSavedClans) {
+                    _showError(AppStrings.settings.errorNoClanForWar);
+                    return;
+                  }
                   setState(() {
                     RuleManager.warEndAlarmEnabled = !RuleManager.warEndAlarmEnabled;
+                    if (!RuleManager.warPreAlarmEnabled && !RuleManager.warEndAlarmEnabled) {
+                      RuleManager.warAutoSync = false;
+                      WarSyncService.cancelTask();
+                    }
                     RuleManager.save();
                   });
                   await _syncAllWarSchedules();
@@ -880,36 +908,42 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          InkWell(
-            onTap: _isCheckingUpdate ? null : (_updateUrl != null ? _launchUpdateUrl : _checkForUpdates),
-            child: Text(
-              _isCheckingUpdate
-                  ? "[ . . . ]"
-                  : (_updateUrl != null ? AppStrings.format(AppStrings.settings.statusUpdateAvailable, {'newVersion': "v$_appVersion"}) : AppStrings.settings.btnCheckUpdateNow),
-              style: TextStyle(color: _themeColor, fontSize: 14),
-            ),
-          ),
-
-          if (_updateStatusMsg.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              _updateStatusMsg,
-              style: TextStyle(
-                  color: _updateUrl != null ? _themeColor : const Color(0xFF888888),
-                  fontSize: 13,
-                  fontStyle: FontStyle.italic
+          if (_updateUrl == null) ...[
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: _isCheckingUpdate ? null : _checkForUpdates,
+              child: Text(
+                _isCheckingUpdate ? "[ . . . ]" : AppStrings.settings.btnCheckUpdateNow,
+                style: TextStyle(color: _themeColor, fontSize: 14),
               ),
             ),
           ],
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
           Text(
             AppStrings.format(AppStrings.settings.labelVersion, {'version': _appVersion}),
             style: const TextStyle(color: Color(0xFF888888), fontSize: 14),
           ),
+
+          if (_updateStatusMsg.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: _updateUrl != null ? _launchUpdateUrl : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Text(
+                  _updateStatusMsg,
+                  style: TextStyle(
+                    color: _updateUrl != null ? _themeColor : const Color(0xFF888888),
+                    fontSize: 14,
+                    fontWeight: _updateUrl != null ? FontWeight.bold : FontWeight.normal,
+                    fontStyle: _updateUrl != null ? FontStyle.normal : FontStyle.italic,
+                  ),
+                ),
+              ),
+            ),
+          ],
 
           const SizedBox(height: 16),
 
@@ -953,6 +987,175 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ],
           )
         ],
+      ),
+    );
+  }
+}
+
+class _InlineRuleTimeBox extends StatefulWidget {
+  final int minutes;
+  final Color color;
+  final Future<bool> Function(int newMins) onTimeChanged;
+
+  const _InlineRuleTimeBox({
+    required this.minutes,
+    required this.color,
+    required this.onTimeChanged,
+  });
+
+  @override
+  State<_InlineRuleTimeBox> createState() => _InlineRuleTimeBoxState();
+}
+
+class _InlineRuleTimeBoxState extends State<_InlineRuleTimeBox> {
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+
+  String _formatMins(int mins) {
+    final h = (mins ~/ 60).toString().padLeft(2, '0');
+    final m = (mins % 60).toString().padLeft(2, '0');
+    return "$h:$m";
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _formatMins(widget.minutes));
+    _focusNode = FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _InlineRuleTimeBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.minutes != widget.minutes && !_focusNode.hasFocus) {
+      _controller.text = _formatMins(widget.minutes);
+    }
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _commitOrRevert(_controller.text);
+    }
+  }
+
+  Future<void> _commitOrRevert(String rawText) async {
+    String digits = rawText.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      _controller.text = _formatMins(widget.minutes);
+      return;
+    }
+    if (digits.length <= 2) {
+      digits = "${digits.padLeft(2, '0')}00";
+    } else if (digits.length == 3) {
+      digits = "0$digits";
+    } else if (digits.length > 4) {
+      digits = digits.substring(0, 4);
+    }
+
+    int h = int.tryParse(digits.substring(0, 2)) ?? 0;
+    int m = int.tryParse(digits.substring(2, 4)) ?? 0;
+    if (h > 23) h = 23;
+    if (m > 59) m = 59;
+
+    int totalMins = h * 60 + m;
+    if (totalMins == widget.minutes) {
+      _controller.text = _formatMins(widget.minutes);
+      return;
+    }
+
+    bool ok = await widget.onTimeChanged(totalMins);
+    if (!mounted) return;
+    if (ok) {
+      _controller.text = _formatMins(totalMins);
+    } else {
+      _controller.text = _formatMins(widget.minutes);
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 78,
+      child: TextField(
+        controller: _controller,
+        focusNode: _focusNode,
+        style: TextStyle(
+          color: widget.color,
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'monospace',
+        ),
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.datetime,
+        decoration: InputDecoration(
+          hintText: "00:00",
+          hintStyle: const TextStyle(color: Color(0xFF444444)),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.zero,
+            borderSide: BorderSide(color: widget.color, width: 1.2),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.zero,
+            borderSide: BorderSide(color: widget.color, width: 1.5),
+          ),
+          filled: true,
+          fillColor: const Color(0xFF141615),
+        ),
+        onChanged: (val) async {
+          String clean = val.replaceAll(RegExp(r'[^0-9]'), '');
+          if (clean.length > 4) clean = clean.substring(0, 4);
+
+          String formatted = clean;
+          if (clean.length >= 3) {
+            formatted = "${clean.substring(0, clean.length - 2)}:${clean.substring(clean.length - 2)}";
+          }
+
+          if (_controller.text != formatted && formatted.length <= 5) {
+            _controller.value = TextEditingValue(
+              text: formatted,
+              selection: TextSelection.collapsed(offset: formatted.length),
+            );
+          }
+
+          if (clean.length == 4) {
+            int h = int.tryParse(clean.substring(0, 2)) ?? 0;
+            int m = int.tryParse(clean.substring(2, 4)) ?? 0;
+            if (h > 23) h = 23;
+            if (m > 59) m = 59;
+
+            String clampedStr = "${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}";
+            if (_controller.text != clampedStr) {
+              _controller.value = TextEditingValue(
+                text: clampedStr,
+                selection: const TextSelection.collapsed(offset: 5),
+              );
+            }
+
+            int totalMins = h * 60 + m;
+            if (totalMins != widget.minutes) {
+              bool ok = await widget.onTimeChanged(totalMins);
+              if (!ok && mounted) {
+                final fallback = _formatMins(widget.minutes);
+                _controller.value = TextEditingValue(
+                  text: fallback,
+                  selection: TextSelection.collapsed(offset: fallback.length),
+                );
+              }
+            }
+          }
+        },
+        onSubmitted: (val) => _commitOrRevert(val),
       ),
     );
   }

@@ -41,6 +41,22 @@ class VillageManager {
     processNextAlarm();
   }
 
+  /// Kiểm tra các báo thức đang kêu (do người dùng lỡ bấm thoát ở màn hình khoá hoặc mở lại app khi chuông còn kêu)
+  Future<void> checkActiveRingingAlarms() async {
+    try {
+      final activeAlarms = await Alarm.getAlarms();
+      final now = DateTime.now().add(const Duration(seconds: 1));
+      for (final alarm in activeAlarms) {
+        if (!alarm.dateTime.isAfter(now)) {
+          ScheduleService.enableAlarmMode();
+          queueAlarm(alarm);
+        }
+      }
+    } catch (e) {
+      debugPrint("Lỗi kiểm tra chuông đang kêu: $e");
+    }
+  }
+
   Future<void> processNextAlarm() async {
     if (_isAlarmPopupShowing) return;
 
@@ -264,6 +280,15 @@ class VillageManager {
     }
   }
 
+  Future<void> syncAllNotificationsForLanguageChange() async {
+    await ScheduleService.createOrUpdateNotificationChannels();
+    if (isQuickPasteActive || ScheduleService.isQuickPasteActive) {
+      await ScheduleService.showQuickPasteNotification();
+    }
+    await resyncAllVillages();
+    await ScheduleService.resyncSavedWarSchedules();
+  }
+
   Future<({String tag, bool isNewVillage, String statusMsg})> importVillageJson(String inputData) async {
     final parsed = VillageParser.parse(inputData);
     final String tag = parsed.tag;
@@ -296,6 +321,9 @@ class VillageManager {
             'name': villageNames[tag]!,
             'tag': tag,
           }),
+          actionType: 'updated',
+          villageName: villageNames[tag]!,
+          villageTag: tag,
         );
       }
     }
@@ -339,6 +367,9 @@ class VillageManager {
           'name': villageNames[tag]!,
           'tag': tag,
         }),
+        actionType: 'added',
+        villageName: villageNames[tag]!,
+        villageTag: tag,
       );
     }
 
@@ -478,11 +509,13 @@ class VillageManager {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         String tagName = data['tag_name'] as String;
-        String htmlUrl = data['html_url'] as String;
         String latestVersion = tagName.split('-').first.replaceAll('v', '');
 
         if (_isVersionGreater(latestVersion, currentVersion)) {
-          return (version: latestVersion, url: htmlUrl);
+          return (
+            version: latestVersion,
+            url: 'https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md',
+          );
         }
       }
     } catch (e) {

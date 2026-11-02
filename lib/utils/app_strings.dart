@@ -272,6 +272,8 @@ abstract class SettingsStrings {
   String get errorInvalidTime;
   String get quickPasteConfigTitle;
   String get quickPasteAutoReturnLabel;
+  String get errorNoClanForWar;
+  String get errorBothWarAlarmsOff;
 }
 
 abstract class OnlineScreenStrings {
@@ -489,7 +491,7 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
   @override String get statusUpgradingSuffix => "ĐANG NÂNG";
   @override String get groupLabNight => "> PHÒNG THÍ NGHIỆM SAO";
   @override String get groupLabMain => "> PHÒNG THÍ NGHIỆM";
-  @override String get separatorDots => " ............................................................................";
+  @override String get separatorDots => " ......................................................................................";
   @override String get logGroupNameBuilderNight => "THỢ XÂY ĐÊM";
   @override String get logGroupNameBuilder => "THỢ XÂY";
   @override String get logGroupNamePet => "LINH THÚ";
@@ -551,6 +553,8 @@ class SettingsStringsVi extends SettingsStrings {
   @override String get errorInvalidTime => "Tối đa chỉ được nhập 06:00!";
   @override String get quickPasteConfigTitle => "CHẾ ĐỘ DÁN NHANH";
   @override String get quickPasteAutoReturnLabel => "Tự động quay lại game sau khi dán";
+  @override String get errorNoClanForWar => "Chưa có hội nào được nhập ở màn hình Online!";
+  @override String get errorBothWarAlarmsOff => "Cần bật ít nhất 1 báo thức War trước khi bật đồng bộ ngầm!";
 }
 
 class OnlineScreenStringsVi extends OnlineScreenStrings {
@@ -773,7 +777,7 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
   @override String get statusUpgradingSuffix => "UPGRADING";
   @override String get groupLabNight => "> STAR LABORATORY";
   @override String get groupLabMain => "> LABORATORY";
-  @override String get separatorDots => " ............................................................................";
+  @override String get separatorDots => " ......................................................................................";
   @override String get logGroupNameBuilderNight => "MASTER BUILDER";
   @override String get logGroupNameBuilder => "BUILDER";
   @override String get logGroupNamePet => "PET";
@@ -835,6 +839,8 @@ class SettingsStringsEn extends SettingsStrings {
   @override String get errorInvalidTime => "You can enter a maximum of 06:00!";
   @override String get quickPasteConfigTitle => "QUICK PASTE MODE";
   @override String get quickPasteAutoReturnLabel => "Auto-return to game after pasting";
+  @override String get errorNoClanForWar => "No Clan added in Online screen yet!";
+  @override String get errorBothWarAlarmsOff => "Enable at least 1 War alert before turning on auto-sync!";
 }
 
 class OnlineScreenStringsEn extends OnlineScreenStrings {

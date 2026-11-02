@@ -82,13 +82,16 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _vm.checkActiveRingingAlarms();
+
+      if (!mounted) return;
       if (ScheduleService.quickPasteTrigger.value > 0) {
         _onQuickPasteTriggered();
       } else {
         TerminalDialogs.checkAndShowReimportReminder(
           context,
-          shouldSkip: () => _pendingQuickPaste,
+          shouldSkip: () => _pendingQuickPaste || !_vm.isAlarmIdle,
         );
       }
 
@@ -136,10 +139,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   void _onQuickPasteTriggered() {
     _pendingQuickPaste = true;
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     _attemptQuickPaste();
   }
 
@@ -174,7 +173,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         if (RuleManager.quickPasteAutoReturn) {
-          await SystemChrome.setPreferredOrientations([]);
           SystemNavigator.pop();
         }
       }
@@ -218,24 +216,24 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused && !_pendingQuickPaste) {
-      SystemChrome.setPreferredOrientations([]);
-    }
     if (state == AppLifecycleState.resumed) {
       ScheduleService.ensureQuickPasteNotification();
       if (_pendingQuickPaste) {
         _attemptQuickPaste();
       }
 
-      if (!_vm.isAlarmIdle) {
-        ScheduleService.enableAlarmMode();
-      } else {
-        Future.delayed(const Duration(milliseconds: 2500), () {
-          if (mounted && _vm.isAlarmIdle) {
-            ScheduleService.disableAlarmMode();
-          }
-        });
-      }
+      _vm.checkActiveRingingAlarms().then((_) {
+        if (!mounted) return;
+        if (!_vm.isAlarmIdle) {
+          ScheduleService.enableAlarmMode();
+        } else {
+          Future.delayed(const Duration(milliseconds: 2500), () {
+            if (mounted && _vm.isAlarmIdle) {
+              ScheduleService.disableAlarmMode();
+            }
+          });
+        }
+      });
     }
   }
 
@@ -281,7 +279,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           if (mounted) {
             Navigator.of(context, rootNavigator: true).pop();
             if (RuleManager.quickPasteAutoReturn) {
-              await SystemChrome.setPreferredOrientations([]);
               SystemNavigator.pop();
             }
           }
@@ -306,7 +303,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           if (mounted) {
             Navigator.of(context, rootNavigator: true).pop();
             if (RuleManager.quickPasteAutoReturn) {
-              await SystemChrome.setPreferredOrientations([]);
               SystemNavigator.pop();
             }
           }
@@ -338,7 +334,6 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       if (fromQuickPaste) {
         if (RuleManager.quickPasteAutoReturn) {
           await Future.delayed(const Duration(milliseconds: 300));
-          await SystemChrome.setPreferredOrientations([]);
           SystemNavigator.pop();
         }
         return;
@@ -407,9 +402,10 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                   currentTime: _currentTime,
                                   updateUrl: _updateUrl,
                                   updateVersion: _updateVersion,
-                                  onToggleServer: () {
+                                  onToggleServer: () async {
                                     FocusManager.instance.primaryFocus?.unfocus();
-                                    Navigator.push(
+                                    final String prevLang = AppStrings.languageCode;
+                                    await Navigator.push(
                                       context,
                                       PageRouteBuilder(
                                         pageBuilder: (context, animation, secondaryAnimation) => OnlineScreen(
@@ -421,14 +417,23 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                         },
                                       ),
                                     );
+                                    if (!mounted) return;
+                                    if (AppStrings.languageCode != prevLang) {
+                                      _parseStatus = _vm.villages.isNotEmpty
+                                          ? AppStrings.terminal.statusLoadedSavedData
+                                          : AppStrings.terminal.statusWaitingJson;
+                                      await _vm.syncAllNotificationsForLanguageChange();
+                                    }
+                                    if (mounted) setState(() {});
                                   },
                                   onLanguageChange: () async {
                                     FocusManager.instance.primaryFocus?.unfocus();
                                     await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
-                                    if (_vm.isQuickPasteActive) {
-                                      await ScheduleService.showQuickPasteNotification();
-                                    }
-                                    await _vm.resyncAllVillages();
+                                    _parseStatus = _vm.villages.isNotEmpty
+                                        ? AppStrings.terminal.statusLoadedSavedData
+                                        : AppStrings.terminal.statusWaitingJson;
+                                    if (mounted) setState(() {});
+                                    await _vm.syncAllNotificationsForLanguageChange();
                                     await Future.delayed(const Duration(milliseconds: 500));
                                     if (mounted) {
                                       if (_vm.isAlarmIdle) ScheduleService.disableAlarmMode();
