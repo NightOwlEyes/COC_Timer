@@ -457,6 +457,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
                 ...[AlarmType.system, AlarmType.none].map((type) => _buildRuleGroup(type)),
                 _buildPreAlarmSetting(),
+                _buildQuickPasteSetting(),
+                _buildWarSettings(),
                 _buildWarSettings(),
                 _buildAppInfo(),
               ],
@@ -631,6 +633,37 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 child: Text("[+]", style: TextStyle(color: _themeColor, fontSize: 16)),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickPasteSetting() {
+    bool isAutoReturn = RuleManager.quickPasteAutoReturn;
+    Color itemColor = isAutoReturn ? _themeColor : const Color(0xFF444444);
+
+    return _buildTerminalBox(
+      AppStrings.settings.quickPasteConfigTitle,
+      _themeColor,
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              AppStrings.settings.quickPasteAutoReturnLabel,
+              style: TextStyle(color: itemColor, fontSize: 14),
+            ),
+          ),
+          const SizedBox(width: 12),
+          InkWell(
+            onTap: () {
+              setState(() {
+                RuleManager.quickPasteAutoReturn = !RuleManager.quickPasteAutoReturn;
+                RuleManager.save();
+              });
+            },
+            child: _buildTerminalSwitch(isAutoReturn, itemColor),
           ),
         ],
       ),

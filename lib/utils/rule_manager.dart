@@ -45,6 +45,7 @@ class RuleManager {
   static AlarmType warEndAlarmType = AlarmType.system;
 
   static bool warAutoSync = true;
+  static bool quickPasteAutoReturn = true;
 
   // LƯU TRẠNG THÁI BẬT/TẮT [X] CỦA TỪNG KHỐI
   static Map<AlarmType, bool> groupEnabled = {
@@ -69,6 +70,7 @@ class RuleManager {
       };
       preAlarmMinutes = 0;
       autoCheckUpdate = true;
+      quickPasteAutoReturn = true;
       await save();
     } else {
       String? rulesJson = prefs.getString('rule_time_ranges');
@@ -106,6 +108,7 @@ class RuleManager {
       warEndAlarmType = AlarmType.values.firstWhere((e) => e.name == (prefs.getString('war_end_alarm_type') ?? 'system'), orElse: () => AlarmType.system);
 
       warAutoSync = prefs.getBool('war_auto_sync') ?? true;
+      quickPasteAutoReturn = prefs.getBool('quick_paste_auto_return') ?? true;
     }
   }
 
@@ -132,6 +135,7 @@ class RuleManager {
     await prefs.setString('war_end_alarm_type', warEndAlarmType.name);
 
     await prefs.setBool('war_auto_sync', warAutoSync);
+    await prefs.setBool('quick_paste_auto_return', quickPasteAutoReturn);
   }
 
 

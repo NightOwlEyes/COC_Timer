@@ -2,24 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:collection';
+import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alarm/alarm.dart';
 import 'package:android_intent_plus/android_intent.dart';
-import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../models/village_models.dart';
-import '../utils/village_parser.dart';
+import '../utils/village_manager.dart';
 import '../utils/app_strings.dart';
 import '../utils/rule_manager.dart';
 import '../services/schedule_service.dart';
-import '../services/coc_api_service.dart';
 
 import '../widgets/terminal_frame_painter.dart';
-import '../widgets/alarm_popup.dart';
+import '../widgets/terminal_dialogs.dart';
 import '../widgets/village_card.dart';
 import '../widgets/village_detail_dialog.dart';
 import '../widgets/settings_dialog.dart';
@@ -38,28 +33,16 @@ class TerminalScreen extends StatefulWidget {
 class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObserver {
   final TextEditingController _jsonController = TextEditingController();
   final ValueNotifier<bool> _showCursor = ValueNotifier(true);
+  final VillageManager _vm = VillageManager();
+
   Timer? _cursorTimer;
   Timer? _clockTimer;
   String _currentTime = "";
 
-  Map<String, VillageData> _villages = {};
-  Map<String, String> _savedRawJsons = {};
-  final Map<String, String> _villageNames = {};
-
-  final Map<String, bool> _trackHome = {};
-  final Map<String, bool> _trackBuilder = {};
-  final Map<String, String> _savedAlarmStates = {};
-
-  final Queue<AlarmSettings> _alarmQueue = Queue<AlarmSettings>();
-  bool _isAlarmPopupShowing = false;
-  int? _currentShowingAlarmId;
-
   String _parseStatus = AppStrings.terminal.statusWaitingJson;
-  bool _showRealEta = true;
   bool _isBuilderBase = false;
-  bool _xiaomiAcknowledged = false;
-  bool _isQuickPasteActive = false;
   bool _pendingQuickPaste = false;
+  bool _isHeaderVisible = true;
 
   String? _updateVersion;
   String? _updateUrl;
@@ -74,42 +57,55 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    _isQuickPasteActive = ScheduleService.isQuickPasteActive;
+    _vm.isQuickPasteActive = ScheduleService.isQuickPasteActive;
     ScheduleService.quickPasteTrigger.addListener(_onQuickPasteTriggered);
 
-    RuleManager.init().then((_) {
-      if (RuleManager.autoCheckUpdate) _checkGithubUpdate();
+    RuleManager.init().then((_) async {
+      if (RuleManager.autoCheckUpdate) {
+        final updateInfo = await VillageManager.checkGithubUpdate();
+        if (updateInfo != null && mounted) {
+          setState(() {
+            _updateVersion = updateInfo.version;
+            _updateUrl = updateInfo.url;
+          });
+        }
+      }
     });
 
-    if (_alarmQueue.isEmpty && !_isAlarmPopupShowing) {
+    if (_vm.isAlarmIdle) {
       ScheduleService.disableAlarmMode();
     }
 
     ScheduleService.checkAndRequestPermissions().then((_) {
-      if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
+      if (mounted && _vm.isAlarmIdle) {
         ScheduleService.disableAlarmMode();
       }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Nếu app vừa được gọi dậy từ thông báo Dán Nhanh lúc đang tắt
       if (ScheduleService.quickPasteTrigger.value > 0) {
         _onQuickPasteTriggered();
       } else {
-        _checkAndShowReimportReminder();
-      }
-      if (ScheduleService.quickPasteTrigger.value < 0) {
-        _onQuickPasteTriggered();
+        TerminalDialogs.checkAndShowReimportReminder(
+          context,
+          shouldSkip: () => _pendingQuickPaste,
+        );
       }
 
       Future.delayed(const Duration(milliseconds: 2500), () {
-        if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
+        if (mounted && _vm.isAlarmIdle) {
           ScheduleService.disableAlarmMode();
         }
       });
     });
 
-    _loadSavedData();
+    _vm.loadSavedData().then((hasVillages) {
+      if (mounted) {
+        setState(() {
+          if (hasVillages) _parseStatus = AppStrings.terminal.statusLoadedSavedData;
+        });
+      }
+    });
 
     _cursorTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
       if (mounted) _showCursor.value = !_showCursor.value;
@@ -121,12 +117,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         ScheduleService.enableAlarmMode();
         if (mounted) {
           if (event is AlarmSettings) {
-            _queueAlarm(event);
+            _vm.queueAlarm(event);
           } else {
             try {
               for (final alarmSettings in event.alarms) {
                 if (alarmSettings is AlarmSettings) {
-                  _queueAlarm(alarmSettings);
+                  _vm.queueAlarm(alarmSettings);
                 }
               }
             } catch (_) {}
@@ -138,47 +134,49 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     });
   }
 
-  // Hàm này chỉ nhận tín hiệu từ thông báo và bật cờ hiệu
   void _onQuickPasteTriggered() {
     _pendingQuickPaste = true;
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _attemptQuickPaste();
   }
 
-  // Hàm này sẽ đảm nhận việc thực thi dán an toàn
   Future<void> _attemptQuickPaste() async {
     if (!_pendingQuickPaste || !mounted) return;
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
 
-    // QUAN TRỌNG: Chỉ đọc bộ nhớ khi app đã nổi hoàn toàn lên màn hình (Resumed)
-    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
-      return; // Nếu chưa nổi lên, kệ nó, didChangeAppLifecycleState sẽ xử lý sau
-    }
-
-    // Delay 300ms để Android hoàn tất chuyển giao quyền Window Focus
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
     final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final clipboardText = data?.text;
+    String? clipboardText = data?.text;
 
-    if (clipboardText != null && clipboardText.trim().isNotEmpty) {
-      _pendingQuickPaste = false;
-      setState(() => _jsonController.text = clipboardText);
-      await _processJson(fromQuickPaste: true);
-    } else {
-      // Fallback: Nếu lần đầu vẫn fail do máy bị khựng (lag), thử lại 1 lần nữa sau 500ms
+    if (clipboardText == null || clipboardText.trim().isEmpty) {
       await Future.delayed(const Duration(milliseconds: 500));
       final retryData = await Clipboard.getData(Clipboard.kTextPlain);
-      final retryText = retryData?.text;
+      clipboardText = retryData?.text;
+    }
 
-      if (retryText != null && retryText.trim().isNotEmpty) {
-        _pendingQuickPaste = false;
-        setState(() => _jsonController.text = retryText);
-        await _processJson(fromQuickPaste: true);
-      } else {
-        _pendingQuickPaste = false;
-        final String emptyMsg = AppStrings.terminal.quickPasteEmpty;
-        setState(() => _parseStatus = emptyMsg);
-        _showQuickPasteFeedbackOverlay(emptyMsg, isSuccess: false);
+    _pendingQuickPaste = false;
+
+    if (clipboardText != null && clipboardText.trim().isNotEmpty) {
+      setState(() => _jsonController.text = clipboardText!);
+      await _processJson(fromQuickPaste: true);
+    } else {
+      final String emptyMsg = AppStrings.terminal.quickPasteEmpty;
+      setState(() => _parseStatus = emptyMsg);
+      if (mounted) {
+        TerminalDialogs.showQuickPasteFeedbackOverlay(context, emptyMsg, isSuccess: false);
+      }
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        if (RuleManager.quickPasteAutoReturn) {
+          await SystemChrome.setPreferredOrientations([]);
+          SystemNavigator.pop();
+        }
       }
     }
   }
@@ -186,11 +184,11 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   Future<void> _toggleQuickPaste() async {
     FocusManager.instance.primaryFocus?.unfocus();
 
-    if (_isQuickPasteActive) {
+    if (_vm.isQuickPasteActive) {
       await ScheduleService.cancelQuickPasteNotification();
       if (mounted) {
         setState(() {
-          _isQuickPasteActive = false;
+          _vm.isQuickPasteActive = false;
           _parseStatus = AppStrings.terminal.quickPasteDisabled;
         });
       }
@@ -198,257 +196,12 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       await ScheduleService.showQuickPasteNotification();
       if (mounted) {
         setState(() {
-          _isQuickPasteActive = true;
+          _vm.isQuickPasteActive = true;
           _parseStatus = AppStrings.terminal.quickPastePinned;
         });
-        _showQuickPasteInfoDialog();
-        setState(() {
-        });
+        TerminalDialogs.showQuickPasteInfoDialog(context);
       }
     }
-  }
-
-  Future<void> _checkAndShowReimportReminder() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool hideReminder = prefs.getBool('hide_reimport_reminder') ?? false;
-    if (hideReminder || !mounted || _pendingQuickPaste) return;
-
-    bool dontShowAgain = false;
-    const Color accentColor = Color(0xFFE2B714);
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setStateSB) => Dialog(
-          backgroundColor: const Color(0xFF0A0C0B),
-          shape: const RoundedRectangleBorder(
-            side: BorderSide(color: accentColor, width: 1.5),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  AppStrings.terminal.reimportReminderTitle,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    color: accentColor,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  AppStrings.terminal.reimportReminderDesc,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    color: Color(0xFFE0E0E0),
-                    fontSize: 12,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                InkWell(
-                  onTap: () => setStateSB(() => dontShowAgain = !dontShowAgain),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          dontShowAgain ? Icons.check_box : Icons.check_box_outline_blank,
-                          color: dontShowAgain ? accentColor : const Color(0xFF666666),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            AppStrings.terminal.reimportDontShowAgain,
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              color: dontShowAgain ? const Color(0xFFE0E0E0) : const Color(0xFF888888),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: InkWell(
-                    onTap: () async {
-                      if (dontShowAgain) {
-                        await prefs.setBool('hide_reimport_reminder', true);
-                      }
-                      if (ctx.mounted) Navigator.pop(ctx);
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                      child: Text(
-                        AppStrings.terminal.btnUnderstood,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          color: accentColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showQuickPasteInfoDialog() {
-    if (!mounted) return;
-    FocusManager.instance.primaryFocus?.unfocus();
-    const Color accentColor = Color(0xFF4CAF50);
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0A0C0B),
-        shape: const RoundedRectangleBorder(
-          side: BorderSide(color: accentColor, width: 1.5),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppStrings.terminal.quickPasteInfoTitle,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  color: accentColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                AppStrings.terminal.quickPasteInfoDesc,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  color: Color(0xFFE0E0E0),
-                  fontSize: 12,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: InkWell(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                    child: Text(
-                      AppStrings.terminal.btnUnderstood,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        color: accentColor,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showQuickPasteFeedbackOverlay(String message, {required bool isSuccess}) {
-    if (!mounted) return;
-    final Color borderColor = isSuccess ? const Color(0xFF4CAF50) : const Color(0xFFB54545);
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0A0C0B),
-        shape: RoundedRectangleBorder(side: BorderSide(color: borderColor, width: 1.5)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isSuccess ? Icons.check_circle_outline : Icons.error_outline,
-                color: borderColor,
-                size: 22,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    color: borderColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _checkGithubUpdate() async {
-    try {
-      final packageInfo = await PackageInfo.fromPlatform();
-      final currentVersion = packageInfo.version;
-      final response = await http.get(
-        Uri.parse('https://api.github.com/repos/NightOwlEyes/COC_Timer/releases/latest'),
-        headers: {'Accept': 'application/vnd.github.v3+json'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String tagName = data['tag_name'] as String;
-        String htmlUrl = data['html_url'] as String;
-        String latestVersion = tagName.split('-').first.replaceAll('v', '');
-
-        if (_isVersionGreater(latestVersion, currentVersion) && mounted) {
-          setState(() {
-            _updateVersion = latestVersion;
-            _updateUrl = htmlUrl;
-          });
-        }
-      }
-    } catch (e) { debugPrint("Lỗi kiểm tra cập nhật: $e"); }
-  }
-
-  bool _isVersionGreater(String newVersion, String currentVersion) {
-    List<String> v1 = newVersion.split('.');
-    List<String> v2 = currentVersion.split('.');
-    for (int i = 0; i < 3; i++) {
-      int num1 = i < v1.length ? int.tryParse(v1[i]) ?? 0 : 0;
-      int num2 = i < v2.length ? int.tryParse(v2[i]) ?? 0 : 0;
-      if (num1 > num2) return true;
-      if (num1 < num2) return false;
-    }
-    return false;
   }
 
   @override
@@ -465,20 +218,20 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused && !_pendingQuickPaste) {
+      SystemChrome.setPreferredOrientations([]);
+    }
     if (state == AppLifecycleState.resumed) {
-
-      // --- THÊM ĐOẠN NÀY ĐỂ ĐÓN LÕNG SỰ KIỆN TỪ BACKGROUND ---
       ScheduleService.ensureQuickPasteNotification();
       if (_pendingQuickPaste) {
         _attemptQuickPaste();
       }
-      // -------------------------------------------------------
 
-      if (_isAlarmPopupShowing || _alarmQueue.isNotEmpty) {
+      if (!_vm.isAlarmIdle) {
         ScheduleService.enableAlarmMode();
       } else {
         Future.delayed(const Duration(milliseconds: 2500), () {
-          if (mounted && !_isAlarmPopupShowing && _alarmQueue.isEmpty) {
+          if (mounted && _vm.isAlarmIdle) {
             ScheduleService.disableAlarmMode();
           }
         });
@@ -492,354 +245,16 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       if (!mounted) return;
       try {
         final now = DateTime.now();
-        bool needsUpdate = false;
-
-        for (var village in _villages.values) {
-          void checkAlarm(List<UpgradeItem> items) {
-            for (var item in items) {
-              final diff = item.realEta.difference(now).inSeconds;
-              if (diff == 0 || diff == -1) {
-                needsUpdate = true;
-                if (item.alarmType != AlarmType.none && !item.isNotified) {
-                  item.isNotified = true;
-                }
-              }
-            }
-          }
-
-          checkAlarm(village.buildersItems);
-          checkAlarm(village.petItems);
-          checkAlarm(village.labItems);
-          checkAlarm(village.builders2Items);
-          checkAlarm(village.lab2Items);
-
-          int beforeBuilders = village.buildersItems.length;
-          int beforePets = village.petItems.length;
-          int beforeLab = village.labItems.length;
-          int beforeBuilders2 = village.builders2Items.length;
-          int beforeLab2 = village.lab2Items.length;
-
-          village.buildersItems.removeWhere((item) => item.realEta.difference(now).isNegative);
-          village.petItems.removeWhere((item) => item.realEta.difference(now).isNegative);
-          village.labItems.removeWhere((item) => item.realEta.difference(now).isNegative);
-          village.builders2Items.removeWhere((item) => item.realEta.difference(now).isNegative);
-          village.lab2Items.removeWhere((item) => item.realEta.difference(now).isNegative);
-
-          if (beforeBuilders != village.buildersItems.length ||
-              beforePets != village.petItems.length ||
-              beforeLab != village.labItems.length ||
-              beforeBuilders2 != village.builders2Items.length ||
-              beforeLab2 != village.lab2Items.length) {
-            needsUpdate = true;
-          }
-        }
+        final bool needsUpdate = _vm.tickCleanup(now);
 
         setState(() {
           _currentTime = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
         });
 
-        if (needsUpdate) _saveDataToPrefs();
+        if (needsUpdate) _vm.saveDataToPrefs();
       } catch (e) {
         debugPrint("Lỗi đếm ngược thời gian: $e");
       }
-    });
-  }
-
-  void _queueAlarm(AlarmSettings settings) {
-    if (_currentShowingAlarmId == settings.id) return;
-    if (!_alarmQueue.any((a) => a.id == settings.id)) _alarmQueue.add(settings);
-    _processNextAlarm();
-  }
-
-  Future<void> _processNextAlarm() async {
-    if (_isAlarmPopupShowing) return;
-
-    if (_alarmQueue.isEmpty) {
-      ScheduleService.disableAlarmMode();
-      ScheduleService.handleAlarmDismiss();
-      return;
-    }
-
-    final alarm = _alarmQueue.removeFirst();
-
-    final activeAlarms = await Alarm.getAlarms();
-    final stillActive = activeAlarms.any((a) => a.id == alarm.id);
-    if (!stillActive) {
-      _processNextAlarm();
-      return;
-    }
-
-    _isAlarmPopupShowing = true;
-    _currentShowingAlarmId = alarm.id;
-
-    ScheduleService.enableAlarmMode();
-
-    BuildContext? globalContext = ScheduleService.navigatorKey.currentContext;
-    int retryCount = 0;
-
-    while ((globalContext == null || !globalContext.mounted) && retryCount < 10) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      globalContext = ScheduleService.navigatorKey.currentContext;
-      retryCount++;
-    }
-
-    if (globalContext == null || !globalContext.mounted) {
-      _isAlarmPopupShowing = false;
-      _currentShowingAlarmId = null;
-      _processNextAlarm();
-      return;
-    }
-
-    showDialog(
-        context: globalContext,
-        barrierDismissible: false,
-        builder: (dialogContext) => AlarmPopup(settings: alarm)
-    ).then((_) {
-      _isAlarmPopupShowing = false;
-      _currentShowingAlarmId = null;
-      Future.delayed(const Duration(milliseconds: 500), _processNextAlarm);
-    });
-  }
-
-  Future<void> _loadSavedData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedData = prefs.getString('saved_villages_map');
-    final savedNames = prefs.getString('saved_village_names');
-    final savedTrackHome = prefs.getString('saved_track_home');
-    final savedTrackBuilder = prefs.getString('saved_track_builder');
-    final savedAlarmJson = prefs.getString('saved_alarm_states');
-
-    if (prefs.getBool('show_real_eta') != null) _showRealEta = prefs.getBool('show_real_eta')!;
-    _xiaomiAcknowledged = prefs.getBool('xiaomi_acknowledged') ?? false;
-    _isQuickPasteActive = prefs.getBool('quick_paste_enabled') ?? false;
-
-    if (savedTrackHome != null) {
-      try { jsonDecode(savedTrackHome).forEach((key, value) => _trackHome[key] = value as bool); } catch (e) { debugPrint("Lỗi tải TrackHome: $e"); }
-    }
-    if (savedTrackBuilder != null) {
-      try { jsonDecode(savedTrackBuilder).forEach((key, value) => _trackBuilder[key] = value as bool); } catch (e) { debugPrint("Lỗi tải TrackBuilder: $e"); }
-    }
-    if (savedAlarmJson != null) {
-      try { jsonDecode(savedAlarmJson).forEach((key, value) => _savedAlarmStates[key] = value.toString()); } catch (e) { debugPrint("Lỗi tải AlarmStates: $e"); }
-    }
-
-    if (savedData != null) {
-      try {
-        final Map<String, dynamic> decoded = jsonDecode(savedData);
-        Map<String, VillageData> loadedVillages = {};
-        Map<String, String> loadedRaws = {};
-
-        decoded.forEach((key, value) {
-          try {
-            loadedVillages[key] = VillageParser.parse(value.toString());
-            loadedRaws[key] = value.toString();
-          } catch (e) { debugPrint("Lỗi Parse dữ liệu làng: $e"); }
-        });
-
-        if (mounted) {
-          setState(() {
-            _villages = loadedVillages;
-            _savedRawJsons = loadedRaws;
-            if (_villages.isNotEmpty) _parseStatus = AppStrings.terminal.statusLoadedSavedData;
-
-            if (savedNames != null) {
-              try { jsonDecode(savedNames).forEach((key, value) => _villageNames[key] = value.toString()); } catch (e) { debugPrint("Lỗi tải tên làng: $e"); }
-            }
-            for (var v in _villages.values) {
-              _applySavedAlarmState(v, syncWithOS: false, forceApplyRules: false);
-            }
-          });
-        }
-      } catch (e) { debugPrint("Lỗi giải mã dữ liệu đã lưu: $e"); }
-    }
-  }
-
-  Future<void> _applySavedAlarmState(VillageData village, {bool syncWithOS = false, bool forceApplyRules = false}) async {
-    bool tHome = _trackHome[village.tag] ?? true;
-    bool tBuilder = _trackBuilder[village.tag] ?? true;
-    List<Future> futures = [];
-
-    void apply(List<UpgradeItem> items, bool isTracked) {
-      for (var item in items) {
-        String uniqueKey = item.instanceId;
-        AlarmType intendedType;
-
-        if (forceApplyRules) {
-          intendedType = RuleManager.evaluateEta(item.realEta);
-          _savedAlarmStates[uniqueKey] = intendedType.name;
-        } else {
-          String? stateStr = _savedAlarmStates[uniqueKey];
-          if (stateStr != null) {
-            intendedType = stateStr == "system" ? AlarmType.system : (stateStr == "fullscreen" ? AlarmType.fullscreen : AlarmType.none);
-          } else {
-            intendedType = RuleManager.evaluateEta(item.realEta);
-            _savedAlarmStates[uniqueKey] = intendedType.name;
-          }
-        }
-
-        item.alarmType = isTracked ? intendedType : AlarmType.none;
-        if (syncWithOS) {
-          String vName = _villageNames[village.tag] ?? AppStrings.terminal.defaultVillageNameUnset;
-          futures.add(ScheduleService.syncItemSchedule(village.tag, vName, item));
-        }
-      }
-    }
-
-    apply(village.buildersItems, tHome);
-    apply(village.petItems, tHome);
-    apply(village.labItems, tHome);
-    apply(village.builders2Items, tBuilder);
-    apply(village.lab2Items, tBuilder);
-
-    if (syncWithOS) await Future.wait(futures);
-  }
-
-  Future<void> _saveAlarmStatesToPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_alarm_states', jsonEncode(_savedAlarmStates));
-  }
-
-  Future<void> _saveDataToPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_villages_map', jsonEncode(_savedRawJsons));
-    await prefs.setString('saved_village_names', jsonEncode(_villageNames));
-    await prefs.setBool('show_real_eta', _showRealEta);
-    await prefs.setString('saved_track_home', jsonEncode(_trackHome));
-    await prefs.setString('saved_track_builder', jsonEncode(_trackBuilder));
-  }
-
-  void _confirmDeleteVillage(String tag) {
-    String cancelLabel = AppStrings.terminal.btnCancel.trim();
-    if (!cancelLabel.startsWith('[')) cancelLabel = "[ $cancelLabel ]";
-
-    String deleteLabel = AppStrings.terminal.btnDeleteNow.trim();
-    if (!deleteLabel.startsWith('[')) deleteLabel = "[ $deleteLabel ]";
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0A0C0B),
-        shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1)),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                AppStrings.terminal.deleteDialogTitle,
-                style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                AppStrings.format(AppStrings.terminal.deleteDialogMessage, {'tag': tag}),
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontFamily: 'monospace'),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => Navigator.pop(ctx),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          cancelLabel,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFF888888), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _deleteVillage(tag);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          deleteLabel,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _deleteVillage(String tag) {
-    if (!mounted) return;
-    if (_villages.containsKey(tag)) ScheduleService.cancelAllForVillage(_villages[tag]!);
-
-    setState(() {
-      _villages.remove(tag);
-      _savedRawJsons.remove(tag);
-      _villageNames.remove(tag);
-      _trackHome.remove(tag);
-      _trackBuilder.remove(tag);
-      _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
-      _parseStatus = _villages.isEmpty ? AppStrings.terminal.statusWaitingJson : AppStrings.format(AppStrings.terminal.statusVillageDeleted, {'tag': tag});
-    });
-    _saveDataToPrefs();
-    _saveAlarmStatesToPrefs();
-  }
-
-  void _cycleAlarmForItem(String villageTag, UpgradeItem item) {
-    String uniqueKey = item.instanceId;
-    String currentState = _savedAlarmStates[uniqueKey] ?? RuleManager.evaluateEta(item.realEta).name;
-    AlarmType nextType = currentState == "system" ? AlarmType.fullscreen : (currentState == "fullscreen" ? AlarmType.none : AlarmType.system);
-
-    _savedAlarmStates[uniqueKey] = nextType.name;
-    _saveAlarmStatesToPrefs();
-
-    String itemName = AppStrings.gameData.getName(item.dataId);
-    if (nextType == AlarmType.system) {
-      _parseStatus = AppStrings.format(AppStrings.terminal.statusNotificationSetSystem, {'typeString': itemName.toUpperCase(), 'dataId': ""});
-    } else if (nextType == AlarmType.fullscreen) {
-      _parseStatus = AppStrings.format(AppStrings.terminal.statusAlarmSetFullscreen, {'typeString': itemName.toUpperCase(), 'dataId': ""});
-    } else {
-      _parseStatus = AppStrings.format(AppStrings.terminal.statusAlarmOff, {'typeString': itemName.toUpperCase(), 'dataId': ""});
-    }
-
-    _applySavedAlarmState(_villages[villageTag]!, syncWithOS: true).then((_) {
-      if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
-      setState(() {});
-    });
-  }
-
-  void _cycleAlarmForGroup(String villageTag, String groupName, List<UpgradeItem> items) {
-    if (items.isEmpty) return;
-    bool hasSystem = false, hasFullscreen = false;
-
-    for (var item in items) {
-      String currentState = _savedAlarmStates[item.instanceId] ?? RuleManager.evaluateEta(item.realEta).name;
-      if (currentState == "system") hasSystem = true;
-      if (currentState == "fullscreen") hasFullscreen = true;
-    }
-
-    AlarmType targetType = hasSystem ? AlarmType.fullscreen : (hasFullscreen ? AlarmType.none : AlarmType.system);
-    for (var item in items) {
-      _savedAlarmStates[item.instanceId] = targetType.name;
-    }
-
-    _parseStatus = targetType == AlarmType.none
-        ? AppStrings.format(AppStrings.terminal.statusGroupAllOff, {'groupName': groupName})
-        : AppStrings.format(AppStrings.terminal.statusGroupModeChanged, {'groupName': groupName, 'alarmType': targetType.name.toUpperCase()});
-
-    _saveAlarmStatesToPrefs();
-    _applySavedAlarmState(_villages[villageTag]!, syncWithOS: true).then((_) {
-      if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
-      setState(() {});
     });
   }
 
@@ -849,79 +264,51 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     FocusScope.of(context).unfocus();
 
     try {
-      final parsed = VillageParser.parse(inputData);
-      final String tag = parsed.tag;
-      final bool isNewVillage = !_villageNames.containsKey(tag);
-
-      // 1. XỬ LÝ JSON
-      if (_villages.containsKey(tag)) {
-        ScheduleService.cancelAllForVillage(_villages[tag]!);
-        _savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
-      } else {
-        _trackHome[tag] = true;
-        _trackBuilder[tag] = true;
-        _villageNames[tag] = AppStrings.terminal.defaultVillageNameSearching;
-      }
-
-      _villages[tag] = parsed;
-      _savedRawJsons[tag] = inputData;
-
-      await _applySavedAlarmState(parsed, syncWithOS: !isNewVillage, forceApplyRules: true);
-
-      final String updatedMsg = AppStrings.format(
-        AppStrings.terminal.statusUpdated,
-        {'villageName': _villageNames[tag]!, 'tag': tag},
-      );
-
+      final res = await _vm.importVillageJson(inputData);
       if (mounted) {
         setState(() {
-          _parseStatus = isNewVillage
-              ? AppStrings.format(AppStrings.terminal.statusFetchingVillageName, {'tag': tag})
-              : updatedMsg;
+          _parseStatus = res.statusMsg;
           _jsonController.clear();
         });
       }
-      _saveDataToPrefs();
-      if (!isNewVillage) _saveAlarmStatesToPrefs();
 
-      // 2. TÌM TÊN VÀ HIỆN POPUP CHO LÀNG MỚI HOẶC TỰ ĐỘNG QUAY LẠI GAME
-      if (isNewVillage) {
-        await _fetchNameAndShowPopup(tag, fromQuickPaste: fromQuickPaste);
+      if (res.isNewVillage) {
+        await _fetchNameAndShowPopup(res.tag, fromQuickPaste: fromQuickPaste);
       } else {
-        if (_isQuickPasteActive) {
-          ScheduleService.showQuickPasteNotification(
-            customStatus: AppStrings.format(AppStrings.terminal.quickPasteUpdated, {
-              'name': _villageNames[tag]!,
-              'tag': tag,
-            }),
-          );
-        }
-
         if (fromQuickPaste && mounted) {
-          _showQuickPasteFeedbackOverlay(updatedMsg, isSuccess: true);
+          TerminalDialogs.showQuickPasteFeedbackOverlay(context, res.statusMsg, isSuccess: true);
           await Future.delayed(const Duration(milliseconds: 900));
           if (mounted) {
             Navigator.of(context, rootNavigator: true).pop();
-            SystemNavigator.pop();
+            if (RuleManager.quickPasteAutoReturn) {
+              await SystemChrome.setPreferredOrientations([]);
+              SystemNavigator.pop();
+            }
           }
           return;
         }
 
         await Future.delayed(const Duration(milliseconds: 500));
-        if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
+        if (mounted && _vm.isAlarmIdle) {
           ScheduleService.disableAlarmMode();
         }
       }
-
     } catch (e) {
       if (mounted) {
         setState(() => _parseStatus = AppStrings.terminal.statusErrorInvalidJson);
         if (fromQuickPaste) {
-          _showQuickPasteFeedbackOverlay(AppStrings.terminal.statusErrorInvalidJson, isSuccess: false);
+          TerminalDialogs.showQuickPasteFeedbackOverlay(
+            context,
+            AppStrings.terminal.statusErrorInvalidJson,
+            isSuccess: false,
+          );
           await Future.delayed(const Duration(milliseconds: 1200));
           if (mounted) {
             Navigator.of(context, rootNavigator: true).pop();
-            SystemNavigator.pop();
+            if (RuleManager.quickPasteAutoReturn) {
+              await SystemChrome.setPreferredOrientations([]);
+              SystemNavigator.pop();
+            }
           }
         }
       }
@@ -929,168 +316,39 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   Future<void> _fetchNameAndShowPopup(String tag, {bool fromQuickPaste = false}) async {
-    String? fetchedName;
-
-    // Thử gọi API tối đa 3 lần, đề phòng mạng chưa kịp kết nối khi app vừa thức dậy
-    for (int i = 0; i < 3; i++) {
-      try {
-        fetchedName = await CocApiService.fetchPlayerName(tag).timeout(
-          const Duration(seconds: 4), // Cho mỗi lần thử tối đa 4 giây
-          onTimeout: () => null,
-        );
-
-        // Nếu lấy được tên thành công thì thoát vòng lặp ngay
-        if (fetchedName != null && fetchedName.isNotEmpty) {
-          break;
-        }
-      } catch (e) {
-        debugPrint("Lỗi API lần ${i + 1}: $e");
-      }
-
-      // Nếu thất bại (null hoặc lỗi mạng), nghỉ 1.5 giây rồi thử lại
-      if (i < 2) {
-        await Future.delayed(const Duration(milliseconds: 1500));
-      }
-    }
-
+    final String? fetchedName = await VillageManager.fetchPlayerNameWithRetry(tag);
     if (!mounted) return;
 
     setState(() {
-      if (fetchedName != null && fetchedName.isNotEmpty) {
-        _parseStatus = AppStrings.format(
-          AppStrings.terminal.statusFoundNameWaitingConfirm,
-          {'name': fetchedName},
-        );
-      } else {
-        _parseStatus = AppStrings.terminal.statusApiTimeoutManualInput;
-      }
+      _parseStatus = (fetchedName != null && fetchedName.isNotEmpty)
+          ? AppStrings.format(AppStrings.terminal.statusFoundNameWaitingConfirm, {'name': fetchedName})
+          : AppStrings.terminal.statusApiTimeoutManualInput;
     });
 
-    Map<String, dynamic>? result = await _promptForVillageName(tag, prefilledName: fetchedName);
+    final Map<String, dynamic>? result = await TerminalDialogs.promptForVillageName(
+      context,
+      tag,
+      prefilledName: fetchedName,
+    );
 
-    if (mounted && _villages.containsKey(tag)) {
-      if (result != null) {
-        setState(() {
-          _villageNames[tag] = (result['name'] as String).trim().isNotEmpty ? result['name'] : AppStrings.terminal.defaultVillageNameFallback;
-          _trackHome[tag] = result['home'] as bool;
-          _trackBuilder[tag] = result['builder'] as bool;
-          _parseStatus = AppStrings.format(
-            AppStrings.terminal.statusSavedSettings,
-            {'name': _villageNames[tag]!},
-          );
-        });
-      } else {
-        setState(() {
-          _villageNames[tag] = (fetchedName != null && fetchedName.isNotEmpty) ? fetchedName : AppStrings.terminal.defaultVillageNameFallback;
-          _parseStatus = AppStrings.format(
-            AppStrings.terminal.statusSavedDefault,
-            {'name': _villageNames[tag]!},
-          );
-        });
-      }
-      _saveDataToPrefs();
-
-      await _applySavedAlarmState(_villages[tag]!, syncWithOS: true, forceApplyRules: true);
-      _saveAlarmStatesToPrefs();
-
-      if (_isQuickPasteActive) {
-        ScheduleService.showQuickPasteNotification(
-          customStatus: AppStrings.format(AppStrings.terminal.quickPasteAdded, {
-            'name': _villageNames[tag]!,
-            'tag': tag,
-          }),
-        );
-      }
+    if (mounted && _vm.villages.containsKey(tag)) {
+      final statusMsg = await _vm.finalizeNewVillage(tag, result, fetchedName);
+      if (mounted) setState(() => _parseStatus = statusMsg);
 
       if (fromQuickPaste) {
-        await Future.delayed(const Duration(milliseconds: 300));
-        SystemNavigator.pop();
+        if (RuleManager.quickPasteAutoReturn) {
+          await Future.delayed(const Duration(milliseconds: 300));
+          await SystemChrome.setPreferredOrientations([]);
+          SystemNavigator.pop();
+        }
         return;
       }
 
       await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted && _alarmQueue.isEmpty && !_isAlarmPopupShowing) {
+      if (mounted && _vm.isAlarmIdle) {
         ScheduleService.disableAlarmMode();
       }
     }
-  }
-
-  Future<Map<String, dynamic>?> _promptForVillageName(String tag, {String? prefilledName}) {
-    TextEditingController tempController = TextEditingController(text: prefilledName ?? "");
-    bool trackHome = true, trackBuilder = true;
-
-    return showDialog<Map<String, dynamic>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setStateSB) => Dialog(
-          backgroundColor: const Color(0xFF0A0C0B),
-          shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFF4CAF50), width: 1)),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(AppStrings.terminal.newVillageDialogTitle, style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(AppStrings.format(AppStrings.terminal.newVillageDialogTagLabel, {'tag': tag}), style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: tempController,
-                  autofocus: false,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: AppStrings.terminal.newVillageNameHint,
-                    hintStyle: const TextStyle(color: Color(0xFF444444)),
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF444444))),
-                    focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF4CAF50))),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Align(alignment: Alignment.centerLeft, child: Text(AppStrings.terminal.trackingOptionsLabel, style: const TextStyle(color: Color(0xFF888888), fontSize: 12))),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 16, runSpacing: 12,
-                  children: [
-                    InkWell(
-                      onTap: () => setStateSB(() => trackHome = !trackHome),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(trackHome ? Icons.check_box : Icons.check_box_outline_blank, color: trackHome ? const Color(0xFF4CAF50) : const Color(0xFF444444), size: 18),
-                          const SizedBox(width: 6),
-                          Text(AppStrings.terminal.trackingHomeVillage, style: TextStyle(color: trackHome ? Colors.white : const Color(0xFF888888), fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => setStateSB(() => trackBuilder = !trackBuilder),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(trackBuilder ? Icons.check_box : Icons.check_box_outline_blank, color: trackBuilder ? const Color(0xFF4CAF50) : const Color(0xFF444444), size: 18),
-                          const SizedBox(width: 6),
-                          Text(AppStrings.terminal.trackingBuilderBase, style: TextStyle(color: trackBuilder ? Colors.white : const Color(0xFF888888), fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
-                    onPressed: () => Navigator.pop(ctx, {'name': tempController.text, 'home': trackHome, 'builder': trackBuilder}),
-                    child: Text(AppStrings.terminal.btnSaveAndAddVillage, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                  ),
-                )
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   void _pasteFromClipboard() async {
@@ -1102,13 +360,16 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   }
 
   void _openXiaomiSettings() async {
-    setState(() => _xiaomiAcknowledged = true);
+    setState(() => _vm.xiaomiAcknowledged = true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('xiaomi_acknowledged', true);
 
     if (Platform.isAndroid) {
       try {
-        await const AndroidIntent(action: 'miui.intent.action.APP_PERM_EDITOR', arguments: {'extra_pkgname': 'coctimer.nightowleyes.coctimer'}).launch();
+        await const AndroidIntent(
+          action: 'miui.intent.action.APP_PERM_EDITOR',
+          arguments: {'extra_pkgname': 'coctimer.nightowleyes.coctimer'},
+        ).launch();
         if (mounted) setState(() => _parseStatus = AppStrings.terminal.statusXiaomiPromptSuccess);
       } catch (e) {
         if (mounted) setState(() => _parseStatus = AppStrings.terminal.statusXiaomiPromptError);
@@ -1118,6 +379,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
+    final bool isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final bool showHeader = !isLandscape || _isHeaderVisible;
+
     return Scaffold(
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
@@ -1130,139 +394,192 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
                 child: Column(
                   children: [
-                    TerminalHeader(
-                      isOnline: false,
-                      showRealEta: _showRealEta,
-                      currentTime: _currentTime,
-                      updateUrl: _updateUrl,
-                      updateVersion: _updateVersion,
-                      onToggleServer: () {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => OnlineScreen(
-                              updateUrl: _updateUrl,
-                              updateVersion: _updateVersion,
-                            ),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                              return FadeTransition(opacity: animation, child: child);
-                            },
-                          ),
-                        );
-                      },
-                      onToggleEta: () {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        setState(() => _showRealEta = !_showRealEta);
-                        _saveDataToPrefs();
-                      },
-                      onLanguageChange: () async {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
-                        if (_isQuickPasteActive) {
-                          await ScheduleService.showQuickPasteNotification();
-                        }
-                        for (var v in _villages.values) {
-                          await _applySavedAlarmState(v, syncWithOS: true);
-                        }
-                        await Future.delayed(const Duration(milliseconds: 500));
-                        if (mounted) {
-                          if (_alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
-                          setState(() {});
-                        }
-                      },
-                      onSettingsTap: () async {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        final oldRules = jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList());
-                        final oldEnabled = jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v)));
-                        final oldPreAlarm = RuleManager.preAlarmMinutes;
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      child: showHeader
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TerminalHeader(
+                                  isOnline: false,
+                                  showRealEta: _vm.showRealEta,
+                                  currentTime: _currentTime,
+                                  updateUrl: _updateUrl,
+                                  updateVersion: _updateVersion,
+                                  onToggleServer: () {
+                                    FocusManager.instance.primaryFocus?.unfocus();
+                                    Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                        pageBuilder: (context, animation, secondaryAnimation) => OnlineScreen(
+                                          updateUrl: _updateUrl,
+                                          updateVersion: _updateVersion,
+                                        ),
+                                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                          return FadeTransition(opacity: animation, child: child);
+                                        },
+                                      ),
+                                    );
+                                  },
+                                  onLanguageChange: () async {
+                                    FocusManager.instance.primaryFocus?.unfocus();
+                                    await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
+                                    if (_vm.isQuickPasteActive) {
+                                      await ScheduleService.showQuickPasteNotification();
+                                    }
+                                    await _vm.resyncAllVillages();
+                                    await Future.delayed(const Duration(milliseconds: 500));
+                                    if (mounted) {
+                                      if (_vm.isAlarmIdle) ScheduleService.disableAlarmMode();
+                                      setState(() {});
+                                    }
+                                  },
+                                  onSettingsTap: () async {
+                                    FocusManager.instance.primaryFocus?.unfocus();
+                                    final oldRules = jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList());
+                                    final oldEnabled = jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v)));
+                                    final oldPreAlarm = RuleManager.preAlarmMinutes;
 
-                        await showDialog(context: context, builder: (ctx) => SettingsDialog(themeColor: _themeColor));
+                                    await showDialog(context: context, builder: (ctx) => SettingsDialog(themeColor: _themeColor));
 
-                        if (oldRules != jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList()) ||
-                            oldEnabled != jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v))) ||
-                            oldPreAlarm != RuleManager.preAlarmMinutes) {
-                          if (_villages.isNotEmpty) {
-                            for (var v in _villages.values) {
-                              await _applySavedAlarmState(v, syncWithOS: true, forceApplyRules: true);
-                            }
-                            await _saveAlarmStatesToPrefs();
-                            await Future.delayed(const Duration(milliseconds: 500));
-                            if (mounted) {
-                              if (_alarmQueue.isEmpty && !_isAlarmPopupShowing) ScheduleService.disableAlarmMode();
-                              setState(() {});
+                                    if (oldRules != jsonEncode(RuleManager.activeRules.map((r) => r.toJson()).toList()) ||
+                                        oldEnabled != jsonEncode(RuleManager.groupEnabled.map((k, v) => MapEntry(k.name, v))) ||
+                                        oldPreAlarm != RuleManager.preAlarmMinutes) {
+                                      if (_vm.villages.isNotEmpty) {
+                                        await _vm.resyncAllVillages(forceApplyRules: true);
+                                        await Future.delayed(const Duration(milliseconds: 500));
+                                        if (mounted) {
+                                          if (_vm.isAlarmIdle) ScheduleService.disableAlarmMode();
+                                          setState(() {});
+                                        }
+                                      }
+                                    }
+                                  },
+                                  onUpdateTap: () async {
+                                    try {
+                                      await launchUrl(
+                                        Uri.parse('https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md'),
+                                        mode: LaunchMode.externalApplication,
+                                      );
+                                    } catch (e) {
+                                      debugPrint("Không thể mở link: $e");
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 9.5),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    Expanded(
+                      child: NotificationListener<ScrollUpdateNotification>(
+                        onNotification: (notification) {
+                          if (isLandscape && notification.scrollDelta != null) {
+                            if (notification.scrollDelta! > 2 && notification.metrics.pixels > 20 && _isHeaderVisible) {
+                              setState(() => _isHeaderVisible = false);
+                            } else if ((notification.scrollDelta! < -2 || notification.metrics.pixels <= 10) && !_isHeaderVisible) {
+                              setState(() => _isHeaderVisible = true);
                             }
                           }
-                        }
-                      },
-                      onUpdateTap: () async {
-                        try {
-                          await launchUrl(Uri.parse('https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md'), mode: LaunchMode.externalApplication);
-                        } catch (e) { debugPrint("Không thể mở link: $e"); }
-                      },
-                    ),
-                    const SizedBox(height: 9.5),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TerminalSecurityTag(
+                          return false;
+                        },
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TerminalSecurityTag(
                                 isBuilderBase: _isBuilderBase,
                                 themeColor: _themeColor,
                                 bgTagColor: _bgTagColor,
                                 onToggle: () {
                                   FocusManager.instance.primaryFocus?.unfocus();
                                   setState(() => _isBuilderBase = !_isBuilderBase);
-                                }
-                            ),
-                            const SizedBox(height: 30),
-                            TerminalLogo(),
-                            const SizedBox(height: 30),
-                            if (_villages.isNotEmpty)
-                              Column(
-                                children: _villages.values.map((village) => VillageCard(
-                                  village: village,
-                                  villageName: _villageNames[village.tag] ?? "",
-                                  isBuilderBase: _isBuilderBase,
-                                  themeColor: _themeColor,
-                                  onDelete: () => _confirmDeleteVillage(village.tag),
-                                  onTap: () {
-                                    FocusManager.instance.primaryFocus?.unfocus();
-                                    showDialog(
-                                      context: context,
-                                      builder: (ctx) => VillageDetailDialog(
-                                        village: village, villageName: _villageNames[village.tag] ?? "",
-                                        isBuilderBase: _isBuilderBase, themeColor: _themeColor, showRealEta: _showRealEta,
-                                        initialTrackHome: _trackHome[village.tag] ?? true, initialTrackBuilder: _trackBuilder[village.tag] ?? true,
-                                        onNameChanged: (newName) {
-                                          _villageNames[village.tag] = newName; _saveDataToPrefs(); setState(() {});
-                                        },
-                                        onTrackingChanged: (trackH, trackB) {
-                                          _trackHome[village.tag] = trackH; _trackBuilder[village.tag] = trackB; _saveDataToPrefs();
-                                          _applySavedAlarmState(village, syncWithOS: true).then((_) => setState(() {}));
-                                        },
-                                        onCycleGroup: (groupName, items) => _cycleAlarmForGroup(village.tag, groupName, items),
-                                        onCycleItem: (item) => _cycleAlarmForItem(village.tag, item),
-                                      ),
-                                    );
-                                  },
-                                )).toList(),
+                                },
                               ),
-                            const SizedBox(height: 30),
-                            TerminalInputArea(
-                              controller: _jsonController,
-                              onPaste: _pasteFromClipboard,
-                              onSubmit: _processJson,
-                              isQuickPasteActive: _isQuickPasteActive,
-                              onToggleQuickPaste: _toggleQuickPaste,
-                            ),
-                            const SizedBox(height: 20),
-                            TerminalFooter(
-                              xiaomiAcknowledged: _xiaomiAcknowledged,
-                              onXiaomiTap: _openXiaomiSettings,
-                            ),
-                          ],
+                              const SizedBox(height: 30),
+                              TerminalLogo(),
+                              const SizedBox(height: 30),
+                              if (_vm.villages.isNotEmpty)
+                                Column(
+                                  children: _vm.villages.values.map((village) => VillageCard(
+                                    village: village,
+                                    villageName: _vm.villageNames[village.tag] ?? "",
+                                    isBuilderBase: _isBuilderBase,
+                                    themeColor: _themeColor,
+                                    onDelete: () => TerminalDialogs.confirmDeleteVillage(
+                                      context,
+                                      tag: village.tag,
+                                      onConfirm: () {
+                                        if (!mounted) return;
+                                        setState(() {
+                                          _parseStatus = _vm.deleteVillage(village.tag);
+                                        });
+                                      },
+                                    ),
+                                    onTap: () {
+                                      FocusManager.instance.primaryFocus?.unfocus();
+                                      showDialog(
+                                        context: context,
+                                        builder: (ctx) => VillageDetailDialog(
+                                          village: village,
+                                          villageName: _vm.villageNames[village.tag] ?? "",
+                                          isBuilderBase: _isBuilderBase,
+                                          themeColor: _themeColor,
+                                          showRealEta: _vm.showRealEta,
+                                          onToggleRealEta: () {
+                                            setState(() => _vm.showRealEta = !_vm.showRealEta);
+                                            _vm.saveDataToPrefs();
+                                          },
+                                          initialTrackHome: _vm.trackHome[village.tag] ?? true,
+                                          initialTrackBuilder: _vm.trackBuilder[village.tag] ?? true,
+                                          onNameChanged: (newName) {
+                                            _vm.villageNames[village.tag] = newName;
+                                            _vm.saveDataToPrefs();
+                                            setState(() {});
+                                          },
+                                          onTrackingChanged: (trackH, trackB) {
+                                            _vm.trackHome[village.tag] = trackH;
+                                            _vm.trackBuilder[village.tag] = trackB;
+                                            _vm.saveDataToPrefs();
+                                            _vm.applySavedAlarmState(village, syncWithOS: true).then((_) => setState(() {}));
+                                          },
+                                          onCycleGroup: (groupName, items) {
+                                            _vm.cycleAlarmForGroup(village.tag, groupName, items).then((msg) {
+                                              if (!mounted) return;
+                                              if (_vm.isAlarmIdle) ScheduleService.disableAlarmMode();
+                                              setState(() {
+                                                if (msg.isNotEmpty) _parseStatus = msg;
+                                              });
+                                            });
+                                          },
+                                          onCycleItem: (item) {
+                                            _vm.cycleAlarmForItem(village.tag, item).then((msg) {
+                                              if (!mounted) return;
+                                              if (_vm.isAlarmIdle) ScheduleService.disableAlarmMode();
+                                              setState(() => _parseStatus = msg);
+                                            });
+                                          },
+                                        ),
+                                      );
+                                    },
+                                  )).toList(),
+                                ),
+                              const SizedBox(height: 30),
+                              TerminalInputArea(
+                                controller: _jsonController,
+                                onPaste: _pasteFromClipboard,
+                                onSubmit: _processJson,
+                                isQuickPasteActive: _vm.isQuickPasteActive,
+                                onToggleQuickPaste: _toggleQuickPaste,
+                              ),
+                              const SizedBox(height: 20),
+                              TerminalFooter(
+                                xiaomiAcknowledged: _vm.xiaomiAcknowledged,
+                                onXiaomiTap: _openXiaomiSettings,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1270,11 +587,26 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                     Row(
                       children: [
                         Expanded(
-                          child: Text(_parseStatus, style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.clip, maxLines: 1),
+                          child: Text(
+                            _parseStatus,
+                            style: const TextStyle(
+                              color: Color(0xFF4CAF50),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.clip,
+                            maxLines: 1,
+                          ),
                         ),
                         ValueListenableBuilder<bool>(
                           valueListenable: _showCursor,
-                          builder: (context, show, child) => Opacity(opacity: show ? 1.0 : 0.0, child: const Text("█", style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 13))),
+                          builder: (context, show, child) => Opacity(
+                            opacity: show ? 1.0 : 0.0,
+                            child: const Text(
+                              "█",
+                              style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 13),
+                            ),
+                          ),
                         ),
                       ],
                     ),

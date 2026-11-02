@@ -7,7 +7,7 @@ class TerminalHeader extends StatelessWidget {
   final String currentTime;
   final String? updateUrl;
   final String? updateVersion;
-  final VoidCallback onToggleEta;
+  final VoidCallback? onToggleEta;
   final VoidCallback onLanguageChange;
   final VoidCallback onSettingsTap;
   final VoidCallback onUpdateTap;
@@ -17,11 +17,11 @@ class TerminalHeader extends StatelessWidget {
 
   const TerminalHeader({
     super.key,
-    required this.showRealEta,
+    this.showRealEta = true,
     required this.currentTime,
     this.updateUrl,
     this.updateVersion,
-    required this.onToggleEta,
+    this.onToggleEta,
     required this.onLanguageChange,
     required this.onSettingsTap,
     required this.onUpdateTap,
@@ -165,6 +165,31 @@ class TerminalHeader extends StatelessWidget {
     final offset = DateTime.now().timeZoneOffset;
     final offsetString = "UTC${offset.isNegative ? '-' : '+'}${offset.inHours.abs()}";
 
+    // Chỉ dàn đồng hồ & thông báo cập nhật ra giữa khi màn hình ngang đủ rộng (tỉ lệ >= 1.55),
+    // tránh bị chật hoặc rớt dòng trên các thiết bị màn hình gần vuông (4:3, 1:1).
+    final size = MediaQuery.of(context).size;
+    final double aspectRatio = size.height > 0 ? (size.width / size.height) : 1.0;
+    final bool useWideCenterLayout = aspectRatio >= 1.55 && size.width >= 560;
+
+    final Widget clockWidget = FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: useWideCenterLayout ? Alignment.center : Alignment.centerRight,
+      child: Text(
+        "$offsetString $currentTime",
+        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF666666), fontSize: 12),
+      ),
+    );
+
+    final Widget? updateWidget = updateUrl != null
+        ? InkWell(
+            onTap: onUpdateTap,
+            child: Text(
+              AppStrings.format(AppStrings.terminal.btnUpdateAvailable, {'version': "v$updateVersion"}),
+              style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+          )
+        : null;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,27 +209,29 @@ class TerminalHeader extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            InkWell(
-              onTap: onToggleEta,
-              child: Row(
-                children: [
-                  Text(
-                    customToggleLabel ?? "${AppStrings.terminal.labelRealTime}: ",
-                    style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888), fontSize: 11),
-                  ),
-                  Text(
-                    showRealEta ? AppStrings.terminal.toggleOn : AppStrings.terminal.toggleOff,
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      color: showRealEta ? const Color(0xFF4CAF50) : const Color(0xFF8B2B2B),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+            if (isOnline && onToggleEta != null) ...[
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: onToggleEta,
+                child: Row(
+                  children: [
+                    Text(
+                      customToggleLabel ?? "${AppStrings.terminal.labelRealTime}: ",
+                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888), fontSize: 11),
                     ),
-                  )
-                ],
+                    Text(
+                      showRealEta ? AppStrings.terminal.toggleOn : AppStrings.terminal.toggleOff,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        color: showRealEta ? const Color(0xFF4CAF50) : const Color(0xFF8B2B2B),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  ],
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 6),
             InkWell(
               onTap: onLanguageChange,
@@ -223,6 +250,22 @@ class TerminalHeader extends StatelessWidget {
             ),
           ],
         ),
+        if (useWideCenterLayout)
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  clockWidget,
+                  if (updateWidget != null) ...[
+                    const SizedBox(height: 6),
+                    updateWidget,
+                  ],
+                ],
+              ),
+            ),
+          ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -238,26 +281,15 @@ class TerminalHeader extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Text(
-                "$offsetString $currentTime",
-                style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF666666), fontSize: 12),
-              ),
-            ),
-            const SizedBox(height: 6),
-            if (updateUrl != null) ...[
-              InkWell(
-                onTap: onUpdateTap,
-                child: Text(
-                  AppStrings.format(AppStrings.terminal.btnUpdateAvailable, {'version': "v$updateVersion"}),
-                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-              ),
+            if (!useWideCenterLayout) ...[
               const SizedBox(height: 6),
+              clockWidget,
+              if (updateWidget != null) ...[
+                const SizedBox(height: 6),
+                updateWidget,
+              ],
             ],
+            const SizedBox(height: 6),
             InkWell(
               onTap: onSettingsTap,
               child: Text(

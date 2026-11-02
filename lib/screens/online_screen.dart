@@ -43,6 +43,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
   String _currentTime = "";
   final ValueNotifier<bool> _showCursor = ValueNotifier(true);
   Timer? _cursorTimer;
+  bool _isHeaderVisible = true;
 
   @override
   void initState() {
@@ -378,6 +379,9 @@ class _OnlineScreenState extends State<OnlineScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final showHeader = !isLandscape || _isHeaderVisible;
+
     return Scaffold(
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
@@ -390,238 +394,262 @@ class _OnlineScreenState extends State<OnlineScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
                 child: Column(
                   children: [
-                    TerminalHeader(
-                      isOnline: true,
-                      customToggleLabel: AppStrings.onlineScreen.labelSync,
-                      showRealEta: RuleManager.warAutoSync,
-                      onToggleEta: _handleToggleAutoSync,
-                      currentTime: _currentTime,
-                      updateUrl: widget.updateUrl,         // TRUYỀN BIẾN UPDATE TỪ CONSTRUCTOR
-                      updateVersion: widget.updateVersion, // TRUYỀN BIẾN UPDATE TỪ CONSTRUCTOR
-                      onLanguageChange: () async {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
-                        if (mounted) {
-                          setState(() {});
-                        }
-                      },
-                      onSettingsTap: _showSettingsDialog,
-                      onUpdateTap: () async {
-                        try {
-                          await launchUrl(Uri.parse('https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md'), mode: LaunchMode.externalApplication);
-                        } catch (e) { debugPrint("Không thể mở link: $e"); }
-                      },
-                      onToggleServer: () => Navigator.pop(context),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      alignment: Alignment.topCenter,
+                      child: showHeader
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TerminalHeader(
+                                  isOnline: true,
+                                  customToggleLabel: AppStrings.onlineScreen.labelSync,
+                                  showRealEta: RuleManager.warAutoSync,
+                                  onToggleEta: _handleToggleAutoSync,
+                                  currentTime: _currentTime,
+                                  updateUrl: widget.updateUrl,         // TRUYỀN BIẾN UPDATE TỪ CONSTRUCTOR
+                                  updateVersion: widget.updateVersion, // TRUYỀN BIẾN UPDATE TỪ CONSTRUCTOR
+                                  onLanguageChange: () async {
+                                    FocusManager.instance.primaryFocus?.unfocus();
+                                    await AppStrings.changeLanguage(AppStrings.languageCode == 'en' ? 'vi' : 'en');
+                                    if (mounted) {
+                                      setState(() {});
+                                    }
+                                  },
+                                  onSettingsTap: _showSettingsDialog,
+                                  onUpdateTap: () async {
+                                    try {
+                                      await launchUrl(Uri.parse('https://github.com/NightOwlEyes/COC_Timer/blob/main/README.md'), mode: LaunchMode.externalApplication);
+                                    } catch (e) { debugPrint("Không thể mở link: $e"); }
+                                  },
+                                  onToggleServer: () => Navigator.pop(context),
+                                ),
+                                const SizedBox(height: 9.5),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
                     ),
-                    const SizedBox(height: 9.5),
 
                     Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              margin: const EdgeInsets.only(top: 10, bottom: 30),
-                              decoration: const BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(color: Color(0xFF4CAF50), width: 1),
-                                  bottom: BorderSide(color: Color(0xFF4CAF50), width: 1),
+                      child: NotificationListener<ScrollUpdateNotification>(
+                        onNotification: (notification) {
+                          if (!isLandscape) return false;
+                          final delta = notification.scrollDelta ?? 0.0;
+                          if (delta > 3.0 && _isHeaderVisible) {
+                            setState(() => _isHeaderVisible = false);
+                          } else if (delta < -3.0 && !_isHeaderVisible) {
+                            setState(() => _isHeaderVisible = true);
+                          }
+                          return false;
+                        },
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                margin: const EdgeInsets.only(top: 10, bottom: 30),
+                                decoration: const BoxDecoration(
+                                  border: Border(
+                                    top: BorderSide(color: Color(0xFF4CAF50), width: 1),
+                                    bottom: BorderSide(color: Color(0xFF4CAF50), width: 1),
+                                  ),
+                                  color: Color(0x224CAF50),
                                 ),
-                                color: Color(0x224CAF50),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  AppStrings.onlineScreen.bannerClanWar,
-                                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                                child: Center(
+                                  child: Text(
+                                    AppStrings.onlineScreen.bannerClanWar,
+                                    style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                                  ),
                                 ),
                               ),
-                            ),
 
-                            TerminalLogo(),
+                              TerminalLogo(),
 
-                            const SizedBox(height: 30),
+                              const SizedBox(height: 30),
 
-                            if (_savedClans.isNotEmpty)
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _savedClans.length,
-                                itemBuilder: (context, index) {
-                                  final clan = _savedClans[index];
+                              if (_savedClans.isNotEmpty)
+                                ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: _savedClans.length,
+                                  itemBuilder: (context, index) {
+                                    final clan = _savedClans[index];
 
-                                  return InkWell(
-                                    onTap: _isLoading ? null : () => _openWarDashboard(clan['tag'], clan['name']),
-                                    splashColor: const Color(0xFF4CAF50).withValues(alpha: 0.2),
-                                    highlightColor: const Color(0xFF4CAF50).withValues(alpha: 0.1),
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(top: 16.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            crossAxisAlignment: CrossAxisAlignment.center,
-                                            children: [
-                                              Expanded(
-                                                child: RichText(
-                                                  text: TextSpan(
-                                                    style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                                    return InkWell(
+                                      onTap: _isLoading ? null : () => _openWarDashboard(clan['tag'], clan['name']),
+                                      splashColor: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                                      highlightColor: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 16.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                Expanded(
+                                                  child: RichText(
+                                                    text: TextSpan(
+                                                      style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                                                      children: [
+                                                        TextSpan(text: AppStrings.onlineScreen.labelClanName, style: const TextStyle(color: Color(0xFF888888))),
+                                                        TextSpan(text: clan['name'], style: const TextStyle(color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold)),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                                InkWell(
+                                                  onTap: _isLoading ? null : () => _confirmDeleteClan(clan['tag']),
+                                                  child: Text(
+                                                      AppStrings.onlineScreen.btnDeleteClan,
+                                                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+
+                                            RichText(
+                                              text: TextSpan(
+                                                style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                                                children: [
+                                                  TextSpan(text: AppStrings.onlineScreen.labelClanTag, style: const TextStyle(color: Color(0xFF555555))),
+                                                  TextSpan(text: clan['tag'], style: const TextStyle(color: Color(0xFF666666))),
+                                                ],
+                                              ),
+                                            ),
+
+                                            const SizedBox(height: 28),
+
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
                                                     children: [
-                                                      TextSpan(text: AppStrings.onlineScreen.labelClanName, style: const TextStyle(color: Color(0xFF888888))),
-                                                      TextSpan(text: clan['name'], style: const TextStyle(color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold)),
+                                                      Text(
+                                                        AppStrings.onlineScreen.labelBadge,
+                                                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                                      ),
+                                                      const SizedBox(height: 14),
+                                                      SizedBox(
+                                                        width: 40, height: 40,
+                                                        child: clan['badgeUrl'].toString().isNotEmpty
+                                                            ? Image.network(clan['badgeUrl'], errorBuilder: (c, e, s) => const Icon(Icons.shield, color: Color(0xFF4CAF50)))
+                                                            : const Icon(Icons.shield, color: Color(0xFF4CAF50)),
+                                                      ),
                                                     ],
                                                   ),
                                                 ),
-                                              ),
-                                              InkWell(
-                                                onTap: _isLoading ? null : () => _confirmDeleteClan(clan['tag']),
-                                                child: Text(
-                                                    AppStrings.onlineScreen.btnDeleteClan,
-                                                    style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
 
-                                          RichText(
-                                            text: TextSpan(
-                                              style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
-                                              children: [
-                                                TextSpan(text: AppStrings.onlineScreen.labelClanTag, style: const TextStyle(color: Color(0xFF555555))),
-                                                TextSpan(text: clan['tag'], style: const TextStyle(color: Color(0xFF666666))),
+                                                Container(
+                                                  width: 1,
+                                                  height: 46,
+                                                  color: const Color(0xFF333333),
+                                                ),
+
+                                                Expanded(
+                                                  child: Column(
+                                                    children: [
+                                                      Text(
+                                                        AppStrings.onlineScreen.labelLevel,
+                                                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                                      ),
+                                                      const SizedBox(height: 14),
+                                                      Text(
+                                                        "${clan['clanLevel']}",
+                                                        style: const TextStyle(
+                                                          fontFamily: 'monospace',
+                                                          color: Color(0xFF4CAF50),
+                                                          fontSize: 15,
+                                                          fontWeight: FontWeight.bold,
+                                                          letterSpacing: 1.5,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                               ],
                                             ),
-                                          ),
 
-                                          const SizedBox(height: 28),
-
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  children: [
-                                                    Text(
-                                                      AppStrings.onlineScreen.labelBadge,
-                                                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
-                                                    ),
-                                                    const SizedBox(height: 14),
-                                                    SizedBox(
-                                                      width: 40, height: 40,
-                                                      child: clan['badgeUrl'].toString().isNotEmpty
-                                                          ? Image.network(clan['badgeUrl'], errorBuilder: (c, e, s) => const Icon(Icons.shield, color: Color(0xFF4CAF50)))
-                                                          : const Icon(Icons.shield, color: Color(0xFF4CAF50)),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-
-                                              Container(
-                                                width: 1,
-                                                height: 46,
-                                                color: const Color(0xFF333333),
-                                              ),
-
-                                              Expanded(
-                                                child: Column(
-                                                  children: [
-                                                    Text(
-                                                      AppStrings.onlineScreen.labelLevel,
-                                                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
-                                                    ),
-                                                    const SizedBox(height: 14),
-                                                    Text(
-                                                      "${clan['clanLevel']}",
-                                                      style: const TextStyle(
-                                                        fontFamily: 'monospace',
-                                                        color: Color(0xFF4CAF50),
-                                                        fontSize: 15,
-                                                        fontWeight: FontWeight.bold,
-                                                        letterSpacing: 1.5,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 28),
-                                          const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-
-                            const SizedBox(height: 30),
-
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  AppStrings.onlineScreen.labelAddClan,
-                                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0),
-                                ),
-                                const SizedBox(height: 8),
-
-                                Stack(
-                                  children: [
-                                    TextField(
-                                      controller: _tagController,
-                                      enabled: !_isLoading,
-                                      autofocus: false,
-                                      maxLines: 4,
-                                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 14),
-                                      textCapitalization: TextCapitalization.characters,
-                                      decoration: InputDecoration(
-                                        hintText: AppStrings.onlineScreen.hintPasteTag,
-                                        hintStyle: const TextStyle(fontFamily: 'monospace', color: Color(0xFF444444)),
-                                        filled: true,
-                                        fillColor: const Color(0xFF141615),
-                                        border: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
-                                        focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: Color(0xFF666666), width: 1)),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      right: 0,
-                                      top: 0,
-                                      child: InkWell(
-                                        onTap: _pasteFromClipboard,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                          color: const Color(0xFF333333),
-                                          child: Text(AppStrings.terminal.btnPaste, style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold)),
+                                            const SizedBox(height: 28),
+                                            const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
+                                          ],
                                         ),
                                       ),
-                                    )
-                                  ],
+                                    );
+                                  },
                                 ),
 
-                                const SizedBox(height: 20),
+                              const SizedBox(height: 30),
 
-                                Material(
-                                  color: const Color(0xFFB0B3A6),
-                                  child: InkWell(
-                                    onTap: _isLoading ? null : _addNewClan,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 18),
-                                      alignment: Alignment.center,
-                                      child: _isLoading
-                                          ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-                                          : Text(
-                                        AppStrings.onlineScreen.btnConfirmAdd,
-                                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF111111), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    AppStrings.onlineScreen.labelAddClan,
+                                    style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0),
+                                  ),
+                                  const SizedBox(height: 8),
+
+                                  Stack(
+                                    children: [
+                                      TextField(
+                                        controller: _tagController,
+                                        enabled: !_isLoading,
+                                        autofocus: false,
+                                        maxLines: 4,
+                                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 14),
+                                        textCapitalization: TextCapitalization.characters,
+                                        decoration: InputDecoration(
+                                          hintText: AppStrings.onlineScreen.hintPasteTag,
+                                          hintStyle: const TextStyle(fontFamily: 'monospace', color: Color(0xFF444444)),
+                                          filled: true,
+                                          fillColor: const Color(0xFF141615),
+                                          border: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
+                                          focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: Color(0xFF666666), width: 1)),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: 0,
+                                        top: 0,
+                                        child: InkWell(
+                                          onTap: _pasteFromClipboard,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            color: const Color(0xFF333333),
+                                            child: Text(AppStrings.terminal.btnPaste, style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold)),
+                                          ),
+                                        ),
+                                      )
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 20),
+
+                                  Material(
+                                    color: const Color(0xFFB0B3A6),
+                                    child: InkWell(
+                                      onTap: _isLoading ? null : _addNewClan,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 18),
+                                        alignment: Alignment.center,
+                                        child: _isLoading
+                                            ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                                            : Text(
+                                          AppStrings.onlineScreen.btnConfirmAdd,
+                                          style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF111111), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

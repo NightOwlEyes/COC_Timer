@@ -133,10 +133,12 @@ class VillageParser {
             if (isLabHelper && hTimer > activeLabHelperTimer) {
               activeLabHelperTimer = hTimer;
             }
+            bool isExtraItem = (item['extra'] == true) || (item['data'] == 12000006 && item['extra'] != false);
             targetList.add(UpgradeItem(
               instanceId: "${tag}_${key}_${item['data']}_${index++}",
               dataId: item['data'] ?? 0, level: item['lvl'] ?? 0, originalTimer: timer,
               typeString: AppStrings.gameData.getName(item['data'] ?? 0),
+              isExtra: isExtraItem,
               realEta: calculateAdvancedEta(
                 timer: timer,
                 boostDuration: boostDuration, boostSpeedAdd: boostSpeedAdd,
@@ -161,12 +163,14 @@ class VillageParser {
                     if (isLabHelper && hTimer > activeLabHelperTimer) {
                       activeLabHelperTimer = hTimer;
                     }
+                    bool isExtraMod = (modObj['extra'] == true) || (item['extra'] == true);
                     targetList.add(UpgradeItem(
                       instanceId: "${tag}_${key}_${item['data']}_${modObj['data']}_${index++}",
                       dataId: modObj['data'] ?? 0,
                       level: modObj['lvl'] ?? 0,
                       originalTimer: modTimer,
                       typeString: AppStrings.gameData.getName(modObj['data'] ?? 0),
+                      isExtra: isExtraMod,
                       realEta: calculateAdvancedEta(
                         timer: modTimer,
                         boostDuration: boostDuration, boostSpeedAdd: boostSpeedAdd,
@@ -207,12 +211,11 @@ class VillageParser {
       labHelperTimer: activeLabHelperTimer,
     );
 
-    int finalTotalBuilders = buildersItems.length > baseBuilders ? buildersItems.length : baseBuilders;
     int finalTotalBuilders2 = builders2Items.length > baseBuilders2 ? builders2Items.length : baseBuilders2;
 
     return VillageData(
         tag: tag, timestamp: timestamp,
-        totalBuilders: finalTotalBuilders, totalBuilders2: finalTotalBuilders2,
+        baseBuilders: baseBuilders, totalBuilders2: finalTotalBuilders2,
         boosts: boosts,
         buildersItems: buildersItems, petItems: petItems, labItems: labItems,
         builders2Items: builders2Items, lab2Items: lab2Items

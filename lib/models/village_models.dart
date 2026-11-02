@@ -56,6 +56,7 @@ class UpgradeItem {
   final int originalTimer;
   final DateTime realEta;
   final String typeString;
+  final bool isExtra;
   bool isNotified;
   AlarmType alarmType;
 
@@ -66,6 +67,7 @@ class UpgradeItem {
     required this.originalTimer,
     required this.realEta,
     required this.typeString,
+    this.isExtra = false,
     this.isNotified = false,
     this.alarmType = AlarmType.fullscreen,
   });
@@ -74,7 +76,7 @@ class UpgradeItem {
 class VillageData {
   final String tag;
   final int timestamp;
-  final int totalBuilders;
+  final int baseBuilders;
   final int totalBuilders2; // MỚI: Tổng số thợ xây đêm
   final BoostData boosts;
   final List<UpgradeItem> buildersItems;
@@ -86,7 +88,7 @@ class VillageData {
   VillageData({
     required this.tag,
     required this.timestamp,
-    required this.totalBuilders,
+    required this.baseBuilders,
     required this.totalBuilders2,
     required this.boosts,
     required this.buildersItems,
@@ -95,6 +97,18 @@ class VillageData {
     required this.builders2Items,
     required this.lab2Items,
   });
+
+  // Tính động tổng số thợ xây:
+  // - Mặc định là số thợ xây gốc (1-6).
+  // - Nếu có thợ xây yêu tinh (isExtra == true) đang hoạt động thì cộng thêm.
+  // - Khi thợ xây yêu tinh hoàn tất, tổng số thợ tự động quay về lại số thợ gốc (VD: 6/6).
+  // - Nếu thợ xây thường hoàn tất trước mà thợ xây yêu tinh vẫn đang làm thì vẫn giữ tổng là 7 (VD: 6/7).
+  int get totalBuilders {
+    final active = activeBuilders;
+    final int activeExtraCount = active.where((i) => i.isExtra).length;
+    final int expectedTotal = baseBuilders + activeExtraCount;
+    return active.length > expectedTotal ? active.length : expectedTotal;
+  }
 
   List<UpgradeItem> get activeBuilders {
     var list = buildersItems.where((i) => i.realEta.isAfter(DateTime.now())).toList();

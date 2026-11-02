@@ -9,6 +9,7 @@ class VillageDetailDialog extends StatefulWidget {
   final bool isBuilderBase;
   final Color themeColor;
   final bool showRealEta;
+  final VoidCallback? onToggleRealEta;
   final bool initialTrackHome;
   final bool initialTrackBuilder;
   final ValueChanged<String> onNameChanged;
@@ -23,6 +24,7 @@ class VillageDetailDialog extends StatefulWidget {
     required this.isBuilderBase,
     required this.themeColor,
     required this.showRealEta,
+    this.onToggleRealEta,
     required this.initialTrackHome,
     required this.initialTrackBuilder,
     required this.onNameChanged,
@@ -41,6 +43,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
 
   late bool _trackHome;
   late bool _trackBuilder;
+  late bool _showRealEta;
 
   @override
   void initState() {
@@ -48,6 +51,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     _nameController = TextEditingController(text: widget.villageName);
     _trackHome = widget.initialTrackHome;
     _trackBuilder = widget.initialTrackBuilder;
+    _showRealEta = widget.showRealEta;
 
     _refreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
@@ -82,16 +86,25 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     return result;
   }
 
-  String _formatCountdown(Duration diff) {
+  String _formatBoostTime(DateTime endTime, DateTime now) {
+    final diff = endTime.difference(now);
     if (diff.isNegative) return "0s";
-    if (diff.inDays > 0) {
-      return "${diff.inDays}d ${diff.inHours % 24}h ${diff.inMinutes % 60}m";
-    } else if (diff.inHours > 0) {
-      return "${diff.inHours}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s";
-    } else if (diff.inMinutes > 0) {
-      return "${diff.inMinutes}m ${diff.inSeconds % 60}s";
+    if (_showRealEta) {
+      String timeStr = "${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}";
+      if (endTime.day != now.day) {
+        timeStr = "${endTime.day}/${endTime.month} $timeStr";
+      }
+      return timeStr;
     } else {
-      return "${diff.inSeconds}s";
+      if (diff.inDays > 0) {
+        return "${diff.inDays}d ${diff.inHours % 24}h ${diff.inMinutes % 60}m";
+      } else if (diff.inHours > 0) {
+        return "${diff.inHours}h ${diff.inMinutes % 60}m ${diff.inSeconds % 60}s";
+      } else if (diff.inMinutes > 0) {
+        return "${diff.inMinutes}m ${diff.inSeconds % 60}s";
+      } else {
+        return "${diff.inSeconds}s";
+      }
     }
   }
 
@@ -108,8 +121,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
       padding: const EdgeInsets.only(left: 12.0, top: 2.0, bottom: 2.0),
       child: Column(
         children: activeList.map((entry) {
-          final diff = entry.value!.difference(now);
-          final timeStr = _formatCountdown(diff);
+          final timeStr = _formatBoostTime(entry.value!, now);
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 2.0),
             child: Row(
@@ -171,31 +183,26 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     );
   }
 
-  // THÊM HÀM NÀY ĐỂ XỬ LÝ OPTIMISTIC UPDATE CHO NHÓM (GROUP)
   void _handleCycleGroupOptimistic(String groupName, List<UpgradeItem> items) {
     if (items.isEmpty) return;
     bool hasSystem = false;
     bool hasFullscreen = false;
 
-    // Phân tích trạng thái hiện tại của UI
     for (var item in items) {
       if (item.alarmType == AlarmType.system) hasSystem = true;
       if (item.alarmType == AlarmType.fullscreen) hasFullscreen = true;
     }
 
-    // Xác định trạng thái tiếp theo
     AlarmType targetType = hasSystem
         ? AlarmType.fullscreen
         : (hasFullscreen ? AlarmType.none : AlarmType.system);
 
-    // 1. CẬP NHẬT UI TRƯỚC NGAY LẬP TỨC
     setState(() {
       for (var item in items) {
         item.alarmType = targetType;
       }
     });
 
-    // 2. GỌI PARENT CHẠY BACKGROUND SAU (Lưu DB, set OS Alarm...)
     widget.onCycleGroup(groupName, items);
   }
 
@@ -219,7 +226,6 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     final pBoostEnd = _getBoostEndTime(widget.village.boosts.petBoost);
     final clockEnd = _getBoostEndTime(widget.village.boosts.clocktowerBoost);
 
-    // Thời điểm kết thúc thuốc/vật phẩm hỗ trợ của từng nhóm (dùng để đánh dấu ! công trình xong trước khi hết thuốc)
     final DateTime? builderGroupBoostEnd = widget.isBuilderBase
         ? clockEnd
         : _maxDateTime([bBoostEnd, bConsEnd]);
@@ -299,8 +305,39 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                   ],
                 ),
 
-                const SizedBox(height: 16),
-                Text(AppStrings.dialog.baseAlarmsToggleLabel, style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () {
+                    setState(() => _showRealEta = !_showRealEta);
+                    widget.onToggleRealEta?.call();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          AppStrings.dialog.labelTimeFormat,
+                          style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
+                        ),
+                        Text(
+                          _showRealEta ? AppStrings.dialog.timeFormatExact : AppStrings.dialog.timeFormatCountdown,
+                          style: TextStyle(
+                            color: _showRealEta ? const Color(0xFF4CAF50) : widget.themeColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+                Text(
+                  AppStrings.dialog.baseAlarmsToggleLabel,
+                  style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 16,
@@ -328,7 +365,6 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                 _buildDetailList(activeB, isTracked: currentTracked, boostEndTime: builderGroupBoostEnd),
                 const SizedBox(height: 12),
 
-                // Reordered: LabMain before Pet
                 _buildLogLine(
                     widget.isBuilderBase ? AppStrings.dialog.groupLabNight : AppStrings.dialog.groupLabMain,
                     "${activeL.length} ${AppStrings.dialog.statusUpgradingSuffix}",
@@ -394,7 +430,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
           String timeStr = "0s";
 
           if (!diff.isNegative) {
-            if (widget.showRealEta) {
+            if (_showRealEta) {
               timeStr = "${item.realEta.hour.toString().padLeft(2, '0')}:${item.realEta.minute.toString().padLeft(2, '0')}";
               if (item.realEta.day != now.day) {
                 timeStr = "${item.realEta.day}/${item.realEta.month} $timeStr";
@@ -429,7 +465,6 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
 
           return InkWell(
             onTap: isTracked ? () {
-              // THÊM OPTIMISTIC UPDATE CHO TỪNG ITEM
               AlarmType nextType;
               if (item.alarmType == AlarmType.system) {
                 nextType = AlarmType.fullscreen;
@@ -439,12 +474,10 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                 nextType = AlarmType.system;
               }
 
-              // 1. Ép UI đổi màu ngay lập tức
               setState(() {
                 item.alarmType = nextType;
               });
 
-              // 2. Gọi logic xử lý ngầm
               widget.onCycleItem(item);
             } : null,
             splashColor: widget.themeColor.withValues(alpha: 0.3),

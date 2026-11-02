@@ -219,6 +219,9 @@ abstract class VillageDetailDialogStrings {
   String get boostBuilderHelper;
   String get boostLabHelper;
   String get boostClockTower;
+  String get labelTimeFormat;
+  String get timeFormatExact;
+  String get timeFormatCountdown;
 }
 
 abstract class GameData {
@@ -267,6 +270,8 @@ abstract class SettingsStrings {
   String get btnTypeNotification;
   String get btnTypeAlarm;
   String get errorInvalidTime;
+  String get quickPasteConfigTitle;
+  String get quickPasteAutoReturnLabel;
 }
 
 abstract class OnlineScreenStrings {
@@ -498,6 +503,9 @@ class VillageDetailDialogStringsVi extends VillageDetailDialogStrings {
   @override String get boostBuilderHelper => "Thợ Xây Học Việc";
   @override String get boostLabHelper => "Nghiên Cứu Học Việc";
   @override String get boostClockTower => "Tháp Đồng Hồ";
+  @override String get labelTimeFormat => "KIỂU THỜI GIAN: ";
+  @override String get timeFormatExact => "[ MỐC GIỜ ]";
+  @override String get timeFormatCountdown => "[ ĐẾM NGƯỢC ]";
 }
 
 class SettingsStringsVi extends SettingsStrings {
@@ -541,6 +549,8 @@ class SettingsStringsVi extends SettingsStrings {
   @override String get btnTypeNotification => "[ THÔNG BÁO ]";
   @override String get btnTypeAlarm => "[ BÁO THỨC ]";
   @override String get errorInvalidTime => "Tối đa chỉ được nhập 06:00!";
+  @override String get quickPasteConfigTitle => "CHẾ ĐỘ DÁN NHANH";
+  @override String get quickPasteAutoReturnLabel => "Tự động quay lại game sau khi dán";
 }
 
 class OnlineScreenStringsVi extends OnlineScreenStrings {
@@ -777,6 +787,9 @@ class VillageDetailDialogStringsEn extends VillageDetailDialogStrings {
   @override String get boostBuilderHelper => "Builder's Apprentice";
   @override String get boostLabHelper => "Lab Assistant";
   @override String get boostClockTower => "Clock Tower";
+  @override String get labelTimeFormat => "TIME FORMAT: ";
+  @override String get timeFormatExact => "[ EXACT TIME ]";
+  @override String get timeFormatCountdown => "[ COUNTDOWN ]";
 }
 
 class SettingsStringsEn extends SettingsStrings {
@@ -820,6 +833,8 @@ class SettingsStringsEn extends SettingsStrings {
   @override String get btnTypeNotification => "[ NOTIFICATION ]";
   @override String get btnTypeAlarm => "[ ALARM ]";
   @override String get errorInvalidTime => "You can enter a maximum of 06:00!";
+  @override String get quickPasteConfigTitle => "QUICK PASTE MODE";
+  @override String get quickPasteAutoReturnLabel => "Auto-return to game after pasting";
 }
 
 class OnlineScreenStringsEn extends OnlineScreenStrings {
