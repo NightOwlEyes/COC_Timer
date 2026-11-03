@@ -1,3 +1,4 @@
+import 'theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'screens/terminal_screen.dart';
 import 'services/schedule_service.dart';
@@ -12,6 +13,9 @@ void main() async {
   await AppStrings.initLanguage();
 
   // CHUYỂN RUNAPP LÊN TRƯỚC: Giao diện sẽ bung ra ngay lập tức
+  // NẠP THEME ĐÃ LƯU (TERMINAL / MODERN)
+  await AppTheme.init();
+
   runApp(const CocTimerApp());
 
   // Khởi tạo các dịch vụ ngầm ở Background
@@ -32,8 +36,36 @@ void main() async {
   }
 }
 
-class CocTimerApp extends StatelessWidget {
+class CocTimerApp extends StatefulWidget {
   const CocTimerApp({super.key});
+
+  @override
+  State<CocTimerApp> createState() => _CocTimerAppState();
+}
+
+class _CocTimerAppState extends State<CocTimerApp> {
+  @override
+  void initState() {
+    super.initState();
+    AppTheme.notifier.addListener(_onThemeChanged);
+  }
+
+  @override
+  void dispose() {
+    AppTheme.notifier.removeListener(_onThemeChanged);
+    super.dispose();
+  }
+
+  // Khi đổi theme: đánh dấu toàn bộ cây widget cần vẽ lại (giữ nguyên State),
+  // để các token màu AppColors.* được đọc lại theo theme mới, kể cả Dialog đang mở.
+  void _onThemeChanged() {
+    setState(() {});
+    void rebuild(Element el) {
+      el.markNeedsBuild();
+      el.visitChildren(rebuild);
+    }
+    (context as Element).visitChildren(rebuild);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,13 +90,13 @@ class CocTimerApp extends StatelessWidget {
 // ... existing code ...
         // 1. Chặn hệ điều hành phóng to font chữ hệ thống
         MediaQueryData customData = mediaQuery.copyWith(
-          textScaler: const TextScaler.linear(1.0),
+          textScaler: TextScaler.linear(1.0),
         );
 
         // Ép toàn bộ widget con (kể cả Text, Route mới, Dialog) kế thừa font monospace
         final Widget appWithFont = DefaultTextStyle(
-          style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0)),
-          child: child ?? const SizedBox.shrink(),
+          style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text),
+          child: child ?? SizedBox.shrink(),
         );
 
         // 2. Nếu màn hình vật lý hẹp hơn baseWidth -> Bật chế độ thu nhỏ (Scale Down)
@@ -101,15 +133,7 @@ class CocTimerApp extends StatelessWidget {
       },
       // ==========================================
 
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        primaryColor: const Color(0xFFE0E0E0),
-        fontFamily: 'monospace',
-        textTheme: ThemeData.dark().textTheme.apply(
-          fontFamily: 'monospace',
-        ),
-      ),
+      theme: AppTheme.themeData,
       home: const TerminalScreen(),
     );
   }

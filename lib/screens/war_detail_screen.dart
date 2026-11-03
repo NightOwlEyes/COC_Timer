@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../utils/app_strings.dart';
@@ -48,7 +49,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
       roundsData.add(data); // War thường chỉ có 1 trận duy nhất
     }
 
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (mounted) setState(() {});
     });
   }
@@ -161,7 +162,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
   }
 
   Widget _buildCountdownText(dynamic dayData) {
-    if (dayData == null) return const SizedBox();
+    if (dayData == null) return SizedBox();
     DateTime now = DateTime.now();
 
     if (dayData['state'] == 'inWar' && dayData['endTime'] != null) {
@@ -172,8 +173,8 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.chevron_right, color: Color(0xFF666666), size: 14),
-            Text(AppStrings.warDetail.statusEndedCalculating, style: const TextStyle(color: Color(0xFF666666), fontSize: 11)),
+            Icon(Icons.chevron_right, color: AppColors.textDim, size: 14),
+            Text(AppTheme.label(AppStrings.warDetail.statusEndedCalculating), style: TextStyle(color: AppColors.textDim, fontSize: 11)),
           ],
         );
       }
@@ -181,8 +182,8 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.chevron_right, color: Color(0xFFB54545), size: 14),
-          Text(AppStrings.format(AppStrings.warDetail.statusEndsIn, {'time': formatted}), style: const TextStyle(color: Color(0xFFB54545), fontSize: 11, fontWeight: FontWeight.bold)),
+          Icon(Icons.chevron_right, color: AppColors.accent, size: 14),
+          Text(AppStrings.format(AppStrings.warDetail.statusEndsIn, {'time': formatted}), style: TextStyle(color: AppColors.accent, fontSize: 11, fontWeight: FontWeight.bold)),
         ],
       );
     } else if (dayData['state'] == 'preparation' && dayData['startTime'] != null) {
@@ -193,8 +194,8 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.chevron_right, color: Color(0xFF666666), size: 14),
-            Text(AppStrings.warDetail.statusPrepCalculating, style: const TextStyle(color: Color(0xFF666666), fontSize: 11)),
+            Icon(Icons.chevron_right, color: AppColors.textDim, size: 14),
+            Text(AppTheme.label(AppStrings.warDetail.statusPrepCalculating), style: TextStyle(color: AppColors.textDim, fontSize: 11)),
           ],
         );
       }
@@ -202,24 +203,24 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.chevron_right, color: Color(0xFFE2B714), size: 14),
-          Text(AppStrings.format(AppStrings.warDetail.statusStartsIn, {'time': formatted}), style: const TextStyle(color: Color(0xFFE2B714), fontSize: 11, fontWeight: FontWeight.bold)),
+          Icon(Icons.chevron_right, color: AppColors.warn, size: 14),
+          Text(AppStrings.format(AppStrings.warDetail.statusStartsIn, {'time': formatted}), style: TextStyle(color: AppColors.warn, fontSize: 11, fontWeight: FontWeight.bold)),
         ],
       );
     } else if (dayData['state'] == 'warEnded') {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.chevron_right, color: Color(0xFF666666), size: 14),
-          Text(AppStrings.warDetail.statusEnded, style: const TextStyle(color: Color(0xFF666666), fontSize: 11)),
+          Icon(Icons.chevron_right, color: AppColors.textDim, size: 14),
+          Text(AppTheme.label(AppStrings.warDetail.statusEnded), style: TextStyle(color: AppColors.textDim, fontSize: 11)),
         ],
       );
     }
-    return const SizedBox();
+    return SizedBox();
   }
 
   Widget _buildAttackResult(dynamic member, Map<String, int> oppMap, bool isMe) {
-    if (member == null || member['attacks'] == null) return const SizedBox();
+    if (member == null || member['attacks'] == null) return SizedBox();
     List<dynamic> attacks = member['attacks'];
 
     return Column(
@@ -231,7 +232,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
 
         Widget textW = Text(
           targetPos != null ? "[#$targetPos] ${pct.toString().padLeft(3, ' ')}%" : "${pct.toString().padLeft(3, ' ')}%",
-          style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 11),
+          style: TextStyle(color: AppColors.textSoft, fontSize: 11),
         );
 
         Widget starsW = Row(
@@ -241,18 +242,18 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
             return Icon(
               filled ? Icons.star : Icons.star_border,
               size: 12,
-              color: filled ? const Color(0xFFE2B714) : const Color(0xFF444444),
+              color: filled ? AppColors.warn : AppColors.borderStrong,
             );
           }),
         );
 
         return Padding(
-          padding: const EdgeInsets.only(top: 2.0),
+          padding: EdgeInsets.only(top: 2.0),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: isMe
-                ? [textW, const SizedBox(width: 4), starsW]
-                : [starsW, const SizedBox(width: 4), textW],
+                ? [textW, SizedBox(width: 4), starsW]
+                : [starsW, SizedBox(width: 4), textW],
           ),
         );
       }).toList(),
@@ -274,11 +275,11 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
           }).toList();
 
           return Dialog(
-            backgroundColor: const Color(0xFF0A0C0B),
-            shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1)),
-            insetPadding: const EdgeInsets.all(16),
+            backgroundColor: AppColors.dialogBg,
+            shape: RoundedRectangleBorder(side: BorderSide(color: AppColors.accent, width: 1)),
+            insetPadding: EdgeInsets.all(16),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,28 +289,28 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.search, color: Color(0xFFB54545), size: 16),
-                          const SizedBox(width: 4),
-                          Text(AppStrings.warDetail.dialogTitleMissedAttacks, style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold)),
+                          Icon(Icons.search, color: AppColors.accent, size: 16),
+                          SizedBox(width: 4),
+                          Text(AppTheme.label(AppStrings.warDetail.dialogTitleMissedAttacks), style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.bold)),
                         ],
                       ),
                       InkWell(
                         onTap: () => Navigator.pop(ctx),
-                        child: const Icon(Icons.close, color: Color(0xFF666666), size: 18),
+                        child: Icon(Icons.close, color: AppColors.textDim, size: 18),
                       )
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
                         child: InkWell(
                           onTap: () => setStateSB(() => showMyClan = true),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: showMyClan ? const Color(0xFF4CAF50).withValues(alpha: 0.2) : Colors.transparent,
-                              border: Border.all(color: showMyClan ? const Color(0xFF4CAF50) : const Color(0xFF333333), width: 1),
+                              color: showMyClan ? AppColors.ok.withValues(alpha: 0.2) : Colors.transparent,
+                              border: Border.all(color: showMyClan ? AppColors.ok : AppColors.border, width: 1),
                             ),
                             child: Text(
                               myClanName,
@@ -317,7 +318,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: showMyClan ? const Color(0xFF4CAF50) : const Color(0xFF666666),
+                                color: showMyClan ? AppColors.ok : AppColors.textDim,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -325,15 +326,15 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: InkWell(
                           onTap: () => setStateSB(() => showMyClan = false),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            padding: EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
-                              color: !showMyClan ? const Color(0xFFE2B714).withValues(alpha: 0.1) : Colors.transparent,
-                              border: Border.all(color: !showMyClan ? const Color(0xFFE2B714) : const Color(0xFF333333), width: 1),
+                              color: !showMyClan ? AppColors.warn.withValues(alpha: 0.1) : Colors.transparent,
+                              border: Border.all(color: !showMyClan ? AppColors.warn : AppColors.border, width: 1),
                             ),
                             child: Text(
                               enemyClanName,
@@ -341,7 +342,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: !showMyClan ? const Color(0xFFE2B714) : const Color(0xFF666666),
+                                color: !showMyClan ? AppColors.warn : AppColors.textDim,
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -351,19 +352,18 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   if (missed.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24.0),
+                      padding: EdgeInsets.symmetric(vertical: 24.0),
                       child: Center(
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.check_circle_outline, color: Color(0xFF4CAF50), size: 16),
-                            const SizedBox(width: 8),
-                            Text(
-                              showMyClan ? AppStrings.warDetail.dialogMyClanCompleted : AppStrings.warDetail.dialogEnemyCompleted,
-                              style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 12),
+                            Icon(Icons.check_circle_outline, color: AppColors.ok, size: 16),
+                            SizedBox(width: 8),
+                            Text(AppTheme.label(showMyClan ? AppStrings.warDetail.dialogMyClanCompleted : AppStrings.warDetail.dialogEnemyCompleted),
+                              style: TextStyle(color: AppColors.ok, fontSize: 12),
                             ),
                           ],
                         ),
@@ -378,7 +378,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                         itemBuilder: (c, i) {
                           int atkCount = missed[i]['attacks'] == null ? 0 : (missed[i]['attacks'] as List).length;
                           return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
                             child: Row(
                               children: [
                                 SizedBox(
@@ -386,14 +386,14 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                                   child: Text(
                                     "[#${missed[i]['mapPosition'].toString().padLeft(2, '0')}]",
                                     softWrap: false,
-                                    style: const TextStyle(color: Color(0xFF666666), fontSize: 12),
+                                    style: TextStyle(color: AppColors.textDim, fontSize: 12),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     missed[i]['name'] ?? AppStrings.warDetail.statusUnknown,
-                                    style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13),
+                                    style: TextStyle(color: AppColors.text, fontSize: 13),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -401,7 +401,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                                 Text(
                                   AppStrings.format(AppStrings.warDetail.dialogAttacksCount, {'atkCount': atkCount.toString(), 'maxAttacks': attacksPerMember.toString()}),
                                   style: TextStyle(
-                                    color: showMyClan ? const Color(0xFF4CAF50) : const Color(0xFFE2B714),
+                                    color: showMyClan ? AppColors.ok : AppColors.warn,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -425,9 +425,9 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
   Widget build(BuildContext context) {
     if (roundsData.isEmpty) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0A0C0B),
+        backgroundColor: AppColors.dialogBg,
         body: Center(
-          child: Text(AppStrings.warDetail.loadingData, style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 12)),
+          child: Text(AppTheme.label(AppStrings.warDetail.loadingData), style: TextStyle(color: AppColors.ok, fontSize: 12)),
         ),
       );
     }
@@ -486,10 +486,10 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
     int maxAttacks = teamSize * attacksPerMember;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0C0B),
+      backgroundColor: AppColors.dialogBg,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: EdgeInsets.all(8.0),
           child: Column(
             children: [
               // 1. HEADER
@@ -500,17 +500,16 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.arrow_back_ios, color: Color(0xFF666666), size: 12),
-                      const SizedBox(width: 4),
-                      Text(
-                        AppStrings.warDetail.btnBack,
-                        style: const TextStyle(color: Color(0xFF666666), fontSize: 11, fontWeight: FontWeight.bold),
+                      Icon(Icons.arrow_back_ios, color: AppColors.textDim, size: 12),
+                      SizedBox(width: 4),
+                      Text(AppTheme.label(AppStrings.warDetail.btnBack),
+                        style: TextStyle(color: AppColors.textDim, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
 
               // 2. DAY SELECTOR (Chỉ hiện khi là CWL) - ĐÃ CẬP NHẬT LOGIC MÀU SẮC
               if (isCwl) ...[
@@ -554,33 +553,33 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                     // Setup màu nền
                     Color? bgColor;
                     if (outcome == 1) {
-                      bgColor = const Color(0xFF4CAF50).withValues(alpha: 0.2); // Xanh - Thắng
+                      bgColor = AppColors.ok.withValues(alpha: 0.2); // Xanh - Thắng
                     } else if (outcome == -1) {
-                      bgColor = const Color(0xFFB54545).withValues(alpha: 0.2); // Đỏ - Thua
+                      bgColor = AppColors.accent.withValues(alpha: 0.2); // Đỏ - Thua
                     } else if (outcome == 2) {
-                      bgColor = const Color(0xFFE2B714).withValues(alpha: 0.2); // Vàng - Hoà
+                      bgColor = AppColors.warn.withValues(alpha: 0.2); // Vàng - Hoà
                     }
 
                     // Setup màu chữ cho phù hợp với nền
-                    Color txtColor = const Color(0xFF888888); // Mặc định cho ngày chưa đánh
+                    Color txtColor = AppColors.textMuted; // Mặc định cho ngày chưa đánh
                     if (outcome == 1) {
-                      txtColor = const Color(0xFF4CAF50);
+                      txtColor = AppColors.ok;
                     } else if (outcome == -1) {
-                      txtColor = const Color(0xFFB54545);
+                      txtColor = AppColors.accent;
                     } else if (outcome == 2) {
-                      txtColor = const Color(0xFFE2B714);
+                      txtColor = AppColors.warn;
                     } else if (isSelected) {
-                      txtColor = const Color(0xFF4CAF50); // Đang chọn & chưa kết thúc
+                      txtColor = AppColors.ok; // Đang chọn & chưa kết thúc
                     }
 
                     return GestureDetector(
                       onTap: () => setState(() => selectedRound = index),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+                        padding: EdgeInsets.symmetric(vertical: 2, horizontal: 8),
                         decoration: BoxDecoration(
                           color: bgColor,
                           border: isSelected
-                              ? const Border(bottom: BorderSide(color: Color(0xFF4CAF50), width: 2))
+                              ? Border(bottom: BorderSide(color: AppColors.ok, width: 2))
                               : null,
                         ),
                         child: Text(
@@ -595,15 +594,15 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                     );
                   }),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
               ],
 
               // 3. SCOREBOARD BOX
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0A0C0B),
-                  border: Border.all(color: const Color(0xFF333333), width: 1),
+                  color: AppColors.dialogBg,
+                  border: Border.all(color: AppColors.border, width: 1),
                 ),
                 child: Column(
                   children: [
@@ -617,30 +616,30 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                             children: [
                               Text(
                                 myClan['name'] ?? AppStrings.warDetail.labelMe,
-                                style: const TextStyle(color: Color(0xFF4CAF50), fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
+                                style: TextStyle(color: AppColors.ok, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
                                 maxLines: 1, overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 2), // Trả về khoảng cách 2px siêu khít
-                              Text(myClan['tag'] ?? "", style: const TextStyle(color: Color(0xFF888888), fontSize: 12, fontFamily: 'monospace')),
-                              const SizedBox(height: 2),
+                              SizedBox(height: 2), // Trả về khoảng cách 2px siêu khít
+                              Text(myClan['tag'] ?? "", style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontFamily: AppTheme.font)),
+                              SizedBox(height: 2),
 
                               if (!isFuture) ...[
                                 Row(
                                   children: [
-                                    const Icon(Icons.star, color: Color(0xFFE2B714), size: 18),
-                                    const SizedBox(width: 6),
+                                    Icon(Icons.star, color: AppColors.warn, size: 18),
+                                    SizedBox(width: 6),
                                     Text(
                                       myStars.toString().padLeft(2, '0'),
-                                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Text("${myPct.toStringAsFixed(1)}%", style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 15)),
+                                    SizedBox(width: 12),
+                                    Text("${myPct.toStringAsFixed(1)}%", style: TextStyle(color: AppColors.textSoft, fontSize: 15)),
                                   ],
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text(
                                   "$myTotalAttacks/$maxAttacks",
-                                  style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                  style: TextStyle(color: AppColors.ok, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
                                 ),
                               ]
                             ],
@@ -649,8 +648,8 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
 
                         // CHỮ VS Ở GIỮA
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                          child: Text(AppStrings.warDetail.labelVs, style: const TextStyle(color: Color(0xFF555555), fontSize: 14, fontWeight: FontWeight.bold)),
+                          padding: EdgeInsets.symmetric(horizontal: 12.0),
+                          child: Text(AppTheme.label(AppStrings.warDetail.labelVs), style: TextStyle(color: AppColors.textFaint, fontSize: 14, fontWeight: FontWeight.bold)),
                         ),
 
                         // CỘT PHẢI (KẺ ĐỊCH)
@@ -661,31 +660,31 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                               Text(
                                 enemyClan['name'] ?? AppStrings.warDetail.labelEnemy,
                                 textAlign: TextAlign.right,
-                                style: const TextStyle(color: Color(0xFFE2B714), fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
+                                style: TextStyle(color: AppColors.warn, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
                                 maxLines: 1, overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 2),
-                              Text(enemyClan['tag'] ?? "", style: const TextStyle(color: Color(0xFF888888), fontSize: 12, fontFamily: 'monospace')),
-                              const SizedBox(height: 2),
+                              SizedBox(height: 2),
+                              Text(enemyClan['tag'] ?? "", style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontFamily: AppTheme.font)),
+                              SizedBox(height: 2),
 
                               if (!isFuture) ...[
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end, // Canh icon Sao về sát mép phải
                                   children: [
-                                    Text("${enemyPct.toStringAsFixed(1)}%", style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 15)),
-                                    const SizedBox(width: 12),
+                                    Text("${enemyPct.toStringAsFixed(1)}%", style: TextStyle(color: AppColors.textSoft, fontSize: 15)),
+                                    SizedBox(width: 12),
                                     Text(
                                       enemyStars.toString().padLeft(2, '0'),
-                                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                                     ),
-                                    const SizedBox(width: 6),
-                                    const Icon(Icons.star, color: Color(0xFFE2B714), size: 18),
+                                    SizedBox(width: 6),
+                                    Icon(Icons.star, color: AppColors.warn, size: 18),
                                   ],
                                 ),
-                                const SizedBox(height: 2),
+                                SizedBox(height: 2),
                                 Text(
                                   "$enemyTotalAttacks/$maxAttacks",
-                                  style: TextStyle(color: const Color(0xFFE2B714), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                  style: TextStyle(color: AppColors.warn, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
                                 ),
                               ]
                             ],
@@ -694,7 +693,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
 
                     // --- FOOTER: THỜI GIAN KẾT THÚC VÀ TÌM KIẾM ---
                     Row(
@@ -713,28 +712,27 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.search, color: Color(0xFFB54545), size: 15),
-                                const SizedBox(width: 4),
-                                Text(
-                                  AppStrings.warDetail.btnMissedAttacks,
-                                  style: const TextStyle(color: Color(0xFFB54545), fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                                Icon(Icons.search, color: AppColors.accent, size: 15),
+                                SizedBox(width: 4),
+                                Text(AppTheme.label(AppStrings.warDetail.btnMissedAttacks),
+                                  style: TextStyle(color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                                 ),
                               ],
                             ),
                           )
                         else
-                          const SizedBox(), // Spacer trống giữ bố cục nếu không trong war
+                          SizedBox(), // Spacer trống giữ bố cục nếu không trong war
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
 
               // 4. DANH SÁCH CHI TIẾT
               Expanded(
                 child: Container(
-                  decoration: BoxDecoration(border: Border.all(color: const Color(0xFF141615), width: 1)),
+                  decoration: BoxDecoration(border: Border.all(color: AppColors.surface, width: 1)),
                   child: ListView.builder(
                     itemCount: teamSize,
                     itemBuilder: (context, i) {
@@ -748,7 +746,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                       bool enemyMissed = isWarEnded && enemy != null && enemyAttacks < attacksPerMember;
 
                       return Container(
-                        color: i % 2 == 0 ? const Color(0xFF111111) : const Color(0xFF0A0C0B),
+                        color: i % 2 == 0 ? AppColors.inputBg : AppColors.dialogBg,
                         child: Row(
                           children: [
                             // ===========================
@@ -756,10 +754,10 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                             // ===========================
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                                 decoration: BoxDecoration(
-                                  border: meMissed ? Border.all(color: const Color(0xFFB54545), width: 1) : null,
-                                  color: meMissed ? const Color(0xFFB54545).withValues(alpha: 0.15) : Colors.transparent,
+                                  border: meMissed ? Border.all(color: AppColors.accent, width: 1) : null,
+                                  color: meMissed ? AppColors.accent.withValues(alpha: 0.15) : Colors.transparent,
                                 ),
                                 child: Row(
                                   children: [
@@ -769,7 +767,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                                         "${i + 1}.",
                                         maxLines: 1,
                                         softWrap: false,
-                                        style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 11),
+                                        style: TextStyle(color: AppColors.textSoft, fontSize: 11),
                                       ),
                                     ),
                                     Expanded(
@@ -778,7 +776,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                                         children: [
                                           Text(
                                             me != null ? me['name'] : "---",
-                                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           if (!isFuture) _buildAttackResult(me, enemyTagToPos, true),
@@ -792,24 +790,24 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                                         textAlign: TextAlign.right,
                                         maxLines: 1,
                                         softWrap: false,
-                                        style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 11, fontWeight: FontWeight.bold),
+                                        style: TextStyle(color: AppColors.ok, fontSize: 11, fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
-                            Container(width: 1, height: 35, color: const Color(0xFF222222)),
+                            Container(width: 1, height: 35, color: AppColors.divider),
 
                             // ===========================
                             // CỘT 2: KẺ ĐỊCH
                             // ===========================
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                                 decoration: BoxDecoration(
-                                  border: enemyMissed ? Border.all(color: const Color(0xFFB54545), width: 1) : null,
-                                  color: enemyMissed ? const Color(0xFFB54545).withValues(alpha: 0.15) : Colors.transparent,
+                                  border: enemyMissed ? Border.all(color: AppColors.accent, width: 1) : null,
+                                  color: enemyMissed ? AppColors.accent.withValues(alpha: 0.15) : Colors.transparent,
                                 ),
                                 child: Row(
                                   children: [
@@ -819,7 +817,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                                         enemy != null ? "[${enemy['townhallLevel']}]" : "[-]",
                                         maxLines: 1,
                                         softWrap: false,
-                                        style: const TextStyle(color: Color(0xFFE2B714), fontSize: 11, fontWeight: FontWeight.bold),
+                                        style: TextStyle(color: AppColors.warn, fontSize: 11, fontWeight: FontWeight.bold),
                                       ),
                                     ),
                                     Expanded(
@@ -828,7 +826,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                                         children: [
                                           Text(
                                             enemy != null ? enemy['name'] : "---",
-                                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           if (!isFuture) _buildAttackResult(enemy, myTagToPos, false),
@@ -842,7 +840,7 @@ class _WarDetailScreenState extends State<WarDetailScreen> {
                                         textAlign: TextAlign.right,
                                         maxLines: 1,
                                         softWrap: false,
-                                        style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 11),
+                                        style: TextStyle(color: AppColors.textSoft, fontSize: 11),
                                       ),
                                     ),
                                   ],

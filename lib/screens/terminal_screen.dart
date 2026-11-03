@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
@@ -47,8 +48,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   String? _updateVersion;
   String? _updateUrl;
 
-  Color get _themeColor => _isBuilderBase ? const Color(0xFFf8a4bd) : const Color(0xFFB54545);
-  Color get _bgTagColor => _isBuilderBase ? const Color(0x22f8a4bd) : const Color(0x228B2B2B);
+  Color get _themeColor => _isBuilderBase ? AppColors.accentBase : AppColors.accent;
+  Color get _bgTagColor => _isBuilderBase ? AppColors.accentBaseTint : AppColors.dangerTint;
 
   StreamSubscription? _alarmSubscription;
 
@@ -95,7 +96,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         );
       }
 
-      Future.delayed(const Duration(milliseconds: 2500), () {
+      Future.delayed(Duration(milliseconds: 2500), () {
         if (mounted && _vm.isAlarmIdle) {
           ScheduleService.disableAlarmMode();
         }
@@ -110,7 +111,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       }
     });
 
-    _cursorTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
+    _cursorTimer = Timer.periodic(Duration(milliseconds: 600), (timer) {
       if (mounted) _showCursor.value = !_showCursor.value;
     });
     _startClockTimer();
@@ -146,14 +147,14 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     if (!_pendingQuickPaste || !mounted) return;
     if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
 
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(Duration(milliseconds: 300));
     if (!mounted) return;
 
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     String? clipboardText = data?.text;
 
     if (clipboardText == null || clipboardText.trim().isEmpty) {
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: 500));
       final retryData = await Clipboard.getData(Clipboard.kTextPlain);
       clipboardText = retryData?.text;
     }
@@ -169,7 +170,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       if (mounted) {
         TerminalDialogs.showQuickPasteFeedbackOverlay(context, emptyMsg, isSuccess: false);
       }
-      await Future.delayed(const Duration(milliseconds: 1200));
+      await Future.delayed(Duration(milliseconds: 1200));
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
         if (RuleManager.quickPasteAutoReturn) {
@@ -227,7 +228,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
         if (!_vm.isAlarmIdle) {
           ScheduleService.enableAlarmMode();
         } else {
-          Future.delayed(const Duration(milliseconds: 2500), () {
+          Future.delayed(Duration(milliseconds: 2500), () {
             if (mounted && _vm.isAlarmIdle) {
               ScheduleService.disableAlarmMode();
             }
@@ -239,7 +240,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   void _startClockTimer() {
     _clockTimer?.cancel();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _clockTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (!mounted) return;
       try {
         final now = DateTime.now();
@@ -275,7 +276,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       } else {
         if (fromQuickPaste && mounted) {
           TerminalDialogs.showQuickPasteFeedbackOverlay(context, res.statusMsg, isSuccess: true);
-          await Future.delayed(const Duration(milliseconds: 900));
+          await Future.delayed(Duration(milliseconds: 900));
           if (mounted) {
             Navigator.of(context, rootNavigator: true).pop();
             if (RuleManager.quickPasteAutoReturn) {
@@ -285,7 +286,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           return;
         }
 
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future.delayed(Duration(milliseconds: 500));
         if (mounted && _vm.isAlarmIdle) {
           ScheduleService.disableAlarmMode();
         }
@@ -299,7 +300,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
             AppStrings.terminal.statusErrorInvalidJson,
             isSuccess: false,
           );
-          await Future.delayed(const Duration(milliseconds: 1200));
+          await Future.delayed(Duration(milliseconds: 1200));
           if (mounted) {
             Navigator.of(context, rootNavigator: true).pop();
             if (RuleManager.quickPasteAutoReturn) {
@@ -333,13 +334,13 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
       if (fromQuickPaste) {
         if (RuleManager.quickPasteAutoReturn) {
-          await Future.delayed(const Duration(milliseconds: 300));
+          await Future.delayed(Duration(milliseconds: 300));
           SystemNavigator.pop();
         }
         return;
       }
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: 500));
       if (mounted && _vm.isAlarmIdle) {
         ScheduleService.disableAlarmMode();
       }
@@ -361,7 +362,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
     if (Platform.isAndroid) {
       try {
-        await const AndroidIntent(
+        await AndroidIntent(
           action: 'miui.intent.action.APP_PERM_EDITOR',
           arguments: {'extra_pkgname': 'coctimer.nightowleyes.coctimer'},
         ).launch();
@@ -378,19 +379,21 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
     final bool showHeader = !isLandscape || _isHeaderVisible;
 
     return Scaffold(
-      body: GestureDetector(
+      body: GlassBackground(
+        isBuilderBase: _isBuilderBase,
+        child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(16.0),
             child: CustomPaint(
               painter: TerminalFramePainter(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
+                padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
                 child: Column(
                   children: [
                     AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
+                      duration: Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
                       child: showHeader
                           ? Column(
@@ -434,7 +437,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                         : AppStrings.terminal.statusWaitingJson;
                                     if (mounted) setState(() {});
                                     await _vm.syncAllNotificationsForLanguageChange();
-                                    await Future.delayed(const Duration(milliseconds: 500));
+                                    await Future.delayed(Duration(milliseconds: 500));
                                     if (mounted) {
                                       if (_vm.isAlarmIdle) ScheduleService.disableAlarmMode();
                                       setState(() {});
@@ -453,7 +456,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                         oldPreAlarm != RuleManager.preAlarmMinutes) {
                                       if (_vm.villages.isNotEmpty) {
                                         await _vm.resyncAllVillages(forceApplyRules: true);
-                                        await Future.delayed(const Duration(milliseconds: 500));
+                                        await Future.delayed(Duration(milliseconds: 500));
                                         if (mounted) {
                                           if (_vm.isAlarmIdle) ScheduleService.disableAlarmMode();
                                           setState(() {});
@@ -472,10 +475,10 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                     }
                                   },
                                 ),
-                                const SizedBox(height: 9.5),
+                                SizedBox(height: 9.5),
                               ],
                             )
-                          : const SizedBox.shrink(),
+                          : SizedBox.shrink(),
                     ),
                     Expanded(
                       child: NotificationListener<ScrollUpdateNotification>(
@@ -502,9 +505,9 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                   setState(() => _isBuilderBase = !_isBuilderBase);
                                 },
                               ),
-                              const SizedBox(height: 30),
+                              SizedBox(height: 30),
                               TerminalLogo(),
-                              const SizedBox(height: 30),
+                              SizedBox(height: 30),
                               if (_vm.villages.isNotEmpty)
                                 Column(
                                   children: _vm.villages.values.map((village) => VillageCard(
@@ -570,7 +573,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                     },
                                   )).toList(),
                                 ),
-                              const SizedBox(height: 30),
+                              SizedBox(height: 30),
                               TerminalInputArea(
                                 controller: _jsonController,
                                 onPaste: _pasteFromClipboard,
@@ -578,7 +581,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                                 isQuickPasteActive: _vm.isQuickPasteActive,
                                 onToggleQuickPaste: _toggleQuickPaste,
                               ),
-                              const SizedBox(height: 20),
+                              SizedBox(height: 20),
                               TerminalFooter(
                                 xiaomiAcknowledged: _vm.xiaomiAcknowledged,
                                 onXiaomiTap: _openXiaomiSettings,
@@ -588,14 +591,22 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Row(
                       children: [
+                        if (AppTheme.isModern) ...[
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(color: AppColors.ok, shape: BoxShape.circle),
+                          ),
+                          SizedBox(width: 8),
+                        ],
                         Expanded(
                           child: Text(
-                            _parseStatus,
-                            style: const TextStyle(
-                              color: Color(0xFF4CAF50),
+                            AppTheme.isModern ? _parseStatus.replaceFirst(RegExp(r'^>\s*'), '') : _parseStatus,
+                            style: TextStyle(
+                              color: AppColors.ok,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
@@ -606,10 +617,10 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
                         ValueListenableBuilder<bool>(
                           valueListenable: _showCursor,
                           builder: (context, show, child) => Opacity(
-                            opacity: show ? 1.0 : 0.0,
-                            child: const Text(
+                            opacity: (show && AppTheme.isTerminal) ? 1.0 : 0.0,
+                            child: Text(
                               "█",
-                              style: TextStyle(color: Color(0xFFE0E0E0), fontSize: 13),
+                              style: TextStyle(color: AppColors.text, fontSize: 13),
                             ),
                           ),
                         ),
@@ -622,6 +633,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
           ),
         ),
       ),
+    ),
     );
   }
 }

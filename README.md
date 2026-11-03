@@ -6,6 +6,16 @@
   <img src="Screenshot/banner_en.png" alt="COC Timer Banner" width="300"/>
 </p>
 
+<h2 align="center">✨ New Dual-Theme UI: Retro Terminal & Frosted Glassmorphism ✨</h2>
+<p align="center">
+  <i>Switch seamlessly between the classic <b>Retro Terminal</b> aesthetic and the modern <b>Frosted Glass (Glassmorphism)</b> interface right from Settings!</i>
+</p>
+<p align="center">
+  <img src="Screenshot/newUIen.png" alt="COC Timer New UI Showcase" width="720"/>
+</p>
+
+---
+
 ## 📥 Download
 
 | ABI | Compatible with | Download |
@@ -31,7 +41,7 @@ An application for tracking upgrade timers for buildings, spells, troops, pets, 
 | ⏰ Full-screen alarm | Sounds a full-screen ringing alarm when completed |
 
 - **Advanced Boost & Apprentice Calculation:** Automatically calculates the exact real-time finish time (`realEta`) accounting for Builder Potions, Research Potions, Pet Potions, Builder Bites, Study Soup, Clock Tower, Builder's Apprentice, and Lab Assistant.
-- **Goblin Builder (7th Builder) Support:** Accurately counts builders when the extra builder is hired and automatically resets back to 6/6 when completed.
+- **Goblin Builder (7th Builder) Support:** Accurately counts builders when the extra builder is hired (`extra: true`) and automatically resets back to 6/6 when completed.
 - **Boost Expiration Warning:** Highlights upgrades with an exclamation mark (`!`) if they finish before the active boost expires.
 
 ### 2. Quick Paste Mode
@@ -48,6 +58,7 @@ An application for tracking upgrade timers for buildings, spells, troops, pets, 
 
 ## Settings & Customization
 
+- **Dual Theme System (Terminal & Glassmorphism):** Instantly switch between the classic **`[ TERMINAL ]`** command-line look and the modern **`[ GLASS ]` (Glassmorphism)** interface in **Settings → Theme**.
 - **Time Controller (Schedule Rules):** Define direct timeframes (`HH:MM`) to automatically switch reminder modes (e.g., automatically switch alarms to Silent or Notification between 22:00 and 06:00).
 - **Pre-alarm Reminder:** Trigger alerts *X* minutes before the upgrade actually finishes (default: 2 minutes).
 - **Time Format Toggle:** Effortlessly switch between Exact Finish Time (`14:30`) and Countdown (`2h 15m`) inside the Village Details dialog for both upgrades and boost durations.
@@ -71,6 +82,9 @@ An application for tracking upgrade timers for buildings, spells, troops, pets, 
 ## Screenshots
 <p align="center">
   <img src="Screenshot/icon.png" alt="COC Timer Icon" width="120"/>
+</p>
+<p align="center">
+  <img src="Screenshot/newUIen.png" alt="COC Timer New UI Showcase" width="600"/>
 </p>
 <p align="center">
   <img src="Screenshot/1en.png" width="250"/>

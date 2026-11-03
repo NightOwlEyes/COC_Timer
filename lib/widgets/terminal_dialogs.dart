@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_strings.dart';
@@ -12,64 +13,61 @@ class TerminalDialogs {
     if (hideReminder || !context.mounted || shouldSkip()) return;
 
     bool dontShowAgain = false;
-    const Color accentColor = Color(0xFFE2B714);
+    final Color accentColor = AppColors.warn;
 
     if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setStateSB) => Dialog(
-          backgroundColor: const Color(0xFF0A0C0B),
-          shape: const RoundedRectangleBorder(
-            side: BorderSide(color: accentColor, width: 1.5),
-          ),
+        builder: (context, setStateSB) => AdaptiveDialog(
+          borderColor: accentColor,
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: EdgeInsets.all(20.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    AppStrings.terminal.reimportReminderTitle,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
+                    AppTheme.label(AppStrings.terminal.reimportReminderTitle),
+                    style: TextStyle(
+                      fontFamily: AppTheme.font,
                       color: accentColor,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: 14),
                   Text(
-                    AppStrings.terminal.reimportReminderDesc,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      color: Color(0xFFE0E0E0),
+                    AppTheme.label(AppStrings.terminal.reimportReminderDesc),
+                    style: TextStyle(
+                      fontFamily: AppTheme.font,
+                      color: AppColors.text,
                       fontSize: 12,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   InkWell(
                     onTap: () => setStateSB(() => dontShowAgain = !dontShowAgain),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      padding: EdgeInsets.symmetric(vertical: 4.0),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             dontShowAgain ? Icons.check_box : Icons.check_box_outline_blank,
-                            color: dontShowAgain ? accentColor : const Color(0xFF666666),
+                            color: dontShowAgain ? accentColor : AppColors.textDim,
                             size: 18,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              AppStrings.terminal.reimportDontShowAgain,
+                              AppTheme.label(AppStrings.terminal.reimportDontShowAgain),
                               style: TextStyle(
-                                fontFamily: 'monospace',
-                                color: dontShowAgain ? const Color(0xFFE0E0E0) : const Color(0xFF888888),
+                                fontFamily: AppTheme.font,
+                                color: dontShowAgain ? AppColors.text : AppColors.textMuted,
                                 fontSize: 12,
                               ),
                             ),
@@ -78,7 +76,7 @@ class TerminalDialogs {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Align(
                     alignment: Alignment.centerRight,
                     child: InkWell(
@@ -89,11 +87,11 @@ class TerminalDialogs {
                         if (ctx.mounted) Navigator.pop(ctx);
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                        padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                         child: Text(
-                          AppStrings.terminal.btnUnderstood,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
+                          AppTheme.label(AppStrings.terminal.btnUnderstood),
+                          style: TextStyle(
+                            fontFamily: AppTheme.font,
                             color: accentColor,
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -114,53 +112,50 @@ class TerminalDialogs {
   static void showQuickPasteInfoDialog(BuildContext context) {
     if (!context.mounted) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    const Color accentColor = Color(0xFF4CAF50);
+    final Color accentColor = AppColors.ok;
 
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0A0C0B),
-        shape: const RoundedRectangleBorder(
-          side: BorderSide(color: accentColor, width: 1.5),
-        ),
+      builder: (ctx) => AdaptiveDialog(
+        borderColor: accentColor,
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: EdgeInsets.all(20.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  AppStrings.terminal.quickPasteInfoTitle,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
+                  AppTheme.label(AppStrings.terminal.quickPasteInfoTitle),
+                  style: TextStyle(
+                    fontFamily: AppTheme.font,
                     color: accentColor,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.0,
                   ),
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 Text(
-                  AppStrings.terminal.quickPasteInfoDesc,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    color: Color(0xFFE0E0E0),
+                  AppTheme.label(AppStrings.terminal.quickPasteInfoDesc),
+                  style: TextStyle(
+                    fontFamily: AppTheme.font,
+                    color: AppColors.text,
                     fontSize: 12,
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
                 Align(
                   alignment: Alignment.centerRight,
                   child: InkWell(
                     onTap: () => Navigator.pop(ctx),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                      padding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                       child: Text(
-                        AppStrings.terminal.btnUnderstood,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
+                        AppTheme.label(AppStrings.terminal.btnUnderstood),
+                        style: TextStyle(
+                          fontFamily: AppTheme.font,
                           color: accentColor,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -183,16 +178,15 @@ class TerminalDialogs {
     required bool isSuccess,
   }) {
     if (!context.mounted) return;
-    final Color borderColor = isSuccess ? const Color(0xFF4CAF50) : const Color(0xFFB54545);
+    final Color borderColor = isSuccess ? AppColors.ok : AppColors.accent;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0A0C0B),
-        shape: RoundedRectangleBorder(side: BorderSide(color: borderColor, width: 1.5)),
+      builder: (ctx) => AdaptiveDialog(
+        borderColor: borderColor,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
+          padding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -201,12 +195,12 @@ class TerminalDialogs {
                 color: borderColor,
                 size: 22,
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   message,
                   style: TextStyle(
-                    fontFamily: 'monospace',
+                    fontFamily: AppTheme.font,
                     color: borderColor,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -233,41 +227,41 @@ class TerminalDialogs {
 
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0A0C0B),
-        shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1)),
+      builder: (ctx) => AdaptiveDialog(
+        borderColor: AppColors.accent,
+        borderWidth: 1.0,
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(20.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                AppStrings.terminal.deleteDialogTitle,
-                style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                AppTheme.label(AppStrings.terminal.deleteDialogTitle),
+                style: TextStyle(color: AppColors.accent, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 AppStrings.format(AppStrings.terminal.deleteDialogMessage, {'tag': tag}),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontFamily: 'monospace'),
+                style: TextStyle(color: AppColors.text, fontSize: 13, fontFamily: AppTheme.font),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
                     child: InkWell(
                       onTap: () => Navigator.pop(ctx),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(vertical: 8),
                         child: Text(
-                          cancelLabel,
+                          AppTheme.label(cancelLabel),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFF888888), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: InkWell(
                       onTap: () {
@@ -275,11 +269,11 @@ class TerminalDialogs {
                         onConfirm();
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(vertical: 8),
                         child: Text(
-                          deleteLabel,
+                          AppTheme.label(deleteLabel),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                          style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                         ),
                       ),
                     ),
@@ -305,45 +299,45 @@ class TerminalDialogs {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setStateSB) => Dialog(
-          backgroundColor: const Color(0xFF0A0C0B),
-          shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFF4CAF50), width: 1)),
+        builder: (context, setStateSB) => AdaptiveDialog(
+          borderColor: AppColors.ok,
+          borderWidth: 1.0,
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: EdgeInsets.all(20.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    AppStrings.terminal.newVillageDialogTitle,
-                    style: const TextStyle(color: Color(0xFF4CAF50), fontSize: 16, fontWeight: FontWeight.bold),
+                    AppTheme.label(AppStrings.terminal.newVillageDialogTitle),
+                    style: TextStyle(color: AppColors.ok, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Text(
                     AppStrings.format(AppStrings.terminal.newVillageDialogTagLabel, {'tag': tag}),
-                    style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   TextField(
                     controller: tempController,
                     autofocus: false,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    style: TextStyle(color: Colors.white, fontSize: 14),
                     decoration: InputDecoration(
                       hintText: AppStrings.terminal.newVillageNameHint,
-                      hintStyle: const TextStyle(color: Color(0xFF444444)),
-                      enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF444444))),
-                      focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF4CAF50))),
+                      hintStyle: TextStyle(color: AppColors.borderStrong),
+                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.borderStrong)),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.ok)),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      AppStrings.terminal.trackingOptionsLabel,
-                      style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
+                      AppTheme.label(AppStrings.terminal.trackingOptionsLabel),
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
@@ -355,14 +349,14 @@ class TerminalDialogs {
                           children: [
                             Icon(
                               trackHome ? Icons.check_box : Icons.check_box_outline_blank,
-                              color: trackHome ? const Color(0xFF4CAF50) : const Color(0xFF444444),
+                              color: trackHome ? AppColors.ok : AppColors.borderStrong,
                               size: 18,
                             ),
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Text(
-                              AppStrings.terminal.trackingHomeVillage,
+                              AppTheme.label(AppStrings.terminal.trackingHomeVillage),
                               style: TextStyle(
-                                color: trackHome ? Colors.white : const Color(0xFF888888),
+                                color: trackHome ? Colors.white : AppColors.textMuted,
                                 fontSize: 12,
                               ),
                             ),
@@ -376,14 +370,14 @@ class TerminalDialogs {
                           children: [
                             Icon(
                               trackBuilder ? Icons.check_box : Icons.check_box_outline_blank,
-                              color: trackBuilder ? const Color(0xFF4CAF50) : const Color(0xFF444444),
+                              color: trackBuilder ? AppColors.ok : AppColors.borderStrong,
                               size: 18,
                             ),
-                            const SizedBox(width: 6),
+                            SizedBox(width: 6),
                             Text(
-                              AppStrings.terminal.trackingBuilderBase,
+                              AppTheme.label(AppStrings.terminal.trackingBuilderBase),
                               style: TextStyle(
-                                color: trackBuilder ? Colors.white : const Color(0xFF888888),
+                                color: trackBuilder ? Colors.white : AppColors.textMuted,
                                 fontSize: 12,
                               ),
                             ),
@@ -392,19 +386,19 @@ class TerminalDialogs {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4CAF50)),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.ok),
                       onPressed: () => Navigator.pop(ctx, {
                         'name': tempController.text,
                         'home': trackHome,
                         'builder': trackBuilder,
                       }),
                       child: Text(
-                        AppStrings.terminal.btnSaveAndAddVillage,
-                        style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                        AppTheme.label(AppStrings.terminal.btnSaveAndAddVillage),
+                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -417,4 +411,3 @@ class TerminalDialogs {
     );
   }
 }
-

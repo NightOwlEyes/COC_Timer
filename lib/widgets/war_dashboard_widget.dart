@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import '../screens/war_detail_screen.dart';
 
@@ -106,22 +107,22 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionHeader("CLAN WAR LEAGUE - PHÂN TÍCH ĐỘI HÌNH"),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          color: const Color(0xFF141615),
+          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          color: AppColors.surface,
           child: Row(
             children: [
-              const Expanded(flex: 4,
+              Expanded(flex: 4,
                   child: Text("TÊN HỘI", style: TextStyle(
-                      color: Color(0xFF666666),
+                      color: AppColors.textDim,
                       fontSize: 10,
                       fontWeight: FontWeight.bold))),
               ...thColumns.map((col) =>
                   Expanded(
                     child: Center(child: Text(
                         col.contains('<') ? col : "TH$col",
-                        style: const TextStyle(color: Color(0xFF666666),
+                        style: TextStyle(color: AppColors.textDim,
                             fontSize: 10,
                             fontWeight: FontWeight.bold))),
                   )),
@@ -137,13 +138,13 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
               bool isMine = _isMyClan(clan);
 
               return Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 decoration: BoxDecoration(
-                  color: isMine ? const Color(0x224CAF50) : (i % 2 == 0
-                      ? const Color(0xFF0D0F0E)
+                  color: isMine ? AppColors.okTint : (i % 2 == 0
+                      ? AppColors.surfaceAlt
                       : Colors.transparent),
-                  border: const Border(
-                      bottom: BorderSide(color: Color(0xFF1A1C1B), width: 1)),
+                  border: Border(
+                      bottom: BorderSide(color: AppColors.surfaceHigh, width: 1)),
                 ),
                 child: Row(
                   children: [
@@ -152,8 +153,8 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
                       child: Text(
                         clan['name'] ?? 'Unknown',
                         style: TextStyle(color: isMine
-                            ? const Color(0xFF4CAF50)
-                            : const Color(0xFFE0E0E0),
+                            ? AppColors.ok
+                            : AppColors.text,
                             fontSize: 11,
                             fontWeight: isMine ? FontWeight.bold : FontWeight
                                 .normal),
@@ -168,10 +169,10 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
                           child: Text(
                             count > 0 ? count.toString() : ".",
                             style: TextStyle(color: isMax
-                                ? const Color(0xFFE2B714)
+                                ? AppColors.warn
                                 : (count > 0
-                                ? const Color(0xFF888888)
-                                : const Color(0xFF333333)), fontSize: 11),
+                                ? AppColors.textMuted
+                                : AppColors.border), fontSize: 11),
                           ),
                         ),
                       );
@@ -182,7 +183,7 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
             },
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         InkWell(
           onTap: () {
             Navigator.push(
@@ -198,21 +199,21 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
           },
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF4CAF50), width: 1.5),
-              color: const Color(0xFF141615),
+              border: Border.all(color: AppColors.ok, width: 1.5),
+              color: AppColors.surface,
             ),
             alignment: Alignment.center,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.analytics_outlined, color: Color(0xFF4CAF50),
+                Icon(Icons.analytics_outlined, color: AppColors.ok,
                     size: 16),
                 SizedBox(width: 8),
                 Text(
                   "TRUY XUẤT CHI TIẾT TRẬN ĐẤU",
-                  style: TextStyle(color: Color(0xFF4CAF50),
+                  style: TextStyle(color: AppColors.ok,
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
                       letterSpacing: 1.0),
@@ -227,14 +228,14 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
 
   Widget _buildSectionHeader(String title) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFF333333), width: 1)),
+      padding: EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Text(
         title,
-        style: const TextStyle(
-            color: Color(0xFF4CAF50),
+        style: TextStyle(
+            color: AppColors.ok,
             fontSize: 13,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.0
@@ -250,7 +251,7 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
       child: Text(
         msg,
         textAlign: TextAlign.center,
-        style: const TextStyle(color: Color(0xFF444444), fontSize: 13),
+        style: TextStyle(color: AppColors.borderStrong, fontSize: 13),
       ),
     );
   }
@@ -260,10 +261,10 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
     final type = widget.warData['type'];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0C0B),
+      backgroundColor: AppColors.dialogBg,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: EdgeInsets.all(8.0),
           // Thu nhỏ lề từ 16.0 xuống 8.0 để max diện tích
           child: Column( // Đã lột bỏ CustomPaint và Padding thừa ở đây
             children: [
@@ -272,33 +273,33 @@ class _WarDashboardWidgetState extends State<WarDashboardWidget> {
                 children: [
                   InkWell(
                     onTap: () => Navigator.pop(context),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.arrow_back_ios, color: Color(0xFF666666),
+                        Icon(Icons.arrow_back_ios, color: AppColors.textDim,
                             size: 12),
                         SizedBox(width: 4),
                         Text(
                           "TRỞ VỀ",
-                          style: TextStyle(color: Color(0xFF666666),
+                          style: TextStyle(color: AppColors.textDim,
                               fontSize: 11,
                               fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                   ),
-                  const Text(
+                  Text(
                     "DASHBOARD://CLAN_WAR",
-                    style: TextStyle(color: Color(0xFF444444),
+                    style: TextStyle(color: AppColors.borderStrong,
                         fontSize: 10,
                         fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
 
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 2),
                   child: type == 'CWL'
                       ? _buildCwlWar() // Nếu là CWL thì build ma trận 7 ngày
                       : _buildMessage(

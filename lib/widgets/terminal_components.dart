@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../utils/app_strings.dart';
@@ -7,31 +8,76 @@ class TerminalLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppTheme.isModern) return _buildModern();
     return Column(
       children: [
         Image.asset('assets/LogoMain.png', height: 80),
         const SizedBox(height: 16),
         Text(
           AppStrings.terminal.logoTitle,
-          style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 4.0),
+          style: TextStyle(color: AppColors.text, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 4.0),
         ),
         const SizedBox(height: 12),
         Text(
           AppStrings.terminal.logoSubtitle,
-          style: const TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.5),
+          style: TextStyle(color: AppColors.textMuted, fontSize: 12, letterSpacing: 1.5),
         ),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(child: Container(height: 1, color: const Color(0xFF333333))),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10.0),
-              child: Icon(Icons.diamond, size: 10, color: Color(0xFF666666)),
+            Expanded(child: Container(height: 1, color: AppColors.border)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10.0),
+              child: Icon(Icons.diamond, size: 10, color: AppColors.textDim),
             ),
-            Expanded(child: Container(height: 1, color: const Color(0xFF333333))),
+            Expanded(child: Container(height: 1, color: AppColors.border)),
           ],
         )
+      ],
+    );
+  }
+
+  // Giao diện Kính mờ (Glassmorphism): Logo nằm trong khung kính mờ phát sáng
+  Widget _buildModern() {
+    return Row(
+      children: [
+        GlassBox(
+          padding: const EdgeInsets.all(9),
+          borderRadius: AppTheme.brMd,
+          tintColor: AppColors.accent,
+          borderColor: Colors.white.withValues(alpha: 0.24),
+          opacity: 0.14,
+          blur: 14,
+          showShadow: false,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Image.asset('assets/LogoMain.png'),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppTheme.label(AppStrings.terminal.logoTitle),
+                style: TextStyle(
+                  color: AppColors.text,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                AppTheme.label(AppStrings.terminal.logoSubtitle),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -53,9 +99,13 @@ class TerminalSecurityTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppTheme.isModern) return _buildModern();
     return Column(
       children: [
-        Text(AppStrings.terminal.labelTapToSwitchServer, style: const TextStyle(color: Color(0xFF666666), fontSize: 10, letterSpacing: 1.0)),
+        Text(
+          AppStrings.terminal.labelTapToSwitchServer,
+          style: TextStyle(color: AppColors.textDim, fontSize: 10, letterSpacing: 1.0),
+        ),
         const SizedBox(height: 4),
         InkWell(
           onTap: onToggle,
@@ -81,6 +131,73 @@ class TerminalSecurityTag extends StatelessWidget {
       ],
     );
   }
+
+  // Giao diện Kính mờ: Thanh Segmented Control kính mờ 2 lựa chọn
+  Widget _buildModern() {
+    Widget segment(String text, IconData icon, bool selected, Color color) {
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: selected ? null : onToggle,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            height: 42,
+            decoration: BoxDecoration(
+              borderRadius: AppTheme.brMd,
+              border: Border.all(
+                color: selected ? color.withValues(alpha: 0.65) : Colors.transparent,
+                width: 1.1,
+              ),
+              gradient: selected
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        color.withValues(alpha: 0.28),
+                        color.withValues(alpha: 0.10),
+                      ],
+                    )
+                  : null,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 17, color: selected ? color : AppColors.textDim),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    AppTheme.label(text),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected ? AppColors.text : AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return GlassBox(
+      padding: const EdgeInsets.all(4),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd + 4),
+      opacity: 0.09,
+      blur: 16,
+      showShadow: false,
+      child: Row(
+        children: [
+          segment(AppStrings.terminal.tabMainVillage, Icons.home_rounded, !isBuilderBase, AppColors.accent),
+          const SizedBox(width: 4),
+          segment(AppStrings.terminal.tabBuilderBase, Icons.nightlight_round, isBuilderBase, AppColors.accentBase),
+        ],
+      ),
+    );
+  }
 }
 
 class TerminalInputArea extends StatelessWidget {
@@ -101,6 +218,8 @@ class TerminalInputArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppTheme.isModern) return _buildModern();
+
     final String quickPasteLabel = isQuickPasteActive
         ? AppStrings.terminal.btnQuickPasteOn
         : AppStrings.terminal.btnPinQuickPaste;
@@ -115,7 +234,7 @@ class TerminalInputArea extends StatelessWidget {
             Flexible(
               child: Text(
                 AppStrings.terminal.inputSectionLabel,
-                style: const TextStyle(color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0),
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12, letterSpacing: 1.0),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -127,8 +246,8 @@ class TerminalInputArea extends StatelessWidget {
                   child: Text(
                     quickPasteLabel,
                     style: TextStyle(
-                      fontFamily: 'monospace',
-                      color: isQuickPasteActive ? const Color(0xFF4CAF50) : const Color(0xFF888888),
+                      fontFamily: AppTheme.font,
+                      color: isQuickPasteActive ? AppColors.ok : AppColors.textMuted,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -144,14 +263,17 @@ class TerminalInputArea extends StatelessWidget {
               controller: controller,
               autofocus: false,
               maxLines: 4,
-              style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 14),
+              style: TextStyle(color: AppColors.text, fontSize: 14),
               decoration: InputDecoration(
                 hintText: AppStrings.terminal.inputHint,
-                hintStyle: const TextStyle(color: Color(0xFF444444)),
+                hintStyle: TextStyle(color: AppColors.borderStrong),
                 filled: true,
-                fillColor: const Color(0xFF141615),
+                fillColor: AppColors.surface,
                 border: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
-                focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: Color(0xFF666666), width: 1)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: AppColors.textDim, width: 1),
+                ),
               ),
             ),
             Positioned(
@@ -161,8 +283,11 @@ class TerminalInputArea extends StatelessWidget {
                 onTap: onPaste,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: const Color(0xFF333333),
-                  child: Text(AppStrings.terminal.btnPaste, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold)),
+                  color: AppColors.border,
+                  child: Text(
+                    AppStrings.terminal.btnPaste,
+                    style: TextStyle(color: AppColors.text, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             )
@@ -170,7 +295,7 @@ class TerminalInputArea extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Material(
-          color: const Color(0xFFB0B3A6),
+          color: AppColors.buttonBg,
           child: InkWell(
             onTap: onSubmit,
             child: Container(
@@ -178,12 +303,166 @@ class TerminalInputArea extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 AppStrings.terminal.btnSubmit,
-                style: const TextStyle(color: Color(0xFF111111), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                style: TextStyle(color: AppColors.inputBg, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  // Giao diện Kính mờ (Glassmorphism)
+  Widget _buildModern() {
+    final String quickPasteLabel = AppTheme.label(isQuickPasteActive
+        ? AppStrings.terminal.btnQuickPasteOn
+        : AppStrings.terminal.btnPinQuickPaste);
+
+    return GlassBox(
+      padding: const EdgeInsets.all(16),
+      borderRadius: AppTheme.brLg,
+      opacity: 0.10,
+      blur: 18,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.data_object_rounded, size: 18, color: AppColors.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppTheme.label(AppStrings.terminal.inputSectionLabel),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (onToggleQuickPaste != null)
+                InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: onToggleQuickPaste,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isQuickPasteActive
+                          ? AppColors.ok.withValues(alpha: 0.18)
+                          : Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isQuickPasteActive
+                            ? AppColors.ok.withValues(alpha: 0.55)
+                            : Colors.white.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isQuickPasteActive ? Icons.bolt_rounded : Icons.push_pin_outlined,
+                          size: 14,
+                          color: isQuickPasteActive ? AppColors.ok : AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          quickPasteLabel,
+                          style: TextStyle(
+                            color: isQuickPasteActive ? AppColors.ok : AppColors.textMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: controller,
+            autofocus: false,
+            maxLines: 4,
+            style: TextStyle(color: AppColors.text, fontSize: 13, fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              hintText: AppStrings.terminal.inputHint,
+              hintStyle: TextStyle(color: AppColors.textDim),
+              filled: true,
+              fillColor: Colors.black.withValues(alpha: 0.28),
+              contentPadding: const EdgeInsets.fromLTRB(14, 14, 52, 14),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Align(
+                  alignment: Alignment.topRight,
+                  widthFactor: 1,
+                  heightFactor: 1,
+                  child: IconButton(
+                    tooltip: AppTheme.label(AppStrings.terminal.btnPaste),
+                    onPressed: onPaste,
+                    icon: Icon(Icons.content_paste_rounded, color: AppColors.textSoft, size: 20),
+                  ),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: AppTheme.brMd,
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: AppTheme.brMd,
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: AppTheme.brMd,
+                borderSide: BorderSide(color: AppColors.accent, width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            height: 50,
+            decoration: BoxDecoration(
+              borderRadius: AppTheme.brMd,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.accent,
+                  const Color(0xFF0284C7),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.accent.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: AppTheme.brMd,
+                onTap: onSubmit,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      AppTheme.label(AppStrings.terminal.btnSubmit),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -202,25 +481,30 @@ class TerminalFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool modern = AppTheme.isModern;
     return Column(
       children: [
         if (!xiaomiAcknowledged && Platform.isAndroid)
           InkWell(
             onTap: onXiaomiTap,
+            borderRadius: AppTheme.brMd,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0x33B54545),
-                border: Border.all(color: const Color(0xFFB54545), width: 1),
+                color: AppColors.accentTint,
+                borderRadius: AppTheme.brMd,
+                border: Border.all(color: AppColors.accent, width: 1),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545), size: 18),
+                  Icon(Icons.warning_amber_rounded, color: AppColors.accent, size: 18),
                   const SizedBox(width: 8),
-                  Text(
-                    AppStrings.terminal.btnXiaomiPermission,
-                    style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold),
+                  Flexible(
+                    child: Text(
+                      AppTheme.label(AppStrings.terminal.btnXiaomiPermission),
+                      style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -228,18 +512,40 @@ class TerminalFooter extends StatelessWidget {
           )
         else
           InkWell(
+            borderRadius: AppTheme.brSm,
             onTap: onXiaomiTap,
-            child: Text(
-                AppStrings.terminal.btnXiaomiPermission,
-                style: const TextStyle(color: Color(0xFF666666), fontSize: 11, fontWeight: FontWeight.bold)
-            ),
+            child: modern
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.battery_saver_rounded, size: 15, color: AppColors.textMuted),
+                        const SizedBox(width: 6),
+                        Text(
+                          AppTheme.label(AppStrings.terminal.btnXiaomiPermission),
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  )
+                : Text(
+                    AppStrings.terminal.btnXiaomiPermission,
+                    style: TextStyle(color: AppColors.textDim, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
           ),
-
         if (showHowTo) ...[
           const SizedBox(height: 16),
-          Text(AppStrings.terminal.footerHowtoTitle, style: const TextStyle(color: Color(0xFF666666), fontSize: 11, letterSpacing: 1.0)),
+          Text(
+            AppTheme.label(AppStrings.terminal.footerHowtoTitle),
+            style: TextStyle(color: AppColors.textDim, fontSize: 11, letterSpacing: AppTheme.ls(1.0)),
+          ),
           const SizedBox(height: 4),
-          Text(AppStrings.terminal.footerHowtoDesc, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF888888), fontSize: 11, letterSpacing: 1.0)),
+          Text(
+            AppTheme.label(AppStrings.terminal.footerHowtoDesc),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.textMuted, fontSize: 11, letterSpacing: AppTheme.ls(1.0)),
+          ),
         ]
       ],
     );

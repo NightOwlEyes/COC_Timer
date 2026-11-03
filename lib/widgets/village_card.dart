@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/village_models.dart';
@@ -23,6 +24,11 @@ class VillageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppTheme.isModern) return _buildModern(context);
+    return _buildTerminal(context);
+  }
+
+  Widget _buildTerminal(BuildContext context) {
     // TÍNH TOÁN DATA TÙY SERVER
     int bCount = isBuilderBase ? village.activeBuilders2.length : village.activeBuilders.length;
     int bTotal = isBuilderBase ? village.totalBuilders2 : village.totalBuilders;
@@ -55,10 +61,10 @@ class VillageCard extends StatelessWidget {
                 Expanded(
                   child: RichText(
                     text: TextSpan(
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                      style: TextStyle(fontFamily: AppTheme.font, fontSize: 16),
                       children: [
-                        TextSpan(text: AppStrings.card.labelVillageNamePrefix, style: const TextStyle(color: Color(0xFF888888))),
-                        TextSpan(text: displayName, style: const TextStyle(color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold)),
+                        TextSpan(text: AppStrings.card.labelVillageNamePrefix, style: TextStyle(color: AppColors.textMuted)),
+                        TextSpan(text: displayName, style: TextStyle(color: AppColors.text, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -66,8 +72,8 @@ class VillageCard extends StatelessWidget {
                 InkWell(
                   onTap: onDelete,
                   child: Text(
-                      AppStrings.card.btnDelete,
-                      style: TextStyle(color: themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
+                    AppStrings.card.btnDelete,
+                    style: TextStyle(color: themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
                   ),
                 ),
               ],
@@ -83,13 +89,13 @@ class VillageCard extends StatelessWidget {
                     SnackBar(
                       content: Text(
                         "> COPIED: ${village.tag}",
-                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold, fontSize: 13),
+                        style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 13),
                       ),
-                      backgroundColor: const Color(0xFF141615),
+                      backgroundColor: AppColors.surface,
                       duration: const Duration(seconds: 2),
                       behavior: SnackBarBehavior.floating,
-                      shape: const RoundedRectangleBorder(
-                        side: BorderSide(color: Color(0xFF4CAF50), width: 1),
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: AppColors.ok, width: 1),
                         borderRadius: BorderRadius.zero,
                       ),
                     ),
@@ -98,10 +104,10 @@ class VillageCard extends StatelessWidget {
               },
               child: RichText(
                 text: TextSpan(
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                  style: TextStyle(fontFamily: AppTheme.font, fontSize: 14),
                   children: [
-                    TextSpan(text: AppStrings.card.labelTagPrefix, style: const TextStyle(color: Color(0xFF555555))),
-                    TextSpan(text: village.tag, style: const TextStyle(color: Color(0xFF666666))),
+                    TextSpan(text: AppStrings.card.labelTagPrefix, style: TextStyle(color: AppColors.textFaint)),
+                    TextSpan(text: village.tag, style: TextStyle(color: AppColors.textDim)),
                   ],
                 ),
               ),
@@ -113,21 +119,21 @@ class VillageCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: isBuilderBase
                   ? [
-                _buildStatColumn(AppStrings.card.statMasterBuilder, "$bCount/$bTotal", bCount > 0, isIdleBuilder, themeColor),
-                _buildVerticalDivider(),
-                _buildStatColumn(AppStrings.card.statStarLaboratory, "$lCount/$maxL", lCount > 0, isIdleLab, themeColor),
-              ]
+                      _buildStatColumn(AppStrings.card.statMasterBuilder, "$bCount/$bTotal", bCount > 0, isIdleBuilder, themeColor),
+                      _buildVerticalDivider(),
+                      _buildStatColumn(AppStrings.card.statStarLaboratory, "$lCount/$maxL", lCount > 0, isIdleLab, themeColor),
+                    ]
                   : [
-                _buildStatColumn(AppStrings.card.statBuilder, "$bCount/$bTotal", bCount > 0, isIdleBuilder, themeColor),
-                _buildVerticalDivider(),
-                _buildStatColumn(AppStrings.card.statLab, "$lCount/$maxL", lCount > 0, isIdleLab, themeColor),
-                _buildVerticalDivider(),
-                _buildStatColumn(AppStrings.card.statPet, "$pCount/$maxP", pCount > 0, isIdlePet, themeColor),
-              ],
+                      _buildStatColumn(AppStrings.card.statBuilder, "$bCount/$bTotal", bCount > 0, isIdleBuilder, themeColor),
+                      _buildVerticalDivider(),
+                      _buildStatColumn(AppStrings.card.statLab, "$lCount/$maxL", lCount > 0, isIdleLab, themeColor),
+                      _buildVerticalDivider(),
+                      _buildStatColumn(AppStrings.card.statPet, "$pCount/$maxP", pCount > 0, isIdlePet, themeColor),
+                    ],
             ),
 
             const SizedBox(height: 28),
-            const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
+            Divider(color: AppColors.border, thickness: 1, height: 1),
           ],
         ),
       ),
@@ -138,7 +144,7 @@ class VillageCard extends StatelessWidget {
     return Container(
       width: 1,
       height: 46,
-      color: const Color(0xFF333333),
+      color: AppColors.border,
     );
   }
 
@@ -147,14 +153,11 @@ class VillageCard extends StatelessWidget {
     bool showExclamation = false;
 
     if (!isActive) {
-      // Khi toàn bộ về 0 -> Màu xám như cũ (Không hiển thị [!])
-      valueColor = const Color(0xFF444444);
+      valueColor = AppColors.borderStrong;
     } else if (isIdle) {
-      // Khi có slot trống (nhưng lớn hơn 0) -> Màu vàng và hiện [!]
-      valueColor = const Color(0xFFE2B714);
+      valueColor = AppColors.warn;
       showExclamation = true;
     } else {
-      // Khi đang làm việc tối đa -> Màu theme
       valueColor = activeColor;
     }
 
@@ -163,11 +166,11 @@ class VillageCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-                color: Color(0xFFE0E0E0), // Tiêu đề trả về màu trắng xám như cũ
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.0,
             ),
           ),
           const SizedBox(height: 14),
@@ -185,6 +188,248 @@ class VillageCard extends StatelessWidget {
               ),
               if (showExclamation) const BlinkingExclamation(),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Giao diện Kính mờ (Glassmorphism)
+  Widget _buildModern(BuildContext context) {
+    int bCount = isBuilderBase ? village.activeBuilders2.length : village.activeBuilders.length;
+    int bTotal = isBuilderBase ? village.totalBuilders2 : village.totalBuilders;
+    int lCount = isBuilderBase ? village.activeLab2.length : village.activeLab.length;
+    int pCount = isBuilderBase ? 0 : village.activePets.length;
+
+    int maxL = lCount > 1 ? lCount : 1;
+    int maxP = pCount > 1 ? pCount : 1;
+
+    bool isIdleBuilder = bTotal > 0 && bCount < bTotal;
+    bool isIdleLab = lCount == 0;
+    bool isIdlePet = pCount == 0;
+
+    String displayName = villageName.trim().isEmpty ? AppStrings.card.unnamedVillage : villageName;
+
+    Widget statTile({
+      required String title,
+      required String value,
+      required IconData icon,
+      required Color color,
+      required bool isIdle,
+      required bool isActive,
+    }) {
+      final Color valColor = !isActive
+          ? AppColors.textDim
+          : (isIdle ? AppColors.warn : color);
+
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: AppTheme.brMd,
+            border: Border.all(
+              color: isIdle
+                  ? AppColors.warn.withValues(alpha: 0.45)
+                  : (isActive ? color.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.14)),
+              width: 1.0,
+            ),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                (isActive ? color : Colors.white).withValues(alpha: 0.14),
+                Colors.white.withValues(alpha: 0.04),
+              ],
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 14, color: color),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      title,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textSoft,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: valColor,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (isActive && isIdle) ...[
+                    const SizedBox(width: 4),
+                    const BlinkingExclamation(),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GlassBox(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.all(16.0),
+      borderRadius: AppTheme.brLg,
+      tintColor: themeColor,
+      borderColor: Colors.white.withValues(alpha: 0.22),
+      opacity: 0.10,
+      blur: 18.0,
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: themeColor.withValues(alpha: 0.18),
+                        borderRadius: AppTheme.brSm,
+                        border: Border.all(color: themeColor.withValues(alpha: 0.45)),
+                      ),
+                      child: Icon(
+                        isBuilderBase ? Icons.nightlight_round : Icons.shield_rounded,
+                        size: 18,
+                        color: themeColor,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayName,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.text,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          InkWell(
+                            borderRadius: AppTheme.brSm,
+                            onLongPress: () async {
+                              await Clipboard.setData(ClipboardData(text: village.tag));
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Copied: ${village.tag}"),
+                                    backgroundColor: const Color(0xFF1E293B),
+                                    duration: const Duration(seconds: 2),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: AppTheme.brMd),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  village.tag,
+                                  style: TextStyle(
+                                    fontFamily: 'monospace',
+                                    color: AppColors.textMuted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.copy_rounded, size: 12, color: AppColors.textDim),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.danger),
+                tooltip: AppTheme.label(AppStrings.card.btnDelete),
+                onPressed: onDelete,
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Dãy ô thống kê kính mờ
+          Row(
+            children: isBuilderBase
+                ? [
+                    statTile(
+                      title: AppStrings.card.statMasterBuilder,
+                      value: "$bCount/$bTotal",
+                      icon: Icons.architecture_rounded,
+                      color: AppColors.builder,
+                      isIdle: isIdleBuilder,
+                      isActive: bCount > 0,
+                    ),
+                    const SizedBox(width: 8),
+                    statTile(
+                      title: AppStrings.card.statStarLaboratory,
+                      value: "$lCount/$maxL",
+                      icon: Icons.auto_awesome_rounded,
+                      color: AppColors.lab,
+                      isIdle: isIdleLab,
+                      isActive: lCount > 0,
+                    ),
+                  ]
+                : [
+                    statTile(
+                      title: AppStrings.card.statBuilder,
+                      value: "$bCount/$bTotal",
+                      icon: Icons.construction_rounded,
+                      color: AppColors.builder,
+                      isIdle: isIdleBuilder,
+                      isActive: bCount > 0,
+                    ),
+                    const SizedBox(width: 8),
+                    statTile(
+                      title: AppStrings.card.statLab,
+                      value: "$lCount/$maxL",
+                      icon: Icons.science_rounded,
+                      color: AppColors.lab,
+                      isIdle: isIdleLab,
+                      isActive: lCount > 0,
+                    ),
+                    const SizedBox(width: 8),
+                    statTile(
+                      title: AppStrings.card.statPet,
+                      value: "$pCount/$maxP",
+                      icon: Icons.pets_rounded,
+                      color: AppColors.pet,
+                      isIdle: isIdlePet,
+                      isActive: pCount > 0,
+                    ),
+                  ],
           ),
         ],
       ),
@@ -208,7 +453,7 @@ class _BlinkingExclamationState extends State<BlinkingExclamation> with SingleTi
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800), // Tốc độ nhấp nháy
+      duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
   }
 
@@ -222,13 +467,13 @@ class _BlinkingExclamationState extends State<BlinkingExclamation> with SingleTi
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _controller,
-      child: const Text(
-        " [!]",
+      child: Text(
+        AppTheme.isModern ? "!" : " [!]",
         style: TextStyle(
-          color: Color(0xFFE2B714),
+          color: AppColors.warn,
           fontSize: 15,
           fontWeight: FontWeight.bold,
-          letterSpacing: 1.5,
+          letterSpacing: AppTheme.ls(1.5),
         ),
       ),
     );

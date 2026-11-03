@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:alarm/alarm.dart';
@@ -20,7 +21,7 @@ class _AlarmPopupState extends State<AlarmPopup> {
     super.initState();
 
     // Vòng lặp 500ms: Kiểm tra đồng bộ xem chuông có bị người dùng tắt từ thanh thông báo / màn hình khoá không
-    _checkTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) async {
+    _checkTimer = Timer.periodic(Duration(milliseconds: 500), (timer) async {
       final activeAlarms = await Alarm.getAlarms();
       final stillActive = activeAlarms.any((a) => a.id == widget.settings.id);
 
@@ -47,43 +48,41 @@ class _AlarmPopupState extends State<AlarmPopup> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D0F0E),
-            border: Border.all(color: const Color(0xFFB54545), width: 2),
-          ),
+      child: AdaptiveDialog(
+        borderColor: AppColors.accent,
+        borderWidth: 2.0,
+        backgroundColor: AppColors.surfaceAlt,
+        child: Padding(
+          padding: EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.alarm_on, color: Color(0xFFB54545), size: 48),
-              const SizedBox(height: 16),
+              Icon(Icons.alarm_on, color: AppColors.accent, size: 48),
+              SizedBox(height: 16),
               Text(
-                AppStrings.alarm.title,
-                style: const TextStyle(
-                  color: Color(0xFFB54545),
+                AppTheme.label(AppStrings.alarm.title),
+                style: TextStyle(
+                  color: AppColors.accent,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2.0,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 widget.settings.notificationSettings.body,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5),
+                style: TextStyle(color: AppColors.text, fontSize: 13, height: 1.5),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFB54545)),
-                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    foregroundColor: const Color(0xFFE0E0E0),
+                    side: BorderSide(color: AppColors.accent),
+                    shape: RoundedRectangleBorder(borderRadius: AppTheme.brMd),
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    foregroundColor: AppColors.text,
                   ),
                   onPressed: () async {
                     if (_isClosing) return;
@@ -96,8 +95,8 @@ class _AlarmPopupState extends State<AlarmPopup> {
                     }
                   },
                   child: Text(
-                    AppStrings.alarm.btnConfirmAndClose,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    AppTheme.label(AppStrings.alarm.btnConfirmAndClose),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

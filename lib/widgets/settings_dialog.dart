@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'dart:convert';
@@ -22,8 +23,8 @@ class SettingsDialog extends StatefulWidget {
 }
 
 class _SettingsDialogState extends State<SettingsDialog> {
-  final Color _themeColor = const Color(0xFF97a87c);
-  final Color _textColor = const Color(0xFFAAAAAA);
+  Color get _themeColor => AppColors.settingsAccent;
+  Color get _textColor => AppColors.textSoft;
 
   final Set<TimeRule> _errorRules = {};
   String _errorMessage = "";
@@ -124,7 +125,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
     setState(() {
       _errorMessage = msg;
     });
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(Duration(seconds: 3), () {
       if (mounted) {
         setState(() => _errorMessage = "");
       }
@@ -146,23 +147,21 @@ class _SettingsDialogState extends State<SettingsDialog> {
       bool? confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF0D0F0E),
-          shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1.5)),
+          backgroundColor: AppColors.surfaceAlt,
+          shape: RoundedRectangleBorder(side: BorderSide(color: AppColors.accent, width: 1.5)),
           title: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545)),
-              const SizedBox(width: 8),
+              Icon(Icons.warning_amber_rounded, color: AppColors.accent),
+              SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  AppStrings.onlineScreen.dialogWarningTitle,
-                  style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                child: Text(AppTheme.label(AppStrings.onlineScreen.dialogWarningTitle),
+                  style: TextStyle(color: AppColors.accent, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                 ),
               ),
             ],
           ),
-          content: Text(
-            AppStrings.settings.dialogWarningContent,
-            style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5, fontFamily: 'monospace'),
+          content: Text(AppTheme.label(AppStrings.settings.dialogWarningContent),
+            style: TextStyle(color: AppColors.text, fontSize: 13, height: 1.5, fontFamily: AppTheme.font),
           ),
           actions: [
             Row(
@@ -170,21 +169,19 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 Expanded(
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(
-                      AppStrings.onlineScreen.btnCancelDialog,
+                    child: Text(AppTheme.label(AppStrings.onlineScreen.btnCancelDialog),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                      style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(
-                      AppStrings.onlineScreen.btnForceDisable,
+                    child: Text(AppTheme.label(AppStrings.onlineScreen.btnForceDisable),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFFB54545), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                      style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                     ),
                   ),
                 ),
@@ -287,13 +284,13 @@ class _SettingsDialogState extends State<SettingsDialog> {
     if (!mounted) return;
     setState(() => _errorRules.addAll(conflicts));
 
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(Duration(milliseconds: 300), () {
       if (!mounted) return;
       setState(() => _errorRules.removeAll(conflicts));
-      Future.delayed(const Duration(milliseconds: 300), () {
+      Future.delayed(Duration(milliseconds: 300), () {
         if (!mounted) return;
         setState(() => _errorRules.addAll(conflicts));
-        Future.delayed(const Duration(milliseconds: 300), () {
+        Future.delayed(Duration(milliseconds: 300), () {
           if (!mounted) return;
           setState(() => _errorRules.removeAll(conflicts));
         });
@@ -360,12 +357,34 @@ class _SettingsDialogState extends State<SettingsDialog> {
   }
 
   Widget _buildTerminalBox(String title, Color borderColor, Widget content) {
+    if (AppTheme.isModern) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: AppTheme.brMd,
+          border: Border.all(color: borderColor.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppTheme.label(title),
+              style: TextStyle(color: borderColor, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            content,
+          ],
+        ),
+      );
+    }
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Container(
-          margin: const EdgeInsets.only(top: 8, bottom: 20),
-          padding: const EdgeInsets.only(top: 24, left: 16, right: 16, bottom: 16),
+          margin: EdgeInsets.only(top: 8, bottom: 20),
+          padding: EdgeInsets.only(top: 24, left: 16, right: 16, bottom: 16),
           decoration: BoxDecoration(
             border: Border.all(color: borderColor, width: 1.5),
           ),
@@ -375,8 +394,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
           left: 16,
           top: 0,
           child: Container(
-            color: const Color(0xFF0D0F0E),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            color: AppColors.surfaceAlt,
+            padding: EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               title,
               style: TextStyle(color: borderColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
@@ -388,6 +407,30 @@ class _SettingsDialogState extends State<SettingsDialog> {
   }
 
   Widget _buildTerminalSwitch(bool isOn, Color color) {
+    if (AppTheme.isModern) {
+      return Container(
+        width: 44,
+        height: 24,
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: isOn ? color : AppColors.surfaceHigh,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isOn ? color : AppColors.border),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 180),
+          alignment: isOn ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      );
+    }
     return Container(
       width: 44,
       height: 20,
@@ -407,15 +450,91 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
   }
 
+  Widget _buildThemeSetting() {
+    final bool isTerminal = AppTheme.isTerminal;
+    return _buildTerminalBox(
+      AppStrings.settings.themeConfigTitle,
+      _themeColor,
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            AppTheme.label(AppStrings.settings.themeConfigTitle),
+            style: TextStyle(color: _themeColor, fontSize: 14),
+          ),
+          Row(
+            children: [
+              InkWell(
+                borderRadius: AppTheme.brSm,
+                onTap: () async {
+                  await AppTheme.setMode(AppThemeMode.terminal);
+                  if (mounted) setState(() {});
+                },
+                child: Container(
+                  padding: AppTheme.isModern ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6) : EdgeInsets.zero,
+                  decoration: AppTheme.isModern && isTerminal
+                      ? BoxDecoration(
+                          color: _themeColor.withValues(alpha: 0.2),
+                          borderRadius: AppTheme.brSm,
+                          border: Border.all(color: _themeColor),
+                        )
+                      : null,
+                  child: Text(
+                    isTerminal ? "[ TERMINAL ]" : "TERMINAL",
+                    style: TextStyle(
+                      fontFamily: AppTheme.font,
+                      color: isTerminal ? AppColors.ok : AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: isTerminal ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              InkWell(
+                borderRadius: AppTheme.brSm,
+                onTap: () async {
+                  await AppTheme.setMode(AppThemeMode.modern);
+                  if (mounted) setState(() {});
+                },
+                child: Container(
+                  padding: AppTheme.isModern ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6) : EdgeInsets.zero,
+                  decoration: AppTheme.isModern && !isTerminal
+                      ? BoxDecoration(
+                          color: _themeColor.withValues(alpha: 0.2),
+                          borderRadius: AppTheme.brSm,
+                          border: Border.all(color: _themeColor),
+                        )
+                      : null,
+                  child: Text(
+                    !isTerminal ? AppStrings.settings.themeModern : AppTheme.label(AppStrings.settings.themeModern),
+                    style: TextStyle(
+                      fontFamily: AppTheme.font,
+                      color: !isTerminal ? AppColors.ok : AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: !isTerminal ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(16),
-      child: Material(
-        color: const Color(0xFF0D0F0E),
+      insetPadding: EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: AppTheme.brLg),
+      child: GlassDialogSurface(
+        color: AppColors.surfaceAlt,
+        borderRadius: AppTheme.brLg,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,8 +546,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     Flexible(
                       child: Row(
                         children: [
-                          Container(width: 10, height: 10, color: _themeColor),
-                          const SizedBox(width: 8),
+                          if (AppTheme.isTerminal)
+                            Container(width: 10, height: 10, color: _themeColor)
+                          else
+                            Icon(Icons.tune_rounded, color: _themeColor, size: 20),
+                          SizedBox(width: 8),
                           Text(
                             AppStrings.settings.settingsTitle.replaceAll("■", "").trim(),
                             style: TextStyle(color: _themeColor, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.0),
@@ -438,34 +560,35 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     ),
                     InkWell(
                       onTap: () => Navigator.pop(context),
-                      child: Text(AppStrings.dialog.btnClose, style: const TextStyle(color: Color(0xFF888888), fontSize: 14, fontWeight: FontWeight.bold)),
+                      child: Text(AppTheme.label(AppStrings.dialog.btnClose), style: TextStyle(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
 
                 if (_errorMessage.isNotEmpty)
                   Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(10),
+                    margin: EdgeInsets.only(bottom: 16),
+                    padding: EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFB54545),
+                      color: AppColors.accent,
                       border: Border.all(color: Colors.white, width: 1),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 16),
-                        const SizedBox(width: 8),
+                        Icon(Icons.warning_amber_rounded, color: Colors.white, size: 16),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _errorMessage,
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
                     ),
                   ),
 
+                _buildThemeSetting(),
                 ...[AlarmType.system, AlarmType.none].map((type) => _buildRuleGroup(type)),
                 _buildPreAlarmSetting(),
                 _buildQuickPasteSetting(),
@@ -481,7 +604,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Widget _buildRuleGroup(AlarmType type) {
     bool isEnabled = RuleManager.groupEnabled[type] ?? true;
-    Color groupColor = isEnabled ? _themeColor : const Color(0xFF444444);
+    Color groupColor = isEnabled ? _themeColor : AppColors.borderStrong;
     List<TimeRule> rules = RuleManager.activeRules.where((r) => r.action == type).toList();
 
     String title = "${AppStrings.settings.settingsSchedulePrefix}${_getActionName(type).toUpperCase()}";
@@ -517,7 +640,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ],
           ),
 
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           if (rules.isNotEmpty)
             ...rules.asMap().entries.map((entry) {
@@ -525,42 +648,42 @@ class _SettingsDialogState extends State<SettingsDialog> {
               TimeRule rule = entry.value;
 
               bool isError = _errorRules.contains(rule);
-              Color itemColor = isError ? const Color(0xFFB54545) : groupColor;
+              Color itemColor = isError ? AppColors.accent : groupColor;
 
               return Column(
                 key: ObjectKey(rule),
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(left: 12.0),
+                    padding: EdgeInsets.only(left: 12.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Text(AppStrings.settings.settingsFrom, style: TextStyle(color: _textColor, fontSize: 14)),
-                        const SizedBox(width: 12),
+                        Text(AppTheme.label(AppStrings.settings.settingsFrom), style: TextStyle(color: _textColor, fontSize: 14)),
+                        SizedBox(width: 12),
                         _InlineRuleTimeBox(
                           minutes: rule.startMins,
                           color: itemColor,
                           onTimeChanged: (mins) => _updateRuleTimeInline(rule, mins, isStart: true),
                         ),
 
-                        const SizedBox(width: 16),
-                        Text(AppStrings.settings.settingsTo, style: TextStyle(color: _textColor, fontSize: 14)),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 16),
+                        Text(AppTheme.label(AppStrings.settings.settingsTo), style: TextStyle(color: _textColor, fontSize: 14)),
+                        SizedBox(width: 12),
                         _InlineRuleTimeBox(
                           minutes: rule.endMins,
                           color: itemColor,
                           onTimeChanged: (mins) => _updateRuleTimeInline(rule, mins, isStart: false),
                         ),
 
-                        const Spacer(),
+                        Spacer(),
                         InkWell(
                           onTap: () {
                             RuleManager.removeRule(rule).then((_) {
                               if (mounted) setState(() {});
                             });
                           },
-                          child: Text(AppStrings.settings.btnDeleteRule, style: TextStyle(color: itemColor, fontSize: 14)),
+                          child: Text(AppTheme.label(AppStrings.settings.btnDeleteRule), style: TextStyle(color: itemColor, fontSize: 14)),
                         )
                       ],
                     ),
@@ -569,20 +692,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Padding(
-                        padding: const EdgeInsets.only(left: 48, top: 12, bottom: 12),
-                        child: Text(AppStrings.settings.settingsAnd, style: TextStyle(color: _textColor, fontSize: 14)),
+                        padding: EdgeInsets.only(left: 48, top: 12, bottom: 12),
+                        child: Text(AppTheme.label(AppStrings.settings.settingsAnd), style: TextStyle(color: _textColor, fontSize: 14)),
                       ),
                     ),
                 ],
               );
             }),
 
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           Center(
             child: InkWell(
               onTap: () => _addNewRuleSlot(type),
-              child: Text(AppStrings.settings.settingsBtnAdd, style: TextStyle(color: groupColor, fontSize: 14)),
+              child: Text(AppTheme.label(AppStrings.settings.settingsBtnAdd), style: TextStyle(color: groupColor, fontSize: 14)),
             ),
           )
         ],
@@ -603,8 +726,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            AppStrings.settings.labelPreAlarm,
+          Text(AppTheme.label(AppStrings.settings.labelPreAlarm),
             style: TextStyle(color: _themeColor, fontSize: 14),
           ),
           Row(
@@ -648,7 +770,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Widget _buildQuickPasteSetting() {
     bool isAutoReturn = RuleManager.quickPasteAutoReturn;
-    Color itemColor = isAutoReturn ? _themeColor : const Color(0xFF444444);
+    Color itemColor = isAutoReturn ? _themeColor : AppColors.borderStrong;
 
     return _buildTerminalBox(
       AppStrings.settings.quickPasteConfigTitle,
@@ -657,12 +779,11 @@ class _SettingsDialogState extends State<SettingsDialog> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Text(
-              AppStrings.settings.quickPasteAutoReturnLabel,
+            child: Text(AppTheme.label(AppStrings.settings.quickPasteAutoReturnLabel),
               style: TextStyle(color: itemColor, fontSize: 14),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           InkWell(
             onTap: () {
               setState(() {
@@ -682,10 +803,10 @@ class _SettingsDialogState extends State<SettingsDialog> {
     bool isEndEnabled = _hasSavedClans && RuleManager.warEndAlarmEnabled;
     bool isAuto = _hasSavedClans && RuleManager.warAutoSync;
 
-    Color boxBorderColor = _hasSavedClans ? _themeColor : const Color(0xFF444444);
-    Color preColor = isPreEnabled ? _themeColor : const Color(0xFF444444);
-    Color endColor = isEndEnabled ? _themeColor : const Color(0xFF444444);
-    Color autoColor = isAuto ? _themeColor : const Color(0xFF444444);
+    Color boxBorderColor = _hasSavedClans ? _themeColor : AppColors.borderStrong;
+    Color preColor = isPreEnabled ? _themeColor : AppColors.borderStrong;
+    Color endColor = isEndEnabled ? _themeColor : AppColors.borderStrong;
+    Color autoColor = isAuto ? _themeColor : AppColors.borderStrong;
 
     Widget buildTypeBtn(AlarmType type, Color color, VoidCallback onTap) {
       String txt = type == AlarmType.system ? AppStrings.settings.btnTypeNotification : AppStrings.settings.btnTypeAlarm;
@@ -705,7 +826,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(AppStrings.settings.warPreAlarmLabel, style: TextStyle(color: preColor, fontSize: 14)),
+              Text(AppTheme.label(AppStrings.settings.warPreAlarmLabel), style: TextStyle(color: preColor, fontSize: 14)),
               InkWell(
                 onTap: () async {
                   if (!_hasSavedClans) {
@@ -727,7 +848,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ],
           ),
           if (isPreEnabled) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -735,13 +856,13 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   width: 90,
                   child: TextField(
                     controller: _warPreAlarmController,
-                    style: TextStyle(color: preColor, fontSize: 15, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                    style: TextStyle(color: preColor, fontSize: 15, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                     textAlign: TextAlign.center,
                     keyboardType: TextInputType.datetime,
                     decoration: InputDecoration(
                       hintText: "00:00",
-                      hintStyle: const TextStyle(color: Color(0xFF444444)),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                      hintStyle: TextStyle(color: AppColors.borderStrong),
+                      contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.zero,
                         borderSide: BorderSide(color: preColor, width: 1.2),
@@ -751,7 +872,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         borderSide: BorderSide(color: preColor, width: 1.5),
                       ),
                       filled: true,
-                      fillColor: const Color(0xFF141615),
+                      fillColor: AppColors.surface,
                     ),
                     onChanged: (val) async {
                       String clean = val.replaceAll(':', '');
@@ -777,20 +898,20 @@ class _SettingsDialogState extends State<SettingsDialog> {
                         if (totalMins > 360) {
                           totalMins = 360;
                           _warPreAlarmController.text = "06:00";
-                          _warPreAlarmController.selection = const TextSelection.collapsed(offset: 5);
+                          _warPreAlarmController.selection = TextSelection.collapsed(offset: 5);
                           _showError(AppStrings.settings.errorInvalidTime);
                         } else if (m > 59) {
                           m = 59;
                           totalMins = h * 60 + 59;
                           _warPreAlarmController.text = "${h.toString().padLeft(2, '0')}:59";
-                          _warPreAlarmController.selection = const TextSelection.collapsed(offset: 5);
+                          _warPreAlarmController.selection = TextSelection.collapsed(offset: 5);
                         }
 
                         RuleManager.warPreAlarmMinutes = totalMins;
                         RuleManager.save();
 
                         _debounceTimer?.cancel();
-                        _debounceTimer = Timer(const Duration(milliseconds: 800), () {
+                        _debounceTimer = Timer(Duration(milliseconds: 800), () {
                           _syncAllWarSchedules();
                         });
                       }
@@ -809,15 +930,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ],
             ),
           ],
-          const SizedBox(height: 16),
-          const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
+          Divider(color: AppColors.border, thickness: 1, height: 1),
+          SizedBox(height: 16),
 
           // KHỐI 2: BÁO ĐÚNG LÚC KẾT THÚC
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(AppStrings.settings.warEndAlarmLabel, style: TextStyle(color: endColor, fontSize: 14)),
+              Text(AppTheme.label(AppStrings.settings.warEndAlarmLabel), style: TextStyle(color: endColor, fontSize: 14)),
               InkWell(
                 onTap: () async {
                   if (!_hasSavedClans) {
@@ -839,7 +960,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ],
           ),
           if (isEndEnabled) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
               child: buildTypeBtn(RuleManager.warEndAlarmType, endColor, () async {
@@ -854,15 +975,15 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
           ],
 
-          const SizedBox(height: 16),
-          const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
+          Divider(color: AppColors.border, thickness: 1, height: 1),
+          SizedBox(height: 16),
 
           // KHỐI 3: TỰ ĐỘNG CHẠY NGẦM
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(AppStrings.settings.warAutoSyncLabel, style: TextStyle(color: autoColor, fontSize: 14)),
+              Text(AppTheme.label(AppStrings.settings.warAutoSyncLabel), style: TextStyle(color: autoColor, fontSize: 14)),
               InkWell(
                 onTap: _handleToggleWarAutoSync,
                 child: _buildTerminalSwitch(isAuto, autoColor),
@@ -876,7 +997,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
   Widget _buildAppInfo() {
     bool isAutoUpdate = RuleManager.autoCheckUpdate;
-    Color autoUpdateColor = isAutoUpdate ? _themeColor : const Color(0xFF666666);
+    Color autoUpdateColor = isAutoUpdate ? _themeColor : AppColors.textDim;
 
     return _buildTerminalBox(
       AppStrings.settings.labelAppInfo,
@@ -899,9 +1020,8 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   decoration: BoxDecoration(border: Border.all(color: autoUpdateColor, width: 1.5)),
                   child: isAutoUpdate ? Icon(Icons.close, size: 16, color: autoUpdateColor) : null,
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  AppStrings.settings.settingsAutoCheckUpdate,
+                SizedBox(width: 12),
+                Text(AppTheme.label(AppStrings.settings.settingsAutoCheckUpdate),
                   style: TextStyle(color: autoUpdateColor, fontSize: 14),
                 )
               ],
@@ -909,7 +1029,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
           ),
 
           if (_updateUrl == null) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             InkWell(
               onTap: _isCheckingUpdate ? null : _checkForUpdates,
               child: Text(
@@ -919,23 +1039,23 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
           ],
 
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
 
           Text(
             AppStrings.format(AppStrings.settings.labelVersion, {'version': _appVersion}),
-            style: const TextStyle(color: Color(0xFF888888), fontSize: 14),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
           ),
 
           if (_updateStatusMsg.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             InkWell(
               onTap: _updateUrl != null ? _launchUpdateUrl : null,
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                padding: EdgeInsets.symmetric(vertical: 2.0),
                 child: Text(
                   _updateStatusMsg,
                   style: TextStyle(
-                    color: _updateUrl != null ? _themeColor : const Color(0xFF888888),
+                    color: _updateUrl != null ? _themeColor : AppColors.textMuted,
                     fontSize: 14,
                     fontWeight: _updateUrl != null ? FontWeight.bold : FontWeight.normal,
                     fontStyle: _updateUrl != null ? FontStyle.normal : FontStyle.italic,
@@ -945,7 +1065,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             ),
           ],
 
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -955,23 +1075,22 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   showDialog(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      backgroundColor: const Color(0xFF0D0F0E),
+                      backgroundColor: AppColors.surfaceAlt,
                       shape: RoundedRectangleBorder(side: BorderSide(color: _themeColor, width: 1.5)),
-                      title: Text(AppStrings.settings.privacyDialogTitle, style: TextStyle(color: _themeColor, fontSize: 14, fontWeight: FontWeight.bold)),
-                      content: Text(
-                        AppStrings.settings.privacyDialogContent,
-                        style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5, fontFamily: 'monospace'),
+                      title: Text(AppTheme.label(AppStrings.settings.privacyDialogTitle), style: TextStyle(color: _themeColor, fontSize: 14, fontWeight: FontWeight.bold)),
+                      content: Text(AppTheme.label(AppStrings.settings.privacyDialogContent),
+                        style: TextStyle(color: AppColors.text, fontSize: 13, height: 1.5, fontFamily: AppTheme.font),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: Text(AppStrings.dialog.btnClose, style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold)),
+                          child: Text(AppTheme.label(AppStrings.dialog.btnClose), style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold)),
                         )
                       ],
                     ),
                   );
                 },
-                child: Text(AppStrings.settings.btnPrivacyPolicy, style: TextStyle(color: _themeColor, fontSize: 14)),
+                child: Text(AppTheme.label(AppStrings.settings.btnPrivacyPolicy), style: TextStyle(color: _themeColor, fontSize: 14)),
               ),
               InkWell(
                 onTap: () {
@@ -982,7 +1101,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                     applicationLegalese: '© 2026 NightOwlEyes\nLicensed under GNU GPL v3.0',
                   );
                 },
-                child: Text(AppStrings.settings.btnLicenses, style: TextStyle(color: _themeColor, fontSize: 14)),
+                child: Text(AppTheme.label(AppStrings.settings.btnLicenses), style: TextStyle(color: _themeColor, fontSize: 14)),
               ),
             ],
           )
@@ -1092,15 +1211,15 @@ class _InlineRuleTimeBoxState extends State<_InlineRuleTimeBox> {
           color: widget.color,
           fontSize: 15,
           fontWeight: FontWeight.bold,
-          fontFamily: 'monospace',
+          fontFamily: AppTheme.font,
         ),
         textAlign: TextAlign.center,
         keyboardType: TextInputType.datetime,
         decoration: InputDecoration(
           hintText: "00:00",
-          hintStyle: const TextStyle(color: Color(0xFF444444)),
+          hintStyle: TextStyle(color: AppColors.borderStrong),
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+          contentPadding: EdgeInsets.symmetric(vertical: 6, horizontal: 8),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.zero,
             borderSide: BorderSide(color: widget.color, width: 1.2),
@@ -1110,7 +1229,7 @@ class _InlineRuleTimeBoxState extends State<_InlineRuleTimeBox> {
             borderSide: BorderSide(color: widget.color, width: 1.5),
           ),
           filled: true,
-          fillColor: const Color(0xFF141615),
+          fillColor: AppColors.surface,
         ),
         onChanged: (val) async {
           String clean = val.replaceAll(RegExp(r'[^0-9]'), '');
@@ -1138,7 +1257,7 @@ class _InlineRuleTimeBoxState extends State<_InlineRuleTimeBox> {
             if (_controller.text != clampedStr) {
               _controller.value = TextEditingValue(
                 text: clampedStr,
-                selection: const TextSelection.collapsed(offset: 5),
+                selection: TextSelection.collapsed(offset: 5),
               );
             }
 

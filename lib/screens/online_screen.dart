@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
@@ -52,7 +53,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
     _loadSavedClans();
     _startClockTimer();
 
-    _cursorTimer = Timer.periodic(const Duration(milliseconds: 600), (timer) {
+    _cursorTimer = Timer.periodic(Duration(milliseconds: 600), (timer) {
       if (mounted) _showCursor.value = !_showCursor.value;
     });
   }
@@ -70,7 +71,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
     final now = DateTime.now();
     _currentTime = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
 
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _clockTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (!mounted) return;
       final now = DateTime.now();
       setState(() {
@@ -175,40 +176,39 @@ class _OnlineScreenState extends State<OnlineScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF0A0C0B),
-        shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1)),
+        backgroundColor: AppColors.dialogBg,
+        shape: RoundedRectangleBorder(side: BorderSide(color: AppColors.accent, width: 1)),
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: EdgeInsets.all(20.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                AppStrings.terminal.deleteDialogTitle,
-                style: const TextStyle(color: Color(0xFFB54545), fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+              Text(AppTheme.label(AppStrings.terminal.deleteDialogTitle),
+                style: TextStyle(color: AppColors.accent, fontSize: 16, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 AppStrings.format(AppStrings.terminal.deleteDialogMessage, {'tag': tag}),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontFamily: 'monospace'),
+                style: TextStyle(color: AppColors.text, fontSize: 13, fontFamily: AppTheme.font),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
                     child: InkWell(
                       onTap: () => Navigator.pop(ctx),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(vertical: 8),
                         child: Text(
                           cancelLabel,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFF888888), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: InkWell(
                       onTap: () {
@@ -216,11 +216,11 @@ class _OnlineScreenState extends State<OnlineScreen> {
                         _deleteClan(tag);
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(vertical: 8),
                         child: Text(
                           deleteLabel,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFFB54545), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                          style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                         ),
                       ),
                     ),
@@ -327,7 +327,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
   void _showSettingsDialog() async {
     await showDialog(
       context: context,
-      builder: (ctx) => const SettingsDialog(themeColor: Color(0xFF4CAF50)),
+      builder: (ctx) => SettingsDialog(themeColor: AppColors.ok),
     );
     if (mounted) setState(() {});
   }
@@ -347,23 +347,21 @@ class _OnlineScreenState extends State<OnlineScreen> {
       bool? confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF0D0F0E),
-          shape: const RoundedRectangleBorder(side: BorderSide(color: Color(0xFFB54545), width: 1.5)),
+          backgroundColor: AppColors.surfaceAlt,
+          shape: RoundedRectangleBorder(side: BorderSide(color: AppColors.accent, width: 1.5)),
           title: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Color(0xFFB54545)),
-              const SizedBox(width: 8),
+              Icon(Icons.warning_amber_rounded, color: AppColors.accent),
+              SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  AppStrings.onlineScreen.dialogWarningTitle,
-                  style: const TextStyle(color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                child: Text(AppTheme.label(AppStrings.onlineScreen.dialogWarningTitle),
+                  style: TextStyle(color: AppColors.accent, fontSize: 14, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                 ),
               ),
             ],
           ),
-          content: Text(
-            AppStrings.settings.dialogWarningContent,
-            style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, height: 1.5, fontFamily: 'monospace'),
+          content: Text(AppTheme.label(AppStrings.settings.dialogWarningContent),
+            style: TextStyle(color: AppColors.text, fontSize: 13, height: 1.5, fontFamily: AppTheme.font),
           ),
           actions: [
             Row(
@@ -371,21 +369,19 @@ class _OnlineScreenState extends State<OnlineScreen> {
                 Expanded(
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(
-                      AppStrings.onlineScreen.btnCancelDialog,
+                    child: Text(AppTheme.label(AppStrings.onlineScreen.btnCancelDialog),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFF888888), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                      style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: TextButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: Text(
-                      AppStrings.onlineScreen.btnForceDisable,
+                    child: Text(AppTheme.label(AppStrings.onlineScreen.btnForceDisable),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Color(0xFFB54545), fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                      style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold, fontFamily: AppTheme.font),
                     ),
                   ),
                 ),
@@ -415,19 +411,20 @@ class _OnlineScreenState extends State<OnlineScreen> {
     final showHeader = !isLandscape || _isHeaderVisible;
 
     return Scaffold(
-      body: GestureDetector(
+      body: GlassBackground(
+        child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(16.0),
             child: CustomPaint(
               painter: TerminalFramePainter(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
+                padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.5),
                 child: Column(
                   children: [
                     AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
+                      duration: Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
                       alignment: Alignment.topCenter,
                       child: showHeader
@@ -463,10 +460,10 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                   },
                                   onToggleServer: () => Navigator.pop(context),
                                 ),
-                                const SizedBox(height: 9.5),
+                                SizedBox(height: 9.5),
                               ],
                             )
-                          : const SizedBox.shrink(),
+                          : SizedBox.shrink(),
                     ),
 
                     Expanded(
@@ -486,41 +483,40 @@ class _OnlineScreenState extends State<OnlineScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                                margin: const EdgeInsets.only(top: 10, bottom: 30),
-                                decoration: const BoxDecoration(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                margin: EdgeInsets.only(top: 10, bottom: 30),
+                                decoration: BoxDecoration(
                                   border: Border(
-                                    top: BorderSide(color: Color(0xFF4CAF50), width: 1),
-                                    bottom: BorderSide(color: Color(0xFF4CAF50), width: 1),
+                                    top: BorderSide(color: AppColors.ok, width: 1),
+                                    bottom: BorderSide(color: AppColors.ok, width: 1),
                                   ),
-                                  color: Color(0x224CAF50),
+                                  color: AppColors.okTint,
                                 ),
                                 child: Center(
-                                  child: Text(
-                                    AppStrings.onlineScreen.bannerClanWar,
-                                    style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                                  child: Text(AppTheme.label(AppStrings.onlineScreen.bannerClanWar),
+                                    style: TextStyle(fontFamily: AppTheme.font, color: AppColors.ok, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 2.0),
                                   ),
                                 ),
                               ),
 
                               TerminalLogo(),
 
-                              const SizedBox(height: 30),
+                              SizedBox(height: 30),
 
                               if (_savedClans.isNotEmpty)
                                 ListView.builder(
                                   shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
+                                  physics: NeverScrollableScrollPhysics(),
                                   itemCount: _savedClans.length,
                                   itemBuilder: (context, index) {
                                     final clan = _savedClans[index];
 
                                     return InkWell(
                                       onTap: _isLoading ? null : () => _openWarDashboard(clan['tag'], clan['name']),
-                                      splashColor: const Color(0xFF4CAF50).withValues(alpha: 0.2),
-                                      highlightColor: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                                      splashColor: AppColors.ok.withValues(alpha: 0.2),
+                                      highlightColor: AppColors.ok.withValues(alpha: 0.1),
                                       child: Padding(
-                                        padding: const EdgeInsets.only(top: 16.0),
+                                        padding: EdgeInsets.only(top: 16.0),
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
@@ -531,36 +527,35 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                                 Expanded(
                                                   child: RichText(
                                                     text: TextSpan(
-                                                      style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                                                      style: TextStyle(fontFamily: AppTheme.font, fontSize: 16),
                                                       children: [
-                                                        TextSpan(text: AppStrings.onlineScreen.labelClanName, style: const TextStyle(color: Color(0xFF888888))),
-                                                        TextSpan(text: clan['name'], style: const TextStyle(color: Color(0xFFE0E0E0), fontWeight: FontWeight.bold)),
+                                                        TextSpan(text: AppStrings.onlineScreen.labelClanName, style: TextStyle(color: AppColors.textMuted)),
+                                                        TextSpan(text: clan['name'], style: TextStyle(color: AppColors.text, fontWeight: FontWeight.bold)),
                                                       ],
                                                     ),
                                                   ),
                                                 ),
                                                 InkWell(
                                                   onTap: _isLoading ? null : () => _confirmDeleteClan(clan['tag']),
-                                                  child: Text(
-                                                      AppStrings.onlineScreen.btnDeleteClan,
-                                                      style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFB54545), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
+                                                  child: Text(AppTheme.label(AppStrings.onlineScreen.btnDeleteClan),
+                                                      style: TextStyle(fontFamily: AppTheme.font, color: AppColors.accent, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0)
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 8),
+                                            SizedBox(height: 8),
 
                                             RichText(
                                               text: TextSpan(
-                                                style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+                                                style: TextStyle(fontFamily: AppTheme.font, fontSize: 14),
                                                 children: [
-                                                  TextSpan(text: AppStrings.onlineScreen.labelClanTag, style: const TextStyle(color: Color(0xFF555555))),
-                                                  TextSpan(text: clan['tag'], style: const TextStyle(color: Color(0xFF666666))),
+                                                  TextSpan(text: AppStrings.onlineScreen.labelClanTag, style: TextStyle(color: AppColors.textFaint)),
+                                                  TextSpan(text: clan['tag'], style: TextStyle(color: AppColors.textDim)),
                                                 ],
                                               ),
                                             ),
 
-                                            const SizedBox(height: 28),
+                                            SizedBox(height: 28),
 
                                             Row(
                                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -568,16 +563,15 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                                 Expanded(
                                                   child: Column(
                                                     children: [
-                                                      Text(
-                                                        AppStrings.onlineScreen.labelBadge,
-                                                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                                      Text(AppTheme.label(AppStrings.onlineScreen.labelBadge),
+                                                        style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
                                                       ),
-                                                      const SizedBox(height: 14),
+                                                      SizedBox(height: 14),
                                                       SizedBox(
                                                         width: 40, height: 40,
                                                         child: clan['badgeUrl'].toString().isNotEmpty
-                                                            ? Image.network(clan['badgeUrl'], errorBuilder: (c, e, s) => const Icon(Icons.shield, color: Color(0xFF4CAF50)))
-                                                            : const Icon(Icons.shield, color: Color(0xFF4CAF50)),
+                                                            ? Image.network(clan['badgeUrl'], errorBuilder: (c, e, s) => Icon(Icons.shield, color: AppColors.ok))
+                                                            : Icon(Icons.shield, color: AppColors.ok),
                                                       ),
                                                     ],
                                                   ),
@@ -586,22 +580,21 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                                 Container(
                                                   width: 1,
                                                   height: 46,
-                                                  color: const Color(0xFF333333),
+                                                  color: AppColors.border,
                                                 ),
 
                                                 Expanded(
                                                   child: Column(
                                                     children: [
-                                                      Text(
-                                                        AppStrings.onlineScreen.labelLevel,
-                                                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                                                      Text(AppTheme.label(AppStrings.onlineScreen.labelLevel),
+                                                        style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
                                                       ),
-                                                      const SizedBox(height: 14),
+                                                      SizedBox(height: 14),
                                                       Text(
                                                         "${clan['clanLevel']}",
-                                                        style: const TextStyle(
-                                                          fontFamily: 'monospace',
-                                                          color: Color(0xFF4CAF50),
+                                                        style: TextStyle(
+                                                          fontFamily: AppTheme.font,
+                                                          color: AppColors.ok,
                                                           fontSize: 15,
                                                           fontWeight: FontWeight.bold,
                                                           letterSpacing: 1.5,
@@ -613,8 +606,8 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                               ],
                                             ),
 
-                                            const SizedBox(height: 28),
-                                            const Divider(color: Color(0xFF333333), thickness: 1, height: 1),
+                                            SizedBox(height: 28),
+                                            Divider(color: AppColors.border, thickness: 1, height: 1),
                                           ],
                                         ),
                                       ),
@@ -622,16 +615,15 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                   },
                                 ),
 
-                              const SizedBox(height: 30),
+                              SizedBox(height: 30),
 
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    AppStrings.onlineScreen.labelAddClan,
-                                    style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888), fontSize: 12, letterSpacing: 1.0),
+                                  Text(AppTheme.label(AppStrings.onlineScreen.labelAddClan),
+                                    style: TextStyle(fontFamily: AppTheme.font, color: AppColors.textMuted, fontSize: 12, letterSpacing: 1.0),
                                   ),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
 
                                   Stack(
                                     children: [
@@ -640,15 +632,15 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                         enabled: !_isLoading,
                                         autofocus: false,
                                         maxLines: 4,
-                                        style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 14),
+                                        style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontSize: 14),
                                         textCapitalization: TextCapitalization.characters,
                                         decoration: InputDecoration(
                                           hintText: AppStrings.onlineScreen.hintPasteTag,
-                                          hintStyle: const TextStyle(fontFamily: 'monospace', color: Color(0xFF444444)),
+                                          hintStyle: TextStyle(fontFamily: AppTheme.font, color: AppColors.borderStrong),
                                           filled: true,
-                                          fillColor: const Color(0xFF141615),
-                                          border: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
-                                          focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: Color(0xFF666666), width: 1)),
+                                          fillColor: AppColors.surface,
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
+                                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide(color: AppColors.textDim, width: 1)),
                                         ),
                                       ),
                                       Positioned(
@@ -657,29 +649,28 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                         child: InkWell(
                                           onTap: _pasteFromClipboard,
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                            color: const Color(0xFF333333),
-                                            child: Text(AppStrings.terminal.btnPaste, style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold)),
+                                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            color: AppColors.border,
+                                            child: Text(AppTheme.label(AppStrings.terminal.btnPaste), style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontSize: 12, fontWeight: FontWeight.bold)),
                                           ),
                                         ),
                                       )
                                     ],
                                   ),
 
-                                  const SizedBox(height: 20),
+                                  SizedBox(height: 20),
 
                                   Material(
-                                    color: const Color(0xFFB0B3A6),
+                                    color: AppColors.buttonBg,
                                     child: InkWell(
                                       onTap: _isLoading ? null : _addNewClan,
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(vertical: 18),
+                                        padding: EdgeInsets.symmetric(vertical: 18),
                                         alignment: Alignment.center,
                                         child: _isLoading
-                                            ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
-                                            : Text(
-                                          AppStrings.onlineScreen.btnConfirmAdd,
-                                          style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF111111), fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
+                                            ? SizedBox(height: 16, width: 16, child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2))
+                                            : Text(AppTheme.label(AppStrings.onlineScreen.btnConfirmAdd),
+                                          style: TextStyle(fontFamily: AppTheme.font, color: AppColors.inputBg, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2.0),
                                         ),
                                       ),
                                     ),
@@ -692,17 +683,17 @@ class _OnlineScreenState extends State<OnlineScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
-                          child: Text(_statusText, style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.clip, maxLines: 1),
+                          child: Text(_statusText, style: TextStyle(fontFamily: AppTheme.font, color: AppColors.ok, fontSize: 13, fontWeight: FontWeight.bold), overflow: TextOverflow.clip, maxLines: 1),
                         ),
                         ValueListenableBuilder<bool>(
                           valueListenable: _showCursor,
                           builder: (context, show, child) => Opacity(
-                            opacity: show ? 1.0 : 0.0,
-                            child: const Text("█", style: TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 13)),
+                            opacity: (show && AppTheme.isTerminal) ? 1.0 : 0.0,
+                            child: Text("█", style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontSize: 13)),
                           ),
                         ),
                       ],
@@ -714,6 +705,7 @@ class _OnlineScreenState extends State<OnlineScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -740,7 +732,7 @@ class _TerminalLoadingOverlayState extends State<TerminalLoadingOverlay> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 150), (timer) {
+    _timer = Timer.periodic(Duration(milliseconds: 150), (timer) {
       if (mounted) {
         setState(() {
           _currentFrame = (_currentFrame + 1) % _frames.length;
@@ -761,13 +753,13 @@ class _TerminalLoadingOverlayState extends State<TerminalLoadingOverlay> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: const Color(0xFF0A0C0B),
-          border: Border.all(color: const Color(0xFF4CAF50), width: 1.5),
+          color: AppColors.dialogBg,
+          border: Border.all(color: AppColors.ok, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+              color: AppColors.ok.withValues(alpha: 0.1),
               blurRadius: 20,
               spreadRadius: 5,
             ),
@@ -776,47 +768,44 @@ class _TerminalLoadingOverlayState extends State<TerminalLoadingOverlay> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.satellite_alt_outlined, color: Color(0xFF4CAF50), size: 36),
-            const SizedBox(height: 16),
-            Text(
-              AppStrings.onlineScreen.overlayFetchingData,
+            Icon(Icons.satellite_alt_outlined, color: AppColors.ok, size: 36),
+            SizedBox(height: 16),
+            Text(AppTheme.label(AppStrings.onlineScreen.overlayFetchingData),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF4CAF50), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+              style: TextStyle(fontFamily: AppTheme.font, color: AppColors.ok, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               "${AppStrings.onlineScreen.overlayClanPrefix}${widget.clanName}",
               textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE0E0E0), fontSize: 12),
+              style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontSize: 12),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  AppStrings.onlineScreen.overlayLoading,
-                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFF888888), fontSize: 14),
+                Text(AppTheme.label(AppStrings.onlineScreen.overlayLoading),
+                  style: TextStyle(fontFamily: AppTheme.font, color: AppColors.textMuted, fontSize: 14),
                 ),
                 Text(
                   "[ ${_frames[_currentFrame]} ]",
-                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFE2B714), fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontFamily: AppTheme.font, color: AppColors.warn, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-            const SizedBox(height: 30),
+            SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1A1C1B),
-                  side: const BorderSide(color: Color(0xFFB54545), width: 1),
-                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  backgroundColor: AppColors.surfaceHigh,
+                  side: BorderSide(color: AppColors.accent, width: 1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  padding: EdgeInsets.symmetric(vertical: 12),
                 ),
                 onPressed: widget.onCancel,
-                child: Text(
-                  AppStrings.onlineScreen.btnCancelDialog,
-                  style: const TextStyle(fontFamily: 'monospace', color: Color(0xFFB54545), fontSize: 12, fontWeight: FontWeight.bold),
+                child: Text(AppTheme.label(AppStrings.onlineScreen.btnCancelDialog),
+                  style: TextStyle(fontFamily: AppTheme.font, color: AppColors.accent, fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

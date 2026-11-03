@@ -274,6 +274,9 @@ abstract class SettingsStrings {
   String get quickPasteAutoReturnLabel;
   String get errorNoClanForWar;
   String get errorBothWarAlarmsOff;
+  String get themeConfigTitle;
+  String get themeTerminal;
+  String get themeModern;
 }
 
 abstract class OnlineScreenStrings {
@@ -555,6 +558,9 @@ class SettingsStringsVi extends SettingsStrings {
   @override String get quickPasteAutoReturnLabel => "Tự động quay lại game sau khi dán";
   @override String get errorNoClanForWar => "Chưa có hội nào được nhập ở màn hình Online!";
   @override String get errorBothWarAlarmsOff => "Cần bật ít nhất 1 báo thức War trước khi bật đồng bộ ngầm!";
+  @override String get themeConfigTitle => "GIAO DIỆN";
+  @override String get themeTerminal => "[ TERMINAL ]";
+  @override String get themeModern => "[ KÍNH MỜ ]";
 }
 
 class OnlineScreenStringsVi extends OnlineScreenStrings {
@@ -841,6 +847,9 @@ class SettingsStringsEn extends SettingsStrings {
   @override String get quickPasteAutoReturnLabel => "Auto-return to game after pasting";
   @override String get errorNoClanForWar => "No Clan added in Online screen yet!";
   @override String get errorBothWarAlarmsOff => "Enable at least 1 War alert before turning on auto-sync!";
+  @override String get themeConfigTitle => "THEME";
+  @override String get themeTerminal => "[ TERMINAL ]";
+  @override String get themeModern => "[ GLASS ]";
 }
 
 class OnlineScreenStringsEn extends OnlineScreenStrings {

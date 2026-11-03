@@ -1,3 +1,4 @@
+import '../theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/village_models.dart';
@@ -115,10 +116,10 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
         .toList();
     if (activeList.isEmpty) return const SizedBox.shrink();
 
-    const Color boostColor = Color(0xFFE2B714);
+    final Color boostColor = AppColors.warn;
 
     return Padding(
-      padding: const EdgeInsets.only(left: 12.0, top: 2.0, bottom: 2.0),
+      padding: EdgeInsets.only(left: AppTheme.isModern ? 4.0 : 12.0, top: 4.0, bottom: 2.0),
       child: Column(
         children: activeList.map((entry) {
           final timeStr = _formatBoostTime(entry.value!, now);
@@ -126,32 +127,61 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
             padding: const EdgeInsets.symmetric(vertical: 2.0),
             child: Row(
               children: [
-                const Icon(Icons.bolt, size: 14, color: boostColor),
+                Icon(Icons.bolt, size: 14, color: boostColor),
                 const SizedBox(width: 6),
-                Text(
-                  entry.key,
-                  style: const TextStyle(
-                    color: boostColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                if (AppTheme.isModern) ...[
+                  Expanded(
+                    child: Text(
+                      entry.key,
+                      style: TextStyle(
+                        color: boostColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: Text(
-                    AppStrings.dialog.separatorDots,
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
-                    style: const TextStyle(color: Color(0xFF333333), fontSize: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: boostColor.withValues(alpha: 0.16),
+                      borderRadius: AppTheme.brSm,
+                      border: Border.all(color: boostColor.withValues(alpha: 0.35)),
+                    ),
+                    child: Text(
+                      timeStr,
+                      style: TextStyle(
+                        color: boostColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-                Text(
-                  timeStr,
-                  style: const TextStyle(
-                    color: boostColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                ] else ...[
+                  Text(
+                    entry.key,
+                    style: TextStyle(
+                      color: boostColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
+                  Expanded(
+                    child: Text(
+                      AppStrings.dialog.separatorDots,
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: TextStyle(color: AppColors.border, fontSize: 12),
+                    ),
+                  ),
+                  Text(
+                    timeStr,
+                    style: TextStyle(
+                      color: boostColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ],
             ),
           );
@@ -161,6 +191,42 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
   }
 
   Widget _buildTrackingToggle(String label, bool value, VoidCallback onTap) {
+    if (AppTheme.isModern) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: value ? widget.themeColor.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: value ? widget.themeColor.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.18),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                value ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                color: value ? widget.themeColor : AppColors.textDim,
+                size: 15,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: value ? AppColors.text : AppColors.textMuted,
+                  fontSize: 12,
+                  fontWeight: value ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return InkWell(
       onTap: onTap,
       splashColor: widget.themeColor.withValues(alpha: 0.3),
@@ -172,11 +238,11 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
           children: [
             Icon(
               value ? Icons.check_box : Icons.check_box_outline_blank,
-              color: value ? widget.themeColor : const Color(0xFF444444),
+              color: value ? widget.themeColor : AppColors.borderStrong,
               size: 16,
             ),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: value ? const Color(0xFFE0E0E0) : const Color(0xFF888888), fontSize: 12)),
+            Text(label, style: TextStyle(color: value ? AppColors.text : AppColors.textMuted, fontSize: 12)),
           ],
         ),
       ),
@@ -255,141 +321,242 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
       MapEntry(AppStrings.dialog.boostLabConsumable, lConsEnd),
     ];
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(16),
-      child: Material(
-        color: const Color(0xFF0D0F0E),
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: widget.themeColor, width: 2),
+    Widget wrapGroupCard(Widget groupContent) {
+      if (AppTheme.isTerminal) return groupContent;
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: AppTheme.brMd,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+        child: groupContent,
+      );
+    }
+
+    return AdaptiveDialog(
+      accentColor: widget.themeColor,
+      terminalBorderWidth: 2.0,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Flexible(
+                  child: Text(
+                    AppTheme.label("${AppStrings.dialog.titlePrefix}${widget.village.tag}"),
+                    style: TextStyle(
+                      color: widget.themeColor,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: AppTheme.ls(1.5),
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  child: Text(
+                    AppTheme.label(AppStrings.dialog.btnClose),
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Text(
+                  AppTheme.label(AppStrings.dialog.labelVillageName),
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _nameController,
+                    style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      hintText: AppTheme.label(AppStrings.dialog.hintEnterVillageName),
+                      hintStyle: TextStyle(color: AppColors.textDim),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                      border: InputBorder.none,
+                    ),
+                    onChanged: widget.onNameChanged,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+            InkWell(
+              borderRadius: AppTheme.brSm,
+              onTap: () {
+                setState(() => _showRealEta = !_showRealEta);
+                widget.onToggleRealEta?.call();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      "${AppStrings.dialog.titlePrefix}${widget.village.tag}",
-                      style: TextStyle(color: widget.themeColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                      AppTheme.label(AppStrings.dialog.labelTimeFormat),
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
-                    InkWell(
-                      onTap: () => Navigator.pop(context),
-                      child: Text(AppStrings.dialog.btnClose, style: const TextStyle(color: Color(0xFF888888), fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Text(AppStrings.dialog.labelVillageName, style: const TextStyle(color: Color(0xFF888888), fontSize: 12)),
-                    Expanded(
-                      child: TextField(
-                        controller: _nameController,
-                        style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 12, fontWeight: FontWeight.bold),
-                        decoration: InputDecoration(
-                          hintText: AppStrings.dialog.hintEnterVillageName,
-                          hintStyle: const TextStyle(color: Color(0xFF444444)),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                          border: InputBorder.none,
+                    Container(
+                      padding: AppTheme.isModern
+                          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 3)
+                          : EdgeInsets.zero,
+                      decoration: AppTheme.isModern
+                          ? BoxDecoration(
+                              color: (_showRealEta ? AppColors.ok : widget.themeColor).withValues(alpha: 0.16),
+                              borderRadius: AppTheme.brSm,
+                              border: Border.all(
+                                color: (_showRealEta ? AppColors.ok : widget.themeColor).withValues(alpha: 0.45),
+                              ),
+                            )
+                          : null,
+                      child: Text(
+                        AppTheme.label(_showRealEta ? AppStrings.dialog.timeFormatExact : AppStrings.dialog.timeFormatCountdown),
+                        style: TextStyle(
+                          color: _showRealEta ? AppColors.ok : widget.themeColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
-                        onChanged: widget.onNameChanged,
                       ),
                     ),
                   ],
                 ),
+              ),
+            ),
 
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: () {
-                    setState(() => _showRealEta = !_showRealEta);
-                    widget.onToggleRealEta?.call();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          AppStrings.dialog.labelTimeFormat,
-                          style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
-                        ),
-                        Text(
-                          _showRealEta ? AppStrings.dialog.timeFormatExact : AppStrings.dialog.timeFormatCountdown,
-                          style: TextStyle(
-                            color: _showRealEta ? const Color(0xFF4CAF50) : widget.themeColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+            const SizedBox(height: 8),
+            Text(
+              AppTheme.label(AppStrings.dialog.baseAlarmsToggleLabel),
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                _buildTrackingToggle(AppStrings.terminal.trackingHomeVillage, _trackHome, () {
+                  setState(() => _trackHome = !_trackHome);
+                  widget.onTrackingChanged(_trackHome, _trackBuilder);
+                }),
+                _buildTrackingToggle(AppStrings.terminal.trackingBuilderBase, _trackBuilder, () {
+                  setState(() => _trackBuilder = !_trackBuilder);
+                  widget.onTrackingChanged(_trackHome, _trackBuilder);
+                }),
+              ],
+            ),
+            const SizedBox(height: 16),
 
-                const SizedBox(height: 8),
-                Text(
-                  AppStrings.dialog.baseAlarmsToggleLabel,
-                  style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 8,
-                  children: [
-                    _buildTrackingToggle(AppStrings.terminal.trackingHomeVillage, _trackHome, () {
-                      setState(() => _trackHome = !_trackHome);
-                      widget.onTrackingChanged(_trackHome, _trackBuilder);
-                    }),
-                    _buildTrackingToggle(AppStrings.terminal.trackingBuilderBase, _trackBuilder, () {
-                      setState(() => _trackBuilder = !_trackBuilder);
-                      widget.onTrackingChanged(_trackHome, _trackBuilder);
-                    }),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                _buildLogLine(
+            wrapGroupCard(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLogLine(
                     widget.isBuilderBase ? AppStrings.dialog.groupBuilderNight : AppStrings.dialog.groupBuilder,
                     "${activeB.length}/$totalB ${AppStrings.dialog.statusWorkingSuffix}",
                     isTracked: currentTracked,
-                    onTap: () => _handleCycleGroupOptimistic(widget.isBuilderBase ? AppStrings.dialog.logGroupNameBuilderNight : AppStrings.dialog.logGroupNameBuilder, activeB)
-                ),
-                _buildActiveBoostsList(builderBoostEntries),
-                _buildDetailList(activeB, isTracked: currentTracked, boostEndTime: builderGroupBoostEnd),
-                const SizedBox(height: 12),
+                    onTap: () => _handleCycleGroupOptimistic(
+                      widget.isBuilderBase ? AppStrings.dialog.logGroupNameBuilderNight : AppStrings.dialog.logGroupNameBuilder,
+                      activeB,
+                    ),
+                  ),
+                  _buildActiveBoostsList(builderBoostEntries),
+                  _buildDetailList(activeB, isTracked: currentTracked, boostEndTime: builderGroupBoostEnd),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
 
-                _buildLogLine(
+            wrapGroupCard(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLogLine(
                     widget.isBuilderBase ? AppStrings.dialog.groupLabNight : AppStrings.dialog.groupLabMain,
                     "${activeL.length} ${AppStrings.dialog.statusUpgradingSuffix}",
                     isTracked: currentTracked,
-                    onTap: () => _handleCycleGroupOptimistic(widget.isBuilderBase ? AppStrings.dialog.logGroupNameLabNight : AppStrings.dialog.logGroupNameLabMain, activeL)
-                ),
-                _buildActiveBoostsList(labBoostEntries),
-                _buildDetailList(activeL, isTracked: currentTracked, boostEndTime: labGroupBoostEnd),
-                const SizedBox(height: 12),
-
-                if (!widget.isBuilderBase) ...[
-                  _buildLogLine(AppStrings.dialog.groupPet, "${activeP.length} ${AppStrings.dialog.statusUpgradingSuffix}", isTracked: _trackHome, onTap: () => _handleCycleGroupOptimistic(AppStrings.dialog.logGroupNamePet, activeP)),
-                  _buildActiveBoostsList(petBoostEntries),
-                  _buildDetailList(activeP, isTracked: _trackHome, boostEndTime: petGroupBoostEnd),
-                  const SizedBox(height: 12),
+                    onTap: () => _handleCycleGroupOptimistic(
+                      widget.isBuilderBase ? AppStrings.dialog.logGroupNameLabNight : AppStrings.dialog.logGroupNameLabMain,
+                      activeL,
+                    ),
+                  ),
+                  _buildActiveBoostsList(labBoostEntries),
+                  _buildDetailList(activeL, isTracked: currentTracked, boostEndTime: labGroupBoostEnd),
                 ],
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+
+            if (!widget.isBuilderBase) ...[
+              wrapGroupCard(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLogLine(
+                      AppStrings.dialog.groupPet,
+                      "${activeP.length} ${AppStrings.dialog.statusUpgradingSuffix}",
+                      isTracked: _trackHome,
+                      onTap: () => _handleCycleGroupOptimistic(AppStrings.dialog.logGroupNamePet, activeP),
+                    ),
+                    _buildActiveBoostsList(petBoostEntries),
+                    _buildDetailList(activeP, isTracked: _trackHome, boostEndTime: petGroupBoostEnd),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ],
         ),
       ),
     );
   }
 
   Widget _buildLogLine(String text, String status, {required bool isTracked, VoidCallback? onTap}) {
+    if (AppTheme.isModern) {
+      return InkWell(
+        onTap: isTracked ? onTap : null,
+        borderRadius: AppTheme.brSm,
+        child: Opacity(
+          opacity: isTracked ? 1.0 : 0.5,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  text.replaceFirst(RegExp(r'^>\s*'), ''),
+                  style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.10),
+                    borderRadius: AppTheme.brSm,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(color: AppColors.textSoft, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return InkWell(
       onTap: isTracked ? onTap : null,
       splashColor: widget.themeColor.withValues(alpha: 0.3),
@@ -400,16 +567,16 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
           padding: const EdgeInsets.symmetric(vertical: 4.0),
           child: Row(
             children: [
-              Text(text, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(text, style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.bold)),
               Expanded(
                 child: Text(
                   AppStrings.dialog.separatorDots,
                   maxLines: 1,
                   overflow: TextOverflow.clip,
-                  style: const TextStyle(color: Color(0xFF444444), fontSize: 13),
+                  style: TextStyle(color: AppColors.borderStrong, fontSize: 13),
                 ),
               ),
-              Text(status, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 13)),
+              Text(status, style: TextStyle(color: AppColors.text, fontSize: 13)),
             ],
           ),
         ),
@@ -423,7 +590,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     final now = DateTime.now();
 
     return Padding(
-      padding: const EdgeInsets.only(left: 12.0, top: 4.0, bottom: 8.0),
+      padding: EdgeInsets.only(left: AppTheme.isModern ? 4.0 : 12.0, top: 4.0, bottom: 4.0),
       child: Column(
         children: items.map((item) {
           final diff = item.realEta.difference(now);
@@ -449,11 +616,11 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
           }
 
           IconData iconData = Icons.notifications_off;
-          Color stateColor = const Color(0xFF444444);
+          Color stateColor = AppColors.textDim;
 
           if (item.alarmType == AlarmType.system) {
             iconData = Icons.notifications;
-            stateColor = const Color(0xFF4CAF50);
+            stateColor = AppColors.ok;
           } else if (item.alarmType == AlarmType.fullscreen) {
             iconData = Icons.alarm;
             stateColor = widget.themeColor;
@@ -464,22 +631,25 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
               item.realEta.isBefore(boostEndTime);
 
           return InkWell(
-            onTap: isTracked ? () {
-              AlarmType nextType;
-              if (item.alarmType == AlarmType.system) {
-                nextType = AlarmType.fullscreen;
-              } else if (item.alarmType == AlarmType.fullscreen) {
-                nextType = AlarmType.none;
-              } else {
-                nextType = AlarmType.system;
-              }
+            borderRadius: AppTheme.brSm,
+            onTap: isTracked
+                ? () {
+                    AlarmType nextType;
+                    if (item.alarmType == AlarmType.system) {
+                      nextType = AlarmType.fullscreen;
+                    } else if (item.alarmType == AlarmType.fullscreen) {
+                      nextType = AlarmType.none;
+                    } else {
+                      nextType = AlarmType.system;
+                    }
 
-              setState(() {
-                item.alarmType = nextType;
-              });
+                    setState(() {
+                      item.alarmType = nextType;
+                    });
 
-              widget.onCycleItem(item);
-            } : null,
+                    widget.onCycleItem(item);
+                  }
+                : null,
             splashColor: widget.themeColor.withValues(alpha: 0.3),
             highlightColor: widget.themeColor.withValues(alpha: 0.1),
             child: Opacity(
@@ -488,27 +658,50 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: Row(
                   children: [
-                    Icon(iconData, size: 14, color: stateColor),
+                    Icon(iconData, size: 15, color: stateColor),
                     const SizedBox(width: 6),
                     if (finishesBeforeBoostEnds)
-                      const Text(
+                      Text(
                         "! ",
                         style: TextStyle(
-                          color: Color(0xFFE2B714),
+                          color: AppColors.warn,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    Text("${AppStrings.gameData.getName(item.dataId)} (Lv.${item.level})", style: TextStyle(color: stateColor, fontSize: 12)),
-                    Expanded(
-                      child: Text(
-                        AppStrings.dialog.separatorDots,
-                        maxLines: 1,
-                        overflow: TextOverflow.clip,
-                        style: const TextStyle(color: Color(0xFF333333), fontSize: 12),
+                    if (AppTheme.isModern) ...[
+                      Expanded(
+                        child: Text(
+                          "${AppStrings.gameData.getName(item.dataId)} (Lv.${item.level})",
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: stateColor, fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
                       ),
-                    ),
-                    Text(timeStr, style: TextStyle(color: stateColor, fontSize: 12)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: stateColor.withValues(alpha: 0.14),
+                          borderRadius: AppTheme.brSm,
+                          border: Border.all(color: stateColor.withValues(alpha: 0.32)),
+                        ),
+                        child: Text(
+                          timeStr,
+                          style: TextStyle(color: stateColor, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ] else ...[
+                      Text("${AppStrings.gameData.getName(item.dataId)} (Lv.${item.level})", style: TextStyle(color: stateColor, fontSize: 12)),
+                      Expanded(
+                        child: Text(
+                          AppStrings.dialog.separatorDots,
+                          maxLines: 1,
+                          overflow: TextOverflow.clip,
+                          style: TextStyle(color: AppColors.border, fontSize: 12),
+                        ),
+                      ),
+                      Text(timeStr, style: TextStyle(color: stateColor, fontSize: 12)),
+                    ],
                   ],
                 ),
               ),
