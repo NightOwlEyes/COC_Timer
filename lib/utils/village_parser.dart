@@ -133,7 +133,7 @@ class VillageParser {
             if (isLabHelper && hTimer > activeLabHelperTimer) {
               activeLabHelperTimer = hTimer;
             }
-            bool isExtraItem = (item['extra'] == true) || (item['data'] == 12000006 && item['extra'] != false);
+            bool isExtraItem = item['extra'] == true;
             targetList.add(UpgradeItem(
               instanceId: "${tag}_${key}_${item['data']}_${index++}",
               dataId: item['data'] ?? 0, level: item['lvl'] ?? 0, originalTimer: timer,
