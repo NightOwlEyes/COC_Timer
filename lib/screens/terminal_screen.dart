@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../utils/village_manager.dart';
 import '../utils/app_strings.dart';
 import '../utils/rule_manager.dart';
+import '../services/ai_command_service.dart';
 import '../services/schedule_service.dart';
 
 import '../widgets/terminal_frame_painter.dart';
@@ -49,7 +50,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
   String? _updateUrl;
 
   Color get _themeColor => _isBuilderBase ? AppColors.accentBase : AppColors.accent;
-  Color get _bgTagColor => _isBuilderBase ? AppColors.accentBaseTint : AppColors.dangerTint;
+  Color get _bgTagColor => _isBuilderBase ? AppColors.accentBaseTint : AppColors.accentTint;
 
   StreamSubscription? _alarmSubscription;
 
@@ -103,7 +104,8 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       });
     });
 
-    _vm.loadSavedData().then((hasVillages) {
+    final Future<bool> loadFuture = _vm.loadSavedData();
+    loadFuture.then((hasVillages) {
       if (mounted) {
         setState(() {
           if (hasVillages) _parseStatus = AppStrings.terminal.statusLoadedSavedData;
@@ -111,25 +113,48 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
       }
     });
 
+    AiCommandService.attachForeground(
+      _vm,
+      readyFuture: loadFuture.then((_) {}),
+      onDataUpdated: (statusMsg) {
+        if (mounted) {
+          setState(() {
+            _parseStatus = statusMsg;
+          });
+        }
+      },
+    );
+
     _cursorTimer = Timer.periodic(Duration(milliseconds: 600), (timer) {
       if (mounted) _showCursor.value = !_showCursor.value;
     });
     _startClockTimer();
 
-    _alarmSubscription = Alarm.ringing.listen((dynamic event) {
+    _alarmSubscription = Alarm.ringing.listen((dynamic event) async {
       try {
-        ScheduleService.enableAlarmMode();
-        if (mounted) {
-          if (event is AlarmSettings) {
-            _vm.queueAlarm(event);
-          } else {
-            try {
-              for (final alarmSettings in event.alarms) {
-                if (alarmSettings is AlarmSettings) {
-                  _vm.queueAlarm(alarmSettings);
-                }
+        final List<AlarmSettings> candidateAlarms = [];
+        if (event is AlarmSettings) {
+          candidateAlarms.add(event);
+        } else {
+          try {
+            for (final alarmSettings in event.alarms) {
+              if (alarmSettings is AlarmSettings) {
+                candidateAlarms.add(alarmSettings);
               }
-            } catch (_) {}
+            }
+          } catch (_) {}
+        }
+
+        if (candidateAlarms.isEmpty) return;
+
+        for (final alarmSettings in candidateAlarms) {
+          final bool actuallyRinging = await Alarm.isRinging(alarmSettings.id);
+          if (!mounted) return;
+          if (actuallyRinging) {
+            ScheduleService.enableAlarmMode();
+            _vm.queueAlarm(alarmSettings);
+          } else {
+            await Alarm.stop(alarmSettings.id);
           }
         }
       } catch (e) {
@@ -205,6 +230,7 @@ class _TerminalScreenState extends State<TerminalScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
+    AiCommandService.detachForeground();
     ScheduleService.quickPasteTrigger.removeListener(_onQuickPasteTriggered);
     WidgetsBinding.instance.removeObserver(this);
     _alarmSubscription?.cancel();

@@ -46,7 +46,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <intent-filter>
+                <action android:name="coctimer.ACTION_IMPORT_JSON"/>
+                <action android:name="coctimer.ACTION_QUERY_UPGRADES"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
         </activity>
+
+        <!-- RECEIVER CHO AI AGENT QUA ADB (IMPORT JSON & QUERY ETA) -->
+        <receiver
+            android:name=".AiCommandReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="coctimer.ACTION_IMPORT_JSON" />
+                <action android:name="coctimer.ACTION_QUERY_UPGRADES" />
+            </intent-filter>
+        </receiver>
 
         <meta-data
             android:name="flutterEmbedding"

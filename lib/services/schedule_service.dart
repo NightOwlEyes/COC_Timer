@@ -29,7 +29,18 @@ class ScheduleService {
   static bool _isCheckingQuickPaste = false;
   static String? _lastQuickPasteStatus;
 
-  static Future<void> init() async {
+  static Future<void>? _initFuture;
+
+  static Future<void> init() {
+    return _initFuture ??= _initInternal().catchError((Object e) {
+      _initFuture = null;
+      throw e;
+    });
+  }
+
+  static Future<void> ensureInitialized() => init();
+
+  static Future<void> _initInternal() async {
     await Alarm.init();
 
     tz.initializeTimeZones();
@@ -328,11 +339,12 @@ class ScheduleService {
   }
 
   static Future<void> cancelAllForVillage(VillageData village) async {
+    final List<Future<void>> futures = [];
     void cancelList(List<UpgradeItem> items) {
       for (var item in items) {
         final int id = _generateUniqueId(item.instanceId);
-        _cancelSystemNotification(id);
-        _cancelFullScreenAlarm(id);
+        futures.add(_cancelSystemNotification(id));
+        futures.add(_cancelFullScreenAlarm(id));
       }
     }
     cancelList(village.buildersItems);
@@ -340,6 +352,7 @@ class ScheduleService {
     cancelList(village.labItems);
     cancelList(village.builders2Items);
     cancelList(village.lab2Items);
+    await Future.wait(futures);
   }
 
   static Future<void> _fireWelcomeNotification() async {
@@ -368,7 +381,14 @@ class ScheduleService {
   }
 
   static Future<void> _scheduleSystemNotification(
-      int id, DateTime time, String itemName, String tag, String villageName) async {
+    int id,
+    DateTime time,
+    String itemName,
+    String tag,
+    String villageName, {
+    String? customTitle,
+    String? customBody,
+  }) async {
     final androidDetails = AndroidNotificationDetails(
       'coc_timer_system_final_v2',
       AppStrings.schedule.channelName,
@@ -390,12 +410,13 @@ class ScheduleService {
 
     await _notificationsPlugin.zonedSchedule(
       id: id,
-      title: AppStrings.schedule.notificationTitle,
-      body: AppStrings.format(AppStrings.schedule.notificationBody, {
-        'itemName': itemName,
-        'villageName': villageName,
-        'tag': tag,
-      }),
+      title: customTitle ?? AppStrings.schedule.notificationTitle,
+      body: customBody ??
+          AppStrings.format(AppStrings.schedule.notificationBody, {
+            'itemName': itemName,
+            'villageName': villageName,
+            'tag': tag,
+          }),
       scheduledDate: tz.TZDateTime.from(time, tz.local),
       notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.alarmClock,
@@ -407,7 +428,14 @@ class ScheduleService {
   }
 
   static Future<void> _scheduleFullScreenAlarm(
-      int id, DateTime time, String itemName, String tag, String villageName) async {
+    int id,
+    DateTime time,
+    String itemName,
+    String tag,
+    String villageName, {
+    String? customTitle,
+    String? customBody,
+  }) async {
     final alarmSettings = AlarmSettings(
       id: id,
       dateTime: time,
@@ -419,12 +447,13 @@ class ScheduleService {
         volume: null,
       ),
       notificationSettings: NotificationSettings(
-        title: AppStrings.schedule.alarmNotificationTitle,
-        body: AppStrings.format(AppStrings.schedule.alarmNotificationBody, {
-          'itemName': itemName,
-          'villageName': villageName,
-          'tag': tag,
-        }),
+        title: customTitle ?? AppStrings.schedule.alarmNotificationTitle,
+        body: customBody ??
+            AppStrings.format(AppStrings.schedule.alarmNotificationBody, {
+              'itemName': itemName,
+              'villageName': villageName,
+              'tag': tag,
+            }),
         stopButton: AppStrings.schedule.alarmStopButton,
         icon: 'ic_notification',
       ),
@@ -502,24 +531,78 @@ class ScheduleService {
     if (RuleManager.warPreAlarmEnabled) {
       DateTime preTime = endTime.subtract(Duration(minutes: RuleManager.warPreAlarmMinutes));
       if (preTime.isAfter(DateTime.now())) {
+        final int hours = RuleManager.warPreAlarmMinutes ~/ 60;
+        final int mins = RuleManager.warPreAlarmMinutes % 60;
+        final String timeLeftLabel = hours > 0
+            ? (mins > 0 ? "${hours}h ${mins}m" : "${hours}h")
+            : "${mins}m";
+        final String preTitle = AppStrings.schedule.warPreAlarmTitle;
+
         if (RuleManager.warPreAlarmType == AlarmType.system) {
+          final String preBody = AppStrings.format(AppStrings.schedule.warPreNotificationBody, {
+            'clanName': clanName,
+            'tag': clanTag,
+            'time': timeLeftLabel,
+          });
           await _scheduleSystemNotification(
-              preId, preTime, AppStrings.schedule.warPreAlarmTitle, clanTag, clanName);
+            preId,
+            preTime,
+            preTitle,
+            clanTag,
+            clanName,
+            customTitle: preTitle,
+            customBody: preBody,
+          );
         } else if (RuleManager.warPreAlarmType == AlarmType.fullscreen) {
+          final String preBody = AppStrings.format(AppStrings.schedule.warPreAlarmBody, {
+            'clanName': clanName,
+            'tag': clanTag,
+            'time': timeLeftLabel,
+          });
           await _scheduleFullScreenAlarm(
-              preId, preTime, AppStrings.schedule.warPreAlarmTitle, clanTag, clanName);
+            preId,
+            preTime,
+            preTitle,
+            clanTag,
+            clanName,
+            customTitle: preTitle,
+            customBody: preBody,
+          );
         }
       }
     }
 
     if (RuleManager.warEndAlarmEnabled) {
       if (endTime.isAfter(DateTime.now())) {
+        final String endTitle = AppStrings.schedule.warEndAlarmTitle;
         if (RuleManager.warEndAlarmType == AlarmType.system) {
+          final String endBody = AppStrings.format(AppStrings.schedule.warEndNotificationBody, {
+            'clanName': clanName,
+            'tag': clanTag,
+          });
           await _scheduleSystemNotification(
-              endId, endTime, AppStrings.schedule.warEndAlarmTitle, clanTag, clanName);
+            endId,
+            endTime,
+            endTitle,
+            clanTag,
+            clanName,
+            customTitle: endTitle,
+            customBody: endBody,
+          );
         } else if (RuleManager.warEndAlarmType == AlarmType.fullscreen) {
+          final String endBody = AppStrings.format(AppStrings.schedule.warEndAlarmBody, {
+            'clanName': clanName,
+            'tag': clanTag,
+          });
           await _scheduleFullScreenAlarm(
-              endId, endTime, AppStrings.schedule.warEndAlarmTitle, clanTag, clanName);
+            endId,
+            endTime,
+            endTitle,
+            clanTag,
+            clanName,
+            customTitle: endTitle,
+            customBody: endBody,
+          );
         }
       }
     }

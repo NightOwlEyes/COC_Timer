@@ -22,6 +22,35 @@ class VillageCard extends StatelessWidget {
     required this.onTap,
   });
 
+  Future<void> _copyVillageTag(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: village.tag));
+    if (!context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          AppTheme.isModern ? "Copied: ${village.tag}" : "> COPIED: ${village.tag}",
+          style: TextStyle(
+            fontFamily: AppTheme.font,
+            color: AppColors.text,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+        backgroundColor: AppTheme.isModern ? const Color(0xFF1E293B) : AppColors.surface,
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: AppTheme.isModern
+            ? RoundedRectangleBorder(borderRadius: AppTheme.brMd)
+            : RoundedRectangleBorder(
+                side: BorderSide(color: AppColors.ok, width: 1),
+                borderRadius: BorderRadius.zero,
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (AppTheme.isModern) return _buildModern(context);
@@ -33,14 +62,14 @@ class VillageCard extends StatelessWidget {
     int bCount = isBuilderBase ? village.activeBuilders2.length : village.activeBuilders.length;
     int bTotal = isBuilderBase ? village.totalBuilders2 : village.totalBuilders;
     int lCount = isBuilderBase ? village.activeLab2.length : village.activeLab.length;
+    int lTotal = isBuilderBase ? village.totalLab2 : village.totalLab;
     int pCount = isBuilderBase ? 0 : village.activePets.length;
 
-    int maxL = lCount > 1 ? lCount : 1;
     int maxP = pCount > 1 ? pCount : 1;
 
     // KIỂM TRA TRẠNG THÁI RẢNH (IDLE)
     bool isIdleBuilder = bTotal > 0 && bCount < bTotal;
-    bool isIdleLab = lCount == 0;
+    bool isIdleLab = lTotal > 0 && lCount < lTotal;
     bool isIdlePet = pCount == 0;
 
     String displayName = villageName.trim().isEmpty ? AppStrings.card.unnamedVillage : villageName;
@@ -80,34 +109,26 @@ class VillageCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // TÍNH NĂNG CHẠM GIỮ ĐỂ COPY TAG LÀNG
+            // TÍNH NĂNG CHẠM / CHẠM GIỮ ĐỂ COPY TAG LÀNG
             InkWell(
-              onLongPress: () async {
-                await Clipboard.setData(ClipboardData(text: village.tag));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "> COPIED: ${village.tag}",
-                        style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      backgroundColor: AppColors.surface,
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(color: AppColors.ok, width: 1),
-                        borderRadius: BorderRadius.zero,
+              onTap: () => _copyVillageTag(context),
+              onLongPress: () => _copyVillageTag(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        style: TextStyle(fontFamily: AppTheme.font, fontSize: 14),
+                        children: [
+                          TextSpan(text: AppStrings.card.labelTagPrefix, style: TextStyle(color: AppColors.textFaint)),
+                          TextSpan(text: village.tag, style: TextStyle(color: AppColors.textDim)),
+                        ],
                       ),
                     ),
-                  );
-                }
-              },
-              child: RichText(
-                text: TextSpan(
-                  style: TextStyle(fontFamily: AppTheme.font, fontSize: 14),
-                  children: [
-                    TextSpan(text: AppStrings.card.labelTagPrefix, style: TextStyle(color: AppColors.textFaint)),
-                    TextSpan(text: village.tag, style: TextStyle(color: AppColors.textDim)),
+                    const SizedBox(width: 6),
+                    Icon(Icons.copy_rounded, size: 13, color: AppColors.textDim),
                   ],
                 ),
               ),
@@ -121,12 +142,12 @@ class VillageCard extends StatelessWidget {
                   ? [
                       _buildStatColumn(AppStrings.card.statMasterBuilder, "$bCount/$bTotal", bCount > 0, isIdleBuilder, themeColor),
                       _buildVerticalDivider(),
-                      _buildStatColumn(AppStrings.card.statStarLaboratory, "$lCount/$maxL", lCount > 0, isIdleLab, themeColor),
+                      _buildStatColumn(AppStrings.card.statStarLaboratory, "$lCount/$lTotal", lCount > 0, isIdleLab, themeColor),
                     ]
                   : [
                       _buildStatColumn(AppStrings.card.statBuilder, "$bCount/$bTotal", bCount > 0, isIdleBuilder, themeColor),
                       _buildVerticalDivider(),
-                      _buildStatColumn(AppStrings.card.statLab, "$lCount/$maxL", lCount > 0, isIdleLab, themeColor),
+                      _buildStatColumn(AppStrings.card.statLab, "$lCount/$lTotal", lCount > 0, isIdleLab, themeColor),
                       _buildVerticalDivider(),
                       _buildStatColumn(AppStrings.card.statPet, "$pCount/$maxP", pCount > 0, isIdlePet, themeColor),
                     ],
@@ -199,13 +220,13 @@ class VillageCard extends StatelessWidget {
     int bCount = isBuilderBase ? village.activeBuilders2.length : village.activeBuilders.length;
     int bTotal = isBuilderBase ? village.totalBuilders2 : village.totalBuilders;
     int lCount = isBuilderBase ? village.activeLab2.length : village.activeLab.length;
+    int lTotal = isBuilderBase ? village.totalLab2 : village.totalLab;
     int pCount = isBuilderBase ? 0 : village.activePets.length;
 
-    int maxL = lCount > 1 ? lCount : 1;
     int maxP = pCount > 1 ? pCount : 1;
 
     bool isIdleBuilder = bTotal > 0 && bCount < bTotal;
-    bool isIdleLab = lCount == 0;
+    bool isIdleLab = lTotal > 0 && lCount < lTotal;
     bool isIdlePet = pCount == 0;
 
     String displayName = villageName.trim().isEmpty ? AppStrings.card.unnamedVillage : villageName;
@@ -334,34 +355,25 @@ class VillageCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           InkWell(
                             borderRadius: AppTheme.brSm,
-                            onLongPress: () async {
-                              await Clipboard.setData(ClipboardData(text: village.tag));
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text("Copied: ${village.tag}"),
-                                    backgroundColor: const Color(0xFF1E293B),
-                                    duration: const Duration(seconds: 2),
-                                    behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(borderRadius: AppTheme.brMd),
+                            onTap: () => _copyVillageTag(context),
+                            onLongPress: () => _copyVillageTag(context),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    village.tag,
+                                    style: TextStyle(
+                                      fontFamily: AppTheme.font,
+                                      color: AppColors.textMuted,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                );
-                              }
-                            },
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  village.tag,
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    color: AppColors.textMuted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(Icons.copy_rounded, size: 12, color: AppColors.textDim),
-                              ],
+                                  const SizedBox(width: 5),
+                                  Icon(Icons.copy_rounded, size: 13, color: AppColors.textDim),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -395,7 +407,7 @@ class VillageCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     statTile(
                       title: AppStrings.card.statStarLaboratory,
-                      value: "$lCount/$maxL",
+                      value: "$lCount/$lTotal",
                       icon: Icons.auto_awesome_rounded,
                       color: AppColors.lab,
                       isIdle: isIdleLab,
@@ -414,7 +426,7 @@ class VillageCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     statTile(
                       title: AppStrings.card.statLab,
-                      value: "$lCount/$maxL",
+                      value: "$lCount/$lTotal",
                       icon: Icons.science_rounded,
                       color: AppColors.lab,
                       isIdle: isIdleLab,

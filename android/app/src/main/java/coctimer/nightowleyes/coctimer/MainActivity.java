@@ -7,11 +7,15 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
+
+import java.util.Map;
 
 import io.flutter.embedding.android.FlutterActivity;
 import io.flutter.embedding.engine.FlutterEngine;
@@ -19,12 +23,102 @@ import io.flutter.plugin.common.MethodChannel;
 
 public class MainActivity extends FlutterActivity {
 
+    public interface AiResultCallback {
+        void onComplete(String jsonResult);
+    }
+
     private static final String CHANNEL = "coctimer/fsi_permission";
+    private static volatile MethodChannel activeAiChannel;
+    private static volatile boolean aiDartReady = false;
+    private static volatile MainActivity activeInstance;
+    private Intent pendingLaunchAiIntent;
+
+    public static boolean isAiChannelReady() {
+        return activeAiChannel != null && aiDartReady;
+    }
+
+    public static void dispatchAiCommand(
+            String method,
+            Map<String, Object> args,
+            AiResultCallback callback
+    ) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            MethodChannel channel = activeAiChannel;
+            if (channel == null || !aiDartReady) {
+                callback.onComplete(AiCommandReceiver.buildErrorJson(method, "Active AI channel is unavailable."));
+                return;
+            }
+            channel.invokeMethod(method, args, new MethodChannel.Result() {
+                @Override
+                public void success(Object res) {
+                    callback.onComplete(res != null
+                            ? res.toString()
+                            : AiCommandReceiver.buildErrorJson(method, "Empty response from Dart."));
+                }
+
+                @Override
+                public void error(String code, String msg, Object details) {
+                    callback.onComplete(AiCommandReceiver.buildErrorJson(method, code + ": " + msg));
+                }
+
+                @Override
+                public void notImplemented() {
+                    callback.onComplete(AiCommandReceiver.buildErrorJson(method, "Method not implemented."));
+                }
+            });
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Đã dọn dẹp sạch cờ khởi động
         super.onCreate(savedInstanceState);
+        activeInstance = this;
+        handleIncomingAiIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(@NonNull Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingAiIntent(intent);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (activeInstance == this) {
+            activeInstance = null;
+            activeAiChannel = null;
+            aiDartReady = false;
+        }
+        super.onDestroy();
+    }
+
+    private void handleIncomingAiIntent(Intent intent) {
+        if (intent == null || intent.getAction() == null) return;
+        String action = intent.getAction();
+        if (!AiCommandReceiver.ACTION_IMPORT_JSON.equals(action)
+                && !AiCommandReceiver.ACTION_QUERY_UPGRADES.equals(action)) {
+            return;
+        }
+        if (isAiChannelReady()) {
+            executeActivityAiIntent(intent);
+        } else {
+            pendingLaunchAiIntent = new Intent(intent);
+        }
+    }
+
+    private void executeActivityAiIntent(Intent intent) {
+        final Context appContext = getApplicationContext();
+        new Thread(() -> {
+            AiCommandReceiver.ParsedIntentCommand parsed = AiCommandReceiver.parseIntent(appContext, intent);
+            if (parsed.errorJson != null) {
+                AiCommandReceiver.deliverOutput(appContext, parsed.outputPath, parsed.errorJson, null, null);
+                return;
+            }
+            dispatchAiCommand(parsed.method, parsed.args, jsonResult ->
+                    AiCommandReceiver.deliverOutput(appContext, parsed.outputPath, jsonResult, null, null));
+        }).start();
     }
 
     @Override
@@ -36,6 +130,26 @@ public class MainActivity extends FlutterActivity {
     @Override
     public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
+        aiDartReady = false;
+        MethodChannel aiChannel = new MethodChannel(
+                flutterEngine.getDartExecutor().getBinaryMessenger(),
+                AiCommandReceiver.CHANNEL_NAME
+        );
+        activeAiChannel = aiChannel;
+        aiChannel.setMethodCallHandler((call, result) -> {
+            if ("aiReady".equals(call.method)) {
+                aiDartReady = true;
+                result.success(null);
+                Intent queued = pendingLaunchAiIntent;
+                pendingLaunchAiIntent = null;
+                if (queued != null) {
+                    executeActivityAiIntent(queued);
+                }
+            } else {
+                result.notImplemented();
+            }
+        });
+
         new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL)
                 .setMethodCallHandler((call, result) -> {
                     switch (call.method) {

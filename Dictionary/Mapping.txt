@@ -194,7 +194,11 @@
     1000059: "Workshop",
     1000081: "X-Bow",
     1000021: "X-Bow",
-    4000053: "Yeti"
+    4000053: "Yeti",
+    1000106: "Squad Barracks",
+    1000107: "Spiky Tower",
+    1000108: "Firecracker Tower",
+    26000153: "Heroic Spell"
   },
 
   "vi": {
@@ -392,6 +396,10 @@
     1000059: "Xưởng chế tạo",
     1000081: "Tháp cung",
     1000021: "Tháp cung",
-    4000053: "Người tuyết Yeti"
+    4000053: "Người tuyết Yeti",
+    1000106: "Trại lính tiểu đội",
+    1000107: "Tháp gai nhọn",
+    1000108: "Tháp pháo hoa",
+    26000153: "Thần chú anh hùng"
   }
 }

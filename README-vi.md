@@ -42,7 +42,7 @@
 | ⏰ Báo thức | Phát chuông báo toàn màn hình khi hoàn thành |
 
 - **Tính toán Buff & Trợ lý thông minh:** Tự động tính thời gian hoàn thành thực tế (`realEta`) dựa trên Thuốc Thợ Xây, Thuốc Nghiên Cứu, Thuốc Linh Thú, Lương Khô, Súp Nghiên Cứu, Tháp Đồng Hồ, Thợ Xây Học Việc và Nghiên Cứu Học Việc.
-- **Hỗ trợ Thợ xây Yêu tinh (Thợ thứ 7):** Đếm chính xác số thợ khi thuê thêm (`extra: true`) và tự động quay về 6/6 ngay khi thợ thứ 7 hoàn tất.
+- **Hỗ trợ Thợ xây & Nghiên cứu Yêu tinh (Goblin Builder & Researcher):** Nhận diện chính xác cờ hiệu `extra: true` khi thuê thêm thợ xây thứ 7 hoặc mở slot nghiên cứu thứ 2 trong Phòng Thí Nghiệm; tự động cảnh báo slot chính đang rảnh (VD: `6/7 [!]`, `1/2 [!]`) và tự động quay về mốc chuẩn `6/6`, `1/1` ngay khi yêu tinh hoàn tất.
 - **Cảnh báo thuốc:** Gắn dấu chấm than (`!`) cảnh báo các công trình hoàn tất trước khi thuốc tăng tốc hết tác dụng.
 
 ### 2. Tiện ích Dán Nhanh (Quick Paste)

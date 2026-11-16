@@ -46,6 +46,9 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
   late bool _trackBuilder;
   late bool _showRealEta;
 
+  Color get _activeThemeColor =>
+      widget.isBuilderBase ? AppColors.accentBase : AppColors.accent;
+
   @override
   void initState() {
     super.initState();
@@ -198,10 +201,10 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: value ? widget.themeColor.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.06),
+            color: value ? _activeThemeColor.withValues(alpha: 0.18) : Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: value ? widget.themeColor.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.18),
+              color: value ? _activeThemeColor.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.18),
             ),
           ),
           child: Row(
@@ -209,7 +212,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
             children: [
               Icon(
                 value ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                color: value ? widget.themeColor : AppColors.textDim,
+                color: value ? _activeThemeColor : AppColors.textDim,
                 size: 15,
               ),
               const SizedBox(width: 6),
@@ -229,8 +232,8 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
 
     return InkWell(
       onTap: onTap,
-      splashColor: widget.themeColor.withValues(alpha: 0.3),
-      highlightColor: widget.themeColor.withValues(alpha: 0.1),
+      splashColor: _activeThemeColor.withValues(alpha: 0.3),
+      highlightColor: _activeThemeColor.withValues(alpha: 0.1),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
         child: Row(
@@ -238,7 +241,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
           children: [
             Icon(
               value ? Icons.check_box : Icons.check_box_outline_blank,
-              color: value ? widget.themeColor : AppColors.borderStrong,
+              color: value ? _activeThemeColor : AppColors.borderStrong,
               size: 16,
             ),
             const SizedBox(width: 6),
@@ -277,6 +280,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     final activeB = widget.isBuilderBase ? widget.village.activeBuilders2 : widget.village.activeBuilders;
     final totalB = widget.isBuilderBase ? widget.village.totalBuilders2 : widget.village.totalBuilders;
     final activeL = widget.isBuilderBase ? widget.village.activeLab2 : widget.village.activeLab;
+    final totalL = widget.isBuilderBase ? widget.village.totalLab2 : widget.village.totalLab;
     final activeP = widget.isBuilderBase ? <UpgradeItem>[] : widget.village.activePets;
 
     bool currentTracked = widget.isBuilderBase ? _trackBuilder : _trackHome;
@@ -335,7 +339,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     }
 
     return AdaptiveDialog(
-      accentColor: widget.themeColor,
+      accentColor: _activeThemeColor,
       terminalBorderWidth: 2.0,
       child: SingleChildScrollView(
         child: Column(
@@ -349,7 +353,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                   child: Text(
                     AppTheme.label("${AppStrings.dialog.titlePrefix}${widget.village.tag}"),
                     style: TextStyle(
-                      color: widget.themeColor,
+                      color: _activeThemeColor,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                       letterSpacing: AppTheme.ls(1.5),
@@ -377,6 +381,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                   AppTheme.label(AppStrings.dialog.labelVillageName),
                   style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
+                const SizedBox(width: 6),
                 Expanded(
                   child: TextField(
                     controller: _nameController,
@@ -410,23 +415,24 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                       AppTheme.label(AppStrings.dialog.labelTimeFormat),
                       style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: AppTheme.isModern
                           ? const EdgeInsets.symmetric(horizontal: 8, vertical: 3)
                           : EdgeInsets.zero,
                       decoration: AppTheme.isModern
                           ? BoxDecoration(
-                              color: (_showRealEta ? AppColors.ok : widget.themeColor).withValues(alpha: 0.16),
+                              color: (_showRealEta ? AppColors.ok : _activeThemeColor).withValues(alpha: 0.16),
                               borderRadius: AppTheme.brSm,
                               border: Border.all(
-                                color: (_showRealEta ? AppColors.ok : widget.themeColor).withValues(alpha: 0.45),
+                                color: (_showRealEta ? AppColors.ok : _activeThemeColor).withValues(alpha: 0.45),
                               ),
                             )
                           : null,
                       child: Text(
                         AppTheme.label(_showRealEta ? AppStrings.dialog.timeFormatExact : AppStrings.dialog.timeFormatCountdown),
                         style: TextStyle(
-                          color: _showRealEta ? AppColors.ok : widget.themeColor,
+                          color: _showRealEta ? AppColors.ok : _activeThemeColor,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -485,7 +491,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                 children: [
                   _buildLogLine(
                     widget.isBuilderBase ? AppStrings.dialog.groupLabNight : AppStrings.dialog.groupLabMain,
-                    "${activeL.length} ${AppStrings.dialog.statusUpgradingSuffix}",
+                    "${activeL.length}/$totalL ${AppStrings.dialog.statusUpgradingSuffix}",
                     isTracked: currentTracked,
                     onTap: () => _handleCycleGroupOptimistic(
                       widget.isBuilderBase ? AppStrings.dialog.logGroupNameLabNight : AppStrings.dialog.logGroupNameLabMain,
@@ -559,8 +565,8 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
     }
     return InkWell(
       onTap: isTracked ? onTap : null,
-      splashColor: widget.themeColor.withValues(alpha: 0.3),
-      highlightColor: widget.themeColor.withValues(alpha: 0.1),
+      splashColor: _activeThemeColor.withValues(alpha: 0.3),
+      highlightColor: _activeThemeColor.withValues(alpha: 0.1),
       child: Opacity(
         opacity: isTracked ? 1.0 : 0.5,
         child: Padding(
@@ -623,12 +629,16 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
             stateColor = AppColors.ok;
           } else if (item.alarmType == AlarmType.fullscreen) {
             iconData = Icons.alarm;
-            stateColor = widget.themeColor;
+            stateColor = _activeThemeColor;
           }
 
           final bool finishesBeforeBoostEnds = boostEndTime != null &&
               boostEndTime.isAfter(now) &&
               item.realEta.isBefore(boostEndTime);
+
+          final int nextLevel = item.level + 1;
+          final String arrow = (AppTheme.font == 'Coiny' || AppTheme.font == 'JosefinSans') ? '->' : '→';
+          final String itemLabel = "${AppStrings.gameData.getName(item.dataId)} $arrow $nextLevel";
 
           return InkWell(
             borderRadius: AppTheme.brSm,
@@ -650,8 +660,8 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                     widget.onCycleItem(item);
                   }
                 : null,
-            splashColor: widget.themeColor.withValues(alpha: 0.3),
-            highlightColor: widget.themeColor.withValues(alpha: 0.1),
+            splashColor: _activeThemeColor.withValues(alpha: 0.3),
+            highlightColor: _activeThemeColor.withValues(alpha: 0.1),
             child: Opacity(
               opacity: isTracked ? 1.0 : 0.5,
               child: Padding(
@@ -672,7 +682,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                     if (AppTheme.isModern) ...[
                       Expanded(
                         child: Text(
-                          "${AppStrings.gameData.getName(item.dataId)} (Lv.${item.level})",
+                          itemLabel,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(color: stateColor, fontSize: 13, fontWeight: FontWeight.w500),
                         ),
@@ -691,7 +701,7 @@ class _VillageDetailDialogState extends State<VillageDetailDialog> {
                         ),
                       ),
                     ] else ...[
-                      Text("${AppStrings.gameData.getName(item.dataId)} (Lv.${item.level})", style: TextStyle(color: stateColor, fontSize: 12)),
+                      Text(itemLabel, style: TextStyle(color: stateColor, fontSize: 12)),
                       Expanded(
                         child: Text(
                           AppStrings.dialog.separatorDots,

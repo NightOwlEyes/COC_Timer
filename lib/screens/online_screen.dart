@@ -545,13 +545,43 @@ class _OnlineScreenState extends State<OnlineScreen> {
                                             ),
                                             SizedBox(height: 8),
 
-                                            RichText(
-                                              text: TextSpan(
-                                                style: TextStyle(fontFamily: AppTheme.font, fontSize: 14),
-                                                children: [
-                                                  TextSpan(text: AppStrings.onlineScreen.labelClanTag, style: TextStyle(color: AppColors.textFaint)),
-                                                  TextSpan(text: clan['tag'], style: TextStyle(color: AppColors.textDim)),
-                                                ],
+                                            InkWell(
+                                              onTap: () async {
+                                                final String tagText = clan['tag']?.toString() ?? '';
+                                                await Clipboard.setData(ClipboardData(text: tagText));
+                                                if (!context.mounted) return;
+                                                final messenger = ScaffoldMessenger.of(context);
+                                                messenger.hideCurrentSnackBar();
+                                                messenger.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      AppTheme.isModern ? "Copied: $tagText" : "> COPIED: $tagText",
+                                                      style: TextStyle(fontFamily: AppTheme.font, color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 13),
+                                                    ),
+                                                    backgroundColor: AppTheme.isModern ? const Color(0xFF1E293B) : AppColors.surface,
+                                                    duration: Duration(seconds: 2),
+                                                    behavior: SnackBarBehavior.floating,
+                                                  ),
+                                                );
+                                              },
+                                              child: Padding(
+                                                padding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    RichText(
+                                                      text: TextSpan(
+                                                        style: TextStyle(fontFamily: AppTheme.font, fontSize: 14),
+                                                        children: [
+                                                          TextSpan(text: AppStrings.onlineScreen.labelClanTag, style: TextStyle(color: AppColors.textFaint)),
+                                                          TextSpan(text: clan['tag'], style: TextStyle(color: AppColors.textDim)),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 6),
+                                                    Icon(Icons.copy_rounded, size: 13, color: AppColors.textDim),
+                                                  ],
+                                                ),
                                               ),
                                             ),
 

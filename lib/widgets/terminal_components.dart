@@ -382,7 +382,7 @@ class TerminalInputArea extends StatelessWidget {
             controller: controller,
             autofocus: false,
             maxLines: 4,
-            style: TextStyle(color: AppColors.text, fontSize: 13, fontFamily: 'monospace'),
+            style: TextStyle(color: AppColors.text, fontSize: 13, fontFamily: AppTheme.font),
             decoration: InputDecoration(
               hintText: AppStrings.terminal.inputHint,
               hintStyle: TextStyle(color: AppColors.textDim),
@@ -426,7 +426,7 @@ class TerminalInputArea extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [
                   AppColors.accent,
-                  const Color(0xFF0284C7),
+                  AppColors.accentDeep,
                 ],
               ),
               boxShadow: [
@@ -445,12 +445,12 @@ class TerminalInputArea extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                    Icon(Icons.check_circle_rounded, color: AppColors.onAccent, size: 20),
                     const SizedBox(width: 8),
                     Text(
                       AppTheme.label(AppStrings.terminal.btnSubmit),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppColors.onAccent,
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.6,

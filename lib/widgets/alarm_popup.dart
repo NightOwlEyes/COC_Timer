@@ -12,40 +12,60 @@ class AlarmPopup extends StatefulWidget {
   State<AlarmPopup> createState() => _AlarmPopupState();
 }
 
-class _AlarmPopupState extends State<AlarmPopup> {
+class _AlarmPopupState extends State<AlarmPopup> with WidgetsBindingObserver {
   Timer? _checkTimer;
   bool _isClosing = false; // CHỐT AN TOÀN TRÁNH DOUBLE POP
+  bool _isChecking = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
-    // Vòng lặp 500ms: Kiểm tra đồng bộ xem chuông có bị người dùng tắt từ thanh thông báo / màn hình khoá không
-    _checkTimer = Timer.periodic(Duration(milliseconds: 500), (timer) async {
-      final activeAlarms = await Alarm.getAlarms();
-      final stillActive = activeAlarms.any((a) => a.id == widget.settings.id);
+    // Kiểm tra ngay khi mở và định kỳ mỗi 400ms xem chuông có bị tắt trên thanh thông báo / màn hình khóa không
+    _verifyStillRinging();
+    _checkTimer = Timer.periodic(const Duration(milliseconds: 400), (_) {
+      _verifyStillRinging();
+    });
+  }
 
-      if (!stillActive && !_isClosing) {
+  Future<void> _verifyStillRinging() async {
+    if (_isClosing || _isChecking) return;
+    _isChecking = true;
+    try {
+      final bool stillRinging = await Alarm.isRinging(widget.settings.id);
+      if (!stillRinging && !_isClosing) {
         _isClosing = true;
-        timer.cancel();
-
+        _checkTimer?.cancel();
         await Alarm.stop(widget.settings.id);
-
         if (mounted) {
           Navigator.pop(context);
         }
       }
-    });
+    } finally {
+      _isChecking = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _verifyStillRinging();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _checkTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final String rawTitle = widget.settings.notificationSettings.title.trim();
+    final String displayTitle = rawTitle.isNotEmpty ? rawTitle : AppStrings.alarm.title;
+
     return PopScope(
       canPop: false,
       child: AdaptiveDialog(
@@ -60,7 +80,8 @@ class _AlarmPopupState extends State<AlarmPopup> {
               Icon(Icons.alarm_on, color: AppColors.accent, size: 48),
               SizedBox(height: 16),
               Text(
-                AppTheme.label(AppStrings.alarm.title),
+                AppTheme.label(displayTitle),
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.accent,
                   fontSize: 16,

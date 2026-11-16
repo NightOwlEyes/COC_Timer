@@ -47,12 +47,12 @@ class _CocTimerAppState extends State<CocTimerApp> {
   @override
   void initState() {
     super.initState();
-    AppTheme.notifier.addListener(_onThemeChanged);
+    AppTheme.revisionNotifier.addListener(_onThemeChanged);
   }
 
   @override
   void dispose() {
-    AppTheme.notifier.removeListener(_onThemeChanged);
+    AppTheme.revisionNotifier.removeListener(_onThemeChanged);
     super.dispose();
   }
 

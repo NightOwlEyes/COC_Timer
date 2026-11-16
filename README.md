@@ -41,7 +41,7 @@ An application for tracking upgrade timers for buildings, spells, troops, pets, 
 | ⏰ Full-screen alarm | Sounds a full-screen ringing alarm when completed |
 
 - **Advanced Boost & Apprentice Calculation:** Automatically calculates the exact real-time finish time (`realEta`) accounting for Builder Potions, Research Potions, Pet Potions, Builder Bites, Study Soup, Clock Tower, Builder's Apprentice, and Lab Assistant.
-- **Goblin Builder (7th Builder) Support:** Accurately counts builders when the extra builder is hired (`extra: true`) and automatically resets back to 6/6 when completed.
+- **Goblin Builder (7th Builder) & Goblin Researcher Support:** Accurately detects `extra: true` when renting an extra builder or a second laboratory research slot; automatically warns when the regular slot becomes idle (e.g. `6/7 [!]`, `1/2 [!]`) and resets to standard `6/6` and `1/1` capacity as soon as the goblin finishes.
 - **Boost Expiration Warning:** Highlights upgrades with an exclamation mark (`!`) if they finish before the active boost expires.
 
 ### 2. Quick Paste Mode

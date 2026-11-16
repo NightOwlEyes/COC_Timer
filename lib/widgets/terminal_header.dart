@@ -285,7 +285,7 @@ class TerminalHeader extends StatelessWidget {
                 isOnline ? AppStrings.terminal.labelServerOnline : AppStrings.terminal.labelServer,
                 style: TextStyle(
                   fontFamily: AppTheme.font,
-                  color: isOnline ? AppColors.ok : AppColors.danger,
+                  color: isOnline ? AppColors.ok : AppColors.accent,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -325,7 +325,7 @@ class TerminalHeader extends StatelessWidget {
         Text(
           "$offsetString $currentTime",
           style: TextStyle(
-            fontFamily: 'monospace',
+            fontFamily: AppTheme.font,
             color: AppColors.textMuted,
             fontSize: 11,
             fontWeight: FontWeight.w600,

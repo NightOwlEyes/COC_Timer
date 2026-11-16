@@ -6,13 +6,81 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// - [modern]: Phong cách Kính mờ (Glassmorphism).
 enum AppThemeMode { terminal, modern }
 
+/// 7 bảng màu nhấn tùy chỉnh cho giao diện ứng dụng.
+enum AppAccentColor { pink, red, orange, yellow, green, blue, purple }
+
+extension AppAccentColorSpec on AppAccentColor {
+  Color get primary {
+    switch (this) {
+      case AppAccentColor.pink:
+        return const Color(0xFFF472B6);
+      case AppAccentColor.red:
+        return const Color(0xFFEF4444);
+      case AppAccentColor.orange:
+        return const Color(0xFFFB923C);
+      case AppAccentColor.yellow:
+        return const Color(0xFFFACC15);
+      case AppAccentColor.green:
+        return const Color(0xFF4ADE80);
+      case AppAccentColor.blue:
+        return const Color(0xFF38BDF8);
+      case AppAccentColor.purple:
+        return const Color(0xFFA78BFA);
+    }
+  }
+
+  Color get deep {
+    switch (this) {
+      case AppAccentColor.pink:
+        return const Color(0xFFDB2777);
+      case AppAccentColor.red:
+        return const Color(0xFFDC2626);
+      case AppAccentColor.orange:
+        return const Color(0xFFEA580C);
+      case AppAccentColor.yellow:
+        return const Color(0xFFCA8A04);
+      case AppAccentColor.green:
+        return const Color(0xFF16A34A);
+      case AppAccentColor.blue:
+        return const Color(0xFF0284C7);
+      case AppAccentColor.purple:
+        return const Color(0xFF7C3AED);
+    }
+  }
+
+  String localizedName(String languageCode) {
+    final bool isVi = languageCode == 'vi';
+    switch (this) {
+      case AppAccentColor.pink:
+        return isVi ? 'Hồng' : 'Pink';
+      case AppAccentColor.red:
+        return isVi ? 'Đỏ' : 'Red';
+      case AppAccentColor.orange:
+        return isVi ? 'Cam' : 'Orange';
+      case AppAccentColor.yellow:
+        return isVi ? 'Vàng' : 'Yellow';
+      case AppAccentColor.green:
+        return isVi ? 'Xanh lá' : 'Green';
+      case AppAccentColor.blue:
+        return isVi ? 'Xanh dương (Mặc định)' : 'Blue (Default)';
+      case AppAccentColor.purple:
+        return isVi ? 'Tím' : 'Purple';
+    }
+  }
+}
+
 /// Quản lý theme hiện tại, lưu cấu hình và cung cấp các token hình dạng/font + widget kính mờ.
 class AppTheme {
   static const String _prefKey = 'app_theme_mode';
+  static const String _accentPrefKey = 'app_accent_color';
 
   static final ValueNotifier<AppThemeMode> notifier = ValueNotifier(AppThemeMode.terminal);
+  static final ValueNotifier<AppAccentColor> accentNotifier = ValueNotifier(AppAccentColor.blue);
+  static final ValueNotifier<int> revisionNotifier = ValueNotifier(0);
+  static bool hasCustomAccent = false;
 
   static AppThemeMode get mode => notifier.value;
+  static AppAccentColor get accentColor => accentNotifier.value;
   static bool get isTerminal => notifier.value == AppThemeMode.terminal;
   static bool get isModern => notifier.value == AppThemeMode.modern;
 
@@ -23,13 +91,32 @@ class AppTheme {
       (m) => m.name == saved,
       orElse: () => AppThemeMode.terminal,
     );
+
+    final savedAccent = prefs.getString(_accentPrefKey);
+    hasCustomAccent = savedAccent != null;
+    accentNotifier.value = AppAccentColor.values.firstWhere(
+      (c) => c.name == savedAccent,
+      orElse: () => AppAccentColor.blue,
+    );
   }
 
   static Future<void> setMode(AppThemeMode newMode) async {
     if (notifier.value == newMode) return;
     notifier.value = newMode;
+    revisionNotifier.value++;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefKey, newMode.name);
+  }
+
+  static Future<void> setAccentColor(AppAccentColor color) async {
+    final bool changed = accentNotifier.value != color || !hasCustomAccent;
+    hasCustomAccent = true;
+    accentNotifier.value = color;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_accentPrefKey, color.name);
+    if (changed) {
+      revisionNotifier.value++;
+    }
   }
 
   static Future<void> toggle() =>
@@ -37,8 +124,11 @@ class AppTheme {
 
   // ================= TOKEN HÌNH DẠNG & FONT =================
 
-  /// Font chính: Terminal dùng monospace, Modern dùng font hệ thống (Roboto trên Android).
-  static String? get font => isTerminal ? 'monospace' : null;
+  /// Font chính: Terminal dùng monospace, Glass dùng JosefinSans (riêng màu Hồng dùng Coiny).
+  static String get font {
+    if (isTerminal) return 'monospace';
+    return accentColor == AppAccentColor.pink ? 'Coiny' : 'JosefinSans';
+  }
 
   /// Bo góc: Terminal vuông vức, Glassmorphism bo mềm.
   static double get radiusSm => isTerminal ? 0 : 10;
@@ -77,8 +167,8 @@ class AppTheme {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.background,
         primaryColor: AppColors.text,
-        fontFamily: 'monospace',
-        textTheme: ThemeData.dark().textTheme.apply(fontFamily: 'monospace'),
+        fontFamily: font,
+        textTheme: ThemeData.dark().textTheme.apply(fontFamily: font),
       );
     }
     return ThemeData(
@@ -86,6 +176,8 @@ class AppTheme {
       useMaterial3: true,
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.text,
+      fontFamily: font,
+      textTheme: ThemeData.dark().textTheme.apply(fontFamily: font),
       colorScheme: ColorScheme.dark(
         primary: AppColors.accent,
         secondary: AppColors.ok,
@@ -124,12 +216,20 @@ class AppColors {
   static Color get textFaint => _p(0xFF555555, 0xFF64748B);
 
   // ---- Màu nhấn theo làng ----
-  /// Làng chính (Home Village): Xanh băng phát sáng (Cyan Glass).
-  static Color get accent => _p(0xFFB54545, 0xFF38BDF8);
-  static Color get accentTint => _p(0x33B54545, 0x2E38BDF8);
-  /// Làng thợ xây (Builder Base): Tím ngân hà (Astral Violet).
-  static Color get accentBase => _p(0xFFF8A4BD, 0xFFA78BFA);
-  static Color get accentBaseTint => _p(0x22F8A4BD, 0x2EA78BFA);
+  /// Làng chính (Home Village): Đồng bộ theo màu tùy chỉnh của người dùng trên cả 2 theme.
+  static Color get accent => AppTheme.accentColor.primary;
+
+  static Color get accentTint => accent.withValues(alpha: AppTheme.isTerminal ? 0.22 : 0.18);
+
+  static Color get accentDeep => AppTheme.accentColor.deep;
+
+  /// Chữ/icon nổi bật trên nền nút màu nhấn [accent] (đảm bảo dễ đọc cả với màu Vàng).
+  static Color get onAccent =>
+      accent.computeLuminance() > 0.55 ? const Color(0xFF0F172A) : Colors.white;
+
+  /// Làng thợ xây (Builder Base): Đồng bộ theo màu tùy chỉnh của người dùng.
+  static Color get accentBase => accent;
+  static Color get accentBaseTint => accentTint;
 
   // ---- Trạng thái ----
   static Color get ok => _p(0xFF4CAF50, 0xFF34D399);
@@ -139,8 +239,8 @@ class AppColors {
   static Color get dangerTint => _p(0x228B2B2B, 0x2EFB7185);
 
   // ---- Khác ----
-  static Color get settingsAccent => _p(0xFF97A87C, 0xFF60A5FA);
-  static Color get buttonBg => _p(0xFFB0B3A6, 0xFF38BDF8);
+  static Color get settingsAccent => AppTheme.accentColor.primary;
+  static Color get buttonBg => AppTheme.accentColor.primary;
   static Color get sponsor => _p(0xFFEA4AAA, 0xFFF472B6);
   static Color get sponsorTint => _p(0x22EA4AAA, 0x2EF472B6);
 
@@ -148,6 +248,70 @@ class AppColors {
   static Color get builder => _p(0xFFE2B714, 0xFFFBBF24);
   static Color get lab => _p(0xFFB54545, 0xFFC084FC);
   static Color get pet => _p(0xFFB54545, 0xFF2DD4BF);
+}
+
+/// Bộ chọn nhanh 7 bảng màu nhấn (Hồng, Đỏ, Cam, Vàng, Xanh lá, Xanh dương, Tím).
+class AccentColorPicker extends StatelessWidget {
+  final String languageCode;
+  final double swatchSize;
+  final double spacing;
+
+  const AccentColorPicker({
+    super.key,
+    required this.languageCode,
+    this.swatchSize = 24,
+    this.spacing = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isModern = AppTheme.isModern;
+    return Wrap(
+      spacing: spacing,
+      runSpacing: spacing,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: AppAccentColor.values.map((colorOption) {
+        final bool isSelected = AppTheme.accentColor == colorOption;
+        final Color c = colorOption.primary;
+        final Color checkColor = c.computeLuminance() > 0.55 ? Colors.black : Colors.white;
+
+        return Tooltip(
+          message: colorOption.localizedName(languageCode),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(isModern ? swatchSize : 0),
+            onTap: () => AppTheme.setAccentColor(colorOption),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              width: swatchSize,
+              height: swatchSize,
+              decoration: BoxDecoration(
+                color: c,
+                shape: isModern ? BoxShape.circle : BoxShape.rectangle,
+                border: Border.all(
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.28),
+                  width: isSelected ? 2.2 : 1.0,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: c.withValues(alpha: 0.55),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: isSelected
+                  ? Icon(Icons.check_rounded, size: swatchSize * 0.58, color: checkColor)
+                  : null,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 }
 
 /// Nền có các quầng sáng màu (ambient orbs) phía sau để lớp kính mờ khúc xạ ánh sáng.
@@ -166,7 +330,7 @@ class GlassBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     if (AppTheme.isTerminal) return child;
 
-    final Color orb1 = isBuilderBase ? const Color(0xFF7C3AED) : const Color(0xFF0284C7);
+    final Color orb1 = AppColors.accentDeep;
     final Color orb2 = isBuilderBase ? const Color(0xFF2563EB) : const Color(0xFF7C3AED);
     final Color orb3 = isBuilderBase ? const Color(0xFF0D9488) : const Color(0xFFD97706);
 

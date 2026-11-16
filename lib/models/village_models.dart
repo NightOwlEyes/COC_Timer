@@ -110,6 +110,26 @@ class VillageData {
     return active.length > expectedTotal ? active.length : expectedTotal;
   }
 
+  // Tính động tổng số slot phòng thí nghiệm (Làng chính):
+  // - Mặc định là 1 slot phòng thí nghiệm gốc.
+  // - Nếu có nhà nghiên cứu yêu tinh (isExtra == true) đang hoạt động thì cộng thêm 1 (tổng là 2).
+  // - Khi nhà nghiên cứu yêu tinh hoàn tất, tổng slot tự động quay về lại 1 (VD: 1/1).
+  // - Nếu nghiên cứu thường hoàn tất trước mà yêu tinh vẫn đang nghiên cứu thì vẫn giữ tổng là 2 (VD: 1/2 [!]).
+  int get totalLab {
+    final active = activeLab;
+    final int activeExtraCount = active.where((i) => i.isExtra).length;
+    final int expectedTotal = 1 + activeExtraCount;
+    return active.length > expectedTotal ? active.length : expectedTotal;
+  }
+
+  // Tổng số slot phòng thí nghiệm Làng Đêm (Star Lab)
+  int get totalLab2 {
+    final active = activeLab2;
+    final int activeExtraCount = active.where((i) => i.isExtra).length;
+    final int expectedTotal = 1 + activeExtraCount;
+    return active.length > expectedTotal ? active.length : expectedTotal;
+  }
+
   List<UpgradeItem> get activeBuilders {
     var list = buildersItems.where((i) => i.realEta.isAfter(DateTime.now())).toList();
     list.sort((a, b) => a.realEta.compareTo(b.realEta));

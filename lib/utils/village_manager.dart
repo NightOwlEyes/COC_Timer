@@ -41,15 +41,42 @@ class VillageManager {
     processNextAlarm();
   }
 
-  /// Kiểm tra các báo thức đang kêu (do người dùng lỡ bấm thoát ở màn hình khoá hoặc mở lại app khi chuông còn kêu)
+  /// Kiểm tra các báo thức đang kêu (loại bỏ các báo thức đã tắt trên thanh thông báo)
   Future<void> checkActiveRingingAlarms() async {
     try {
+      await ScheduleService.ensureInitialized();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+
+      if (_isAlarmPopupShowing && _currentShowingAlarmId != null) {
+        final bool currentRinging = await Alarm.isRinging(_currentShowingAlarmId!);
+        if (!currentRinging) {
+          await Alarm.stop(_currentShowingAlarmId!);
+        }
+      }
+
+      if (_alarmQueue.isNotEmpty) {
+        final List<AlarmSettings> queuedCopy = List<AlarmSettings>.from(_alarmQueue);
+        for (final queued in queuedCopy) {
+          if (!await Alarm.isRinging(queued.id)) {
+            _alarmQueue.removeWhere((a) => a.id == queued.id);
+            await Alarm.stop(queued.id);
+          }
+        }
+      }
+
       final activeAlarms = await Alarm.getAlarms();
       final now = DateTime.now().add(const Duration(seconds: 1));
       for (final alarm in activeAlarms) {
         if (!alarm.dateTime.isAfter(now)) {
-          ScheduleService.enableAlarmMode();
-          queueAlarm(alarm);
+          final bool ringing = await Alarm.isRinging(alarm.id);
+          if (ringing) {
+            ScheduleService.enableAlarmMode();
+            queueAlarm(alarm);
+          } else {
+            // Đã tắt trên thanh thông báo (hoặc quá hạn không kêu) -> dọn sạch hoàn toàn cả PlatformTimers
+            await Alarm.stop(alarm.id);
+          }
         }
       }
     } catch (e) {
@@ -68,9 +95,9 @@ class VillageManager {
 
     final alarm = _alarmQueue.removeFirst();
 
-    final activeAlarms = await Alarm.getAlarms();
-    final stillActive = activeAlarms.any((a) => a.id == alarm.id);
-    if (!stillActive) {
+    final bool ringing = await Alarm.isRinging(alarm.id);
+    if (!ringing) {
+      await Alarm.stop(alarm.id);
       processNextAlarm();
       return;
     }
@@ -289,13 +316,18 @@ class VillageManager {
     await ScheduleService.resyncSavedWarSchedules();
   }
 
-  Future<({String tag, bool isNewVillage, String statusMsg})> importVillageJson(String inputData) async {
+  Future<({String tag, bool isNewVillage, String statusMsg})> importVillageJson(
+    String inputData, {
+    bool syncWithOS = true,
+  }) async {
     final parsed = VillageParser.parse(inputData);
     final String tag = parsed.tag;
     final bool isNewVillage = !villageNames.containsKey(tag);
 
     if (villages.containsKey(tag)) {
-      ScheduleService.cancelAllForVillage(villages[tag]!);
+      if (syncWithOS) {
+        await ScheduleService.cancelAllForVillage(villages[tag]!);
+      }
       savedAlarmStates.removeWhere((key, value) => key.startsWith("${tag}_"));
     } else {
       trackHome[tag] = true;
@@ -303,10 +335,14 @@ class VillageManager {
       villageNames[tag] = AppStrings.terminal.defaultVillageNameSearching;
     }
 
+    if (syncWithOS && ScheduleService.navigatorKey.currentContext != null) {
+      await checkActiveRingingAlarms();
+    }
+
     villages[tag] = parsed;
     savedRawJsons[tag] = inputData;
 
-    await applySavedAlarmState(parsed, syncWithOS: !isNewVillage, forceApplyRules: true);
+    await applySavedAlarmState(parsed, syncWithOS: syncWithOS && !isNewVillage, forceApplyRules: true);
 
     final String statusMsg = isNewVillage
         ? AppStrings.format(AppStrings.terminal.statusFetchingVillageName, {'tag': tag})
@@ -315,7 +351,7 @@ class VillageManager {
     await saveDataToPrefs();
     if (!isNewVillage) {
       await saveAlarmStatesToPrefs();
-      if (isQuickPasteActive) {
+      if (syncWithOS && isQuickPasteActive) {
         ScheduleService.showQuickPasteNotification(
           customStatus: AppStrings.format(AppStrings.terminal.quickPasteUpdated, {
             'name': villageNames[tag]!,
@@ -334,8 +370,9 @@ class VillageManager {
   Future<String> finalizeNewVillage(
     String tag,
     Map<String, dynamic>? result,
-    String? fetchedName,
-  ) async {
+    String? fetchedName, {
+    bool syncWithOS = true,
+  }) async {
     String statusMsg;
     if (result != null) {
       villageNames[tag] = (result['name'] as String).trim().isNotEmpty
@@ -358,10 +395,10 @@ class VillageManager {
     }
 
     await saveDataToPrefs();
-    await applySavedAlarmState(villages[tag]!, syncWithOS: true, forceApplyRules: true);
+    await applySavedAlarmState(villages[tag]!, syncWithOS: syncWithOS, forceApplyRules: true);
     await saveAlarmStatesToPrefs();
 
-    if (isQuickPasteActive) {
+    if (syncWithOS && isQuickPasteActive) {
       ScheduleService.showQuickPasteNotification(
         customStatus: AppStrings.format(AppStrings.terminal.quickPasteAdded, {
           'name': villageNames[tag]!,

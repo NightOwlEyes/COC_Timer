@@ -160,6 +160,10 @@ abstract class ScheduleServiceStrings {
   String get channelDescription;
   String get warPreAlarmTitle;
   String get warEndAlarmTitle;
+  String get warPreNotificationBody;
+  String get warPreAlarmBody;
+  String get warEndNotificationBody;
+  String get warEndAlarmBody;
   String get debugCancelledWarAlarms;
   String get quickPasteNotificationTitle;
   String get quickPasteNotificationBody;
@@ -277,6 +281,7 @@ abstract class SettingsStrings {
   String get themeConfigTitle;
   String get themeTerminal;
   String get themeModern;
+  String get labelAccentColor;
 }
 
 abstract class OnlineScreenStrings {
@@ -447,8 +452,12 @@ class ScheduleServiceStringsVi extends ScheduleServiceStrings {
   @override String get welcomeNotificationBody => "Hệ thống thông báo đã sẵn sàng!";
   @override String get channelName => "Thông Báo Hệ Thống";
   @override String get channelDescription => "Thông báo cơ bản khi hoàn thành nâng cấp";
-  @override String get warPreAlarmTitle => "SẮP KẾT THÚC WAR";
-  @override String get warEndAlarmTitle => "WAR ĐÃ KẾT THÚC";
+  @override String get warPreAlarmTitle => "■ SẮP KẾT THÚC WAR ■";
+  @override String get warEndAlarmTitle => "■ WAR ĐÃ KẾT THÚC ■";
+  @override String get warPreNotificationBody => "Hội {clanName} ({tag}): Trận War sắp kết thúc (còn {time})!";
+  @override String get warPreAlarmBody => "Hội: {clanName}\nTrạng thái: Sắp kết thúc War (còn {time})\n(Mã: {tag})";
+  @override String get warEndNotificationBody => "Hội {clanName} ({tag}): Trận War đã kết thúc!";
+  @override String get warEndAlarmBody => "Hội: {clanName}\nTrạng thái: Trận War đã kết thúc\n(Mã: {tag})";
   @override String get debugCancelledWarAlarms => "> ĐÃ HỦY TOÀN BỘ BÁO THỨC WAR CỦA CLAN: {clanTag}";
   @override String get quickPasteNotificationTitle => "■ CHẾ ĐỘ DÁN NHANH ĐANG BẬT";
   @override String get quickPasteNotificationBody => "Chạm vào đây sau khi Copy JSON trong game để lưu ngay";
@@ -561,6 +570,7 @@ class SettingsStringsVi extends SettingsStrings {
   @override String get themeConfigTitle => "GIAO DIỆN";
   @override String get themeTerminal => "[ TERMINAL ]";
   @override String get themeModern => "[ KÍNH MỜ ]";
+  @override String get labelAccentColor => "MÀU SẮC: ";
 }
 
 class OnlineScreenStringsVi extends OnlineScreenStrings {
@@ -736,8 +746,12 @@ class ScheduleServiceStringsEn extends ScheduleServiceStrings {
   @override String get welcomeNotificationBody => "The notification is ready!";
   @override String get channelName => "System Notifications";
   @override String get channelDescription => "Basic notifications when an upgrade completes";
-  @override String get warPreAlarmTitle => "WAR ENDING SOON";
-  @override String get warEndAlarmTitle => "WAR HAS ENDED";
+  @override String get warPreAlarmTitle => "■ WAR ENDING SOON ■";
+  @override String get warEndAlarmTitle => "■ WAR HAS ENDED ■";
+  @override String get warPreNotificationBody => "Clan {clanName} ({tag}): War is ending soon ({time} left)!";
+  @override String get warPreAlarmBody => "Clan: {clanName}\nStatus: War ending soon ({time} left)\n(Tag: {tag})";
+  @override String get warEndNotificationBody => "Clan {clanName} ({tag}): War has ended!";
+  @override String get warEndAlarmBody => "Clan: {clanName}\nStatus: War has ended\n(Tag: {tag})";
   @override String get debugCancelledWarAlarms => "> CANCELLED ALL WAR ALARMS FOR CLAN: {clanTag}";
   @override String get quickPasteNotificationTitle => "■ QUICK-PASTE READY";
   @override String get quickPasteNotificationBody => "Tap here after copying JSON in-game to import instantly";
@@ -850,6 +864,7 @@ class SettingsStringsEn extends SettingsStrings {
   @override String get themeConfigTitle => "THEME";
   @override String get themeTerminal => "[ TERMINAL ]";
   @override String get themeModern => "[ GLASS ]";
+  @override String get labelAccentColor => "COLOR: ";
 }
 
 class OnlineScreenStringsEn extends OnlineScreenStrings {

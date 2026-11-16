@@ -455,66 +455,89 @@ class _SettingsDialogState extends State<SettingsDialog> {
     return _buildTerminalBox(
       AppStrings.settings.themeConfigTitle,
       _themeColor,
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            AppTheme.label(AppStrings.settings.themeConfigTitle),
-            style: TextStyle(color: _themeColor, fontSize: 14),
-          ),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              InkWell(
-                borderRadius: AppTheme.brSm,
-                onTap: () async {
-                  await AppTheme.setMode(AppThemeMode.terminal);
-                  if (mounted) setState(() {});
-                },
-                child: Container(
-                  padding: AppTheme.isModern ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6) : EdgeInsets.zero,
-                  decoration: AppTheme.isModern && isTerminal
-                      ? BoxDecoration(
-                          color: _themeColor.withValues(alpha: 0.2),
-                          borderRadius: AppTheme.brSm,
-                          border: Border.all(color: _themeColor),
-                        )
-                      : null,
-                  child: Text(
-                    isTerminal ? "[ TERMINAL ]" : "TERMINAL",
-                    style: TextStyle(
-                      fontFamily: AppTheme.font,
-                      color: isTerminal ? AppColors.ok : AppColors.textMuted,
-                      fontSize: 13,
-                      fontWeight: isTerminal ? FontWeight.bold : FontWeight.normal,
+              Text(
+                AppTheme.label(AppStrings.settings.themeConfigTitle),
+                style: TextStyle(color: _themeColor, fontSize: 14),
+              ),
+              Row(
+                children: [
+                  InkWell(
+                    borderRadius: AppTheme.brSm,
+                    onTap: () async {
+                      await AppTheme.setMode(AppThemeMode.terminal);
+                      if (mounted) setState(() {});
+                    },
+                    child: Container(
+                      padding: AppTheme.isModern ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6) : EdgeInsets.zero,
+                      decoration: AppTheme.isModern && isTerminal
+                          ? BoxDecoration(
+                              color: _themeColor.withValues(alpha: 0.2),
+                              borderRadius: AppTheme.brSm,
+                              border: Border.all(color: _themeColor),
+                            )
+                          : null,
+                      child: Text(
+                        isTerminal ? "[ TERMINAL ]" : "TERMINAL",
+                        style: TextStyle(
+                          fontFamily: AppTheme.font,
+                          color: isTerminal ? AppColors.ok : AppColors.textMuted,
+                          fontSize: 13,
+                          fontWeight: isTerminal ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  InkWell(
+                    borderRadius: AppTheme.brSm,
+                    onTap: () async {
+                      await AppTheme.setMode(AppThemeMode.modern);
+                      if (mounted) setState(() {});
+                    },
+                    child: Container(
+                      padding: AppTheme.isModern ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6) : EdgeInsets.zero,
+                      decoration: AppTheme.isModern && !isTerminal
+                          ? BoxDecoration(
+                              color: _themeColor.withValues(alpha: 0.2),
+                              borderRadius: AppTheme.brSm,
+                              border: Border.all(color: _themeColor),
+                            )
+                          : null,
+                      child: Text(
+                        !isTerminal ? AppStrings.settings.themeModern : AppTheme.label(AppStrings.settings.themeModern),
+                        style: TextStyle(
+                          fontFamily: AppTheme.font,
+                          color: !isTerminal ? AppColors.ok : AppColors.textMuted,
+                          fontSize: 13,
+                          fontWeight: !isTerminal ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                AppTheme.label(AppStrings.settings.labelAccentColor),
+                style: TextStyle(color: _themeColor, fontSize: 14),
               ),
               const SizedBox(width: 12),
-              InkWell(
-                borderRadius: AppTheme.brSm,
-                onTap: () async {
-                  await AppTheme.setMode(AppThemeMode.modern);
-                  if (mounted) setState(() {});
-                },
-                child: Container(
-                  padding: AppTheme.isModern ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6) : EdgeInsets.zero,
-                  decoration: AppTheme.isModern && !isTerminal
-                      ? BoxDecoration(
-                          color: _themeColor.withValues(alpha: 0.2),
-                          borderRadius: AppTheme.brSm,
-                          border: Border.all(color: _themeColor),
-                        )
-                      : null,
-                  child: Text(
-                    !isTerminal ? AppStrings.settings.themeModern : AppTheme.label(AppStrings.settings.themeModern),
-                    style: TextStyle(
-                      fontFamily: AppTheme.font,
-                      color: !isTerminal ? AppColors.ok : AppColors.textMuted,
-                      fontSize: 13,
-                      fontWeight: !isTerminal ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
+              Expanded(
+                child: AccentColorPicker(
+                  languageCode: AppStrings.languageCode,
+                  swatchSize: 24,
+                  spacing: 8,
                 ),
               ),
             ],
